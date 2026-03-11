@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bilibili Discovery Engine",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Explore Bilibili content via random UPs, tags, and recommendations.",
   "permissions": [
     "storage",
@@ -12,6 +12,11 @@
     "https://*.bilibili.com/*",
     "https://api.bilibili.com/*"
   ],
+  "icons": {
+    "16": "icons/icon16.svg",
+    "48": "icons/icon.svg",
+    "128": "icons/icon.svg"
+  },
   "background": {
     "service_worker": "background/service-worker.js",
     "type": "module"

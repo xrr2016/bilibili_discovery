@@ -8,7 +8,8 @@
     "test": "tsc -p tsconfig.json && node ./scripts/run-tests.js",
     "dev": "npm run build && node -e \"console.log('Load extension from: D:\\\\ProjectFloder\\\\TS\\\\bili-random-up\\\\dist\\\\extension')\"",
     "probe:bili": "node ./scripts/probe-bili-api.js",
-    "probe:arcopen": "node ./scripts/probe-arcopen.js"
+    "probe:arcopen": "node ./scripts/probe-arcopen.js",
+    "package": "node ./scripts/package-extension.js"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

@@ -9,6 +9,15 @@ mkdirSync(distExtension, { recursive: true });
 
 cpSync(join(srcExtension, "ui"), join(distExtension, "ui"), { recursive: true });
 
+// Copy icons directory if it exists
+const iconsSrc = join(srcExtension, "icons");
+const iconsDist = join(distExtension, "icons");
+try {
+  cpSync(iconsSrc, iconsDist, { recursive: true });
+} catch (err) {
+  // Icons directory doesn't exist, skip
+}
+
 const manifestPath = join(srcExtension, "manifest.tson");
 const manifestJson = JSON.parse(readFileSync(manifestPath, "utf-8"));
 
