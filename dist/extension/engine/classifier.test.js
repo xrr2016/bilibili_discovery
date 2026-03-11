@@ -44,5 +44,7 @@ test("classifyUP returns tags and confidence", async () => {
         classifyWithLLMFn: async () => ["Tech"]
     });
     assert(result.tags.length >= 1, "expected tags");
+    assert(result.tags.length <= 5, "expected max 5 tags");
     assert(result.confidence >= 0.5, "expected confidence");
+    assert(result.videoCount === 2, "expected video count");
 });

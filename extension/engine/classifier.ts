@@ -22,6 +22,7 @@ export interface UPTagProfile {
   mid: number;
   tags: string[];
   confidence: number;
+  videoCount: number;
 }
 
 interface ClassifierOptions {
@@ -90,7 +91,7 @@ export async function classifyWithLLM(
   const titles = videos.map((video) => video.title).slice(0, 10);
   const prompt = [
     "You are a content classifier.",
-    "Return a JSON array of short Chinese tags.",
+    "Return a JSON array of 3 to 5 short Chinese tags.",
     `UP: ${upProfile.name}`,
     `Bio: ${upProfile.sign}`,
     `Video titles: ${titles.join(" | ")}`
@@ -122,6 +123,10 @@ export function mergeTags(tagStats: string[], llmTags: string[]): string[] {
   return merged;
 }
 
+function limitTags(tags: string[], max: number = 5): string[] {
+  return tags.slice(0, Math.max(0, max));
+}
+
 /**
  * Classify a UP with tag stats and optional LLM tags.
  */
@@ -137,6 +142,7 @@ export async function classifyUP(
 
   console.log("[Classifier] Classify UP", mid);
   const videos = await getUPVideosFn(mid);
+  const videoCount = videos.length;
   const sampled = sampleVideos(videos, 5);
   const collectedTags = await collectVideoTags(sampled, options);
   const tagStats = extractTopTags(
@@ -146,7 +152,7 @@ export async function classifyUP(
 
   const upProfile = await getUPInfoFn(mid);
   const llmTags = upProfile ? await classifyWithLLMFn(upProfile, sampled) : [];
-  const tags = mergeTags(tagStats, llmTags);
+  const tags = limitTags(mergeTags(tagStats, llmTags), 5);
 
   let confidence = 0.3;
   if (tagStats.length > 0 && llmTags.length > 0) {
@@ -155,5 +161,5 @@ export async function classifyUP(
     confidence = 0.5;
   }
 
-  return { mid, tags, confidence };
+  return { mid, tags, confidence, videoCount };
 }

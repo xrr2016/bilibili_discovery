@@ -38,7 +38,14 @@ export function parseTagsFromContent(content: string): string[] {
   if (!trimmed) return [];
 
   try {
-    const parsed = JSON.parse(trimmed);
+    const normalized = trimmed
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/i, "")
+      .replace(/[，、]/g, ",")
+      .replace(/[“”]/g, "\"")
+      .replace(/[‘’]/g, "'")
+      .trim();
+    const parsed = JSON.parse(normalized);
     if (Array.isArray(parsed)) {
       return parsed.filter((tag) => typeof tag === "string");
     }
@@ -47,8 +54,14 @@ export function parseTagsFromContent(content: string): string[] {
   }
 
   return trimmed
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .replace(/[，、]/g, ",")
+    .replace(/[“”]/g, "\"")
+    .replace(/[‘’]/g, "'")
     .split(/[\n,]/g)
     .map((tag) => tag.trim())
+    .map((tag) => tag.replace(/^["'“”‘’]+|["'“”‘’]+$/g, ""))
     .filter((tag) => tag.length > 0);
 }
 

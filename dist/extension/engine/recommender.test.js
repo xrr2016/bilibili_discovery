@@ -66,30 +66,26 @@ test("recommendVideo selects by score", async () => {
         interestProfile: { AI: { tag: "AI", score: 2 } }
     });
     const video = await recommendVideo(1, {
-        loadVideoCacheFn: async () => ({
-            videos: [
-                {
-                    bvid: "1",
-                    aid: 1,
-                    title: "A",
-                    play: 10,
-                    duration: 1,
-                    pubdate: 1700000000,
-                    tags: ["AI"]
-                },
-                {
-                    bvid: "2",
-                    aid: 2,
-                    title: "B",
-                    play: 100,
-                    duration: 1,
-                    pubdate: 1600000000,
-                    tags: []
-                }
-            ],
-            lastUpdate: 0
-        }),
-        getUPVideosFn: async () => [],
+        getUPVideosFn: async () => [
+            {
+                bvid: "1",
+                aid: 1,
+                title: "A",
+                play: 10,
+                duration: 1,
+                pubdate: 1700000000,
+                tags: ["AI"]
+            },
+            {
+                bvid: "2",
+                aid: 2,
+                title: "B",
+                play: 100,
+                duration: 1,
+                pubdate: 1600000000,
+                tags: []
+            }
+        ],
         getValueFn: (key) => storage.getValue(key),
         nowFn: () => 1700000000 * 1000
     });

@@ -46,10 +46,23 @@ export async function apiRequest(url, options = {}) {
  * Fetch followed UP list for a user.
  */
 export async function getFollowedUPs(uid, options = {}) {
-    const url = `https://api.bilibili.com/x/relation/followings?vmid=${uid}&pn=1&ps=50&order=desc`;
-    const data = await apiRequest(url, options);
-    const list = data?.data?.list;
-    return Array.isArray(list) ? list : [];
+    const pageSize = 50;
+    const all = [];
+    let page = 1;
+    while (true) {
+        const url = `https://api.bilibili.com/x/relation/followings?vmid=${uid}&pn=${page}&ps=${pageSize}&order=desc`;
+        const data = await apiRequest(url, options);
+        const list = data?.data?.list;
+        if (!Array.isArray(list) || list.length === 0) {
+            break;
+        }
+        all.push(...list);
+        if (list.length < pageSize) {
+            break;
+        }
+        page += 1;
+    }
+    return all;
 }
 /**
  * Fetch videos of a specific UP.

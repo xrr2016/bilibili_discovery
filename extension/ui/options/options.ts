@@ -75,11 +75,14 @@ async function saveSettings(settings: Settings): Promise<void> {
   }
 }
 
+declare const chrome: { runtime: { getURL: (path: string) => string } };
+
 export async function initOptions(): Promise<void> {
   if (typeof document === "undefined") {
     return;
   }
 
+  const statsLink = document.getElementById("open-stats") as HTMLAnchorElement | null;
   const homeModeEl = document.getElementById("home-mode") as HTMLSelectElement | null;
   const classifyModeEl = document.getElementById("classify-mode") as HTMLSelectElement | null;
   const cacheHoursEl = document.getElementById("cache-hours") as HTMLInputElement | null;
@@ -97,6 +100,11 @@ export async function initOptions(): Promise<void> {
   if (apiBaseUrlEl) apiBaseUrlEl.value = settings.apiBaseUrl;
   if (apiModelEl) apiModelEl.value = settings.apiModel;
   if (apiKeyEl) apiKeyEl.value = settings.apiKey;
+
+  if (statsLink && typeof chrome !== "undefined") {
+    statsLink.href = chrome.runtime.getURL("ui/stats/stats.html");
+    statsLink.target = "_blank";
+  }
 
   saveBtn?.addEventListener("click", async () => {
     const next = normalizeSettings({

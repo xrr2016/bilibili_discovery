@@ -55,6 +55,7 @@ export async function initOptions() {
     if (typeof document === "undefined") {
         return;
     }
+    const statsLink = document.getElementById("open-stats");
     const homeModeEl = document.getElementById("home-mode");
     const classifyModeEl = document.getElementById("classify-mode");
     const cacheHoursEl = document.getElementById("cache-hours");
@@ -78,6 +79,10 @@ export async function initOptions() {
         apiModelEl.value = settings.apiModel;
     if (apiKeyEl)
         apiKeyEl.value = settings.apiKey;
+    if (statsLink && typeof chrome !== "undefined") {
+        statsLink.href = chrome.runtime.getURL("ui/stats/stats.html");
+        statsLink.target = "_blank";
+    }
     saveBtn?.addEventListener("click", async () => {
         const next = normalizeSettings({
             homeMode: homeModeEl?.value ?? DEFAULT_SETTINGS.homeMode,

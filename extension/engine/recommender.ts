@@ -149,13 +149,11 @@ export async function recommendVideo(
   mid: number,
   options: RecommenderOptions = {}
 ): Promise<Video | null> {
-  const loadVideoCacheFn = options.loadVideoCacheFn ?? loadVideoCache;
   const getUPVideosFn = options.getUPVideosFn ?? getUPVideos;
   const getValueFn = options.getValueFn ?? getValue;
   const nowFn = options.nowFn ?? Date.now;
 
-  const cached = await loadVideoCacheFn(mid);
-  const videos = cached?.videos ?? (await getUPVideosFn(mid));
+  const videos = await getUPVideosFn(mid);
   if (videos.length === 0) {
     return null;
   }

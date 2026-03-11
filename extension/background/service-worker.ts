@@ -126,16 +126,20 @@ export async function classifyUpTask(
 
   const upTags =
     ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
+  const videoCounts =
+    ((await getValueFn("videoCounts")) as Record<string, number> | null) ?? {};
   const batch = list.slice(0, batchSize);
   let processed = 0;
 
   for (const up of batch) {
     const profile = await classifyUPFn(up.mid);
     upTags[String(up.mid)] = profile.tags;
+    videoCounts[String(up.mid)] = profile.videoCount ?? 0;
     processed += 1;
   }
 
   await setValueFn("upTags", upTags);
+  await setValueFn("videoCounts", videoCounts);
   await setValueFn("classifyStatus", { lastUpdate: Date.now() });
   console.log("[Background] Classified UPs", processed);
   return processed;
@@ -255,6 +259,16 @@ export async function handleMessage(
 
   if (message.type === "classify_ups") {
     await classifyUpTask(options);
+    return null;
+  }
+
+  if (message.type === "clear_classify_data") {
+    const setValueFn =
+      options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
+    await setValueFn("upTags", {});
+    await setValueFn("videoCounts", {});
+    await setValueFn("classifyStatus", { lastUpdate: 0 });
+    console.log("[Background] Cleared classify data");
     return null;
   }
 

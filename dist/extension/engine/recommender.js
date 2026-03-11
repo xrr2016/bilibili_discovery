@@ -2,7 +2,7 @@
  * Recommendation engine.
  */
 import { getUPVideos } from "../api/bili-api.js";
-import { getValue, loadVideoCache, updateInterest } from "../storage/storage.js";
+import { getValue, updateInterest } from "../storage/storage.js";
 const DEFAULT_INTEREST_WEIGHT = 0.6;
 const DEFAULT_POPULARITY_WEIGHT = 0.2;
 const DEFAULT_FRESHNESS_WEIGHT = 0.2;
@@ -96,12 +96,10 @@ export async function recommendUP(options = {}) {
  * Recommend a video from a UP using interest/popularity/freshness.
  */
 export async function recommendVideo(mid, options = {}) {
-    const loadVideoCacheFn = options.loadVideoCacheFn ?? loadVideoCache;
     const getUPVideosFn = options.getUPVideosFn ?? getUPVideos;
     const getValueFn = options.getValueFn ?? getValue;
     const nowFn = options.nowFn ?? Date.now;
-    const cached = await loadVideoCacheFn(mid);
-    const videos = cached?.videos ?? (await getUPVideosFn(mid));
+    const videos = await getUPVideosFn(mid);
     if (videos.length === 0) {
         return null;
     }

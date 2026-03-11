@@ -49,14 +49,17 @@ export async function classifyUpTask(options = {}) {
         return 0;
     }
     const upTags = (await getValueFn("upTags")) ?? {};
+    const videoCounts = (await getValueFn("videoCounts")) ?? {};
     const batch = list.slice(0, batchSize);
     let processed = 0;
     for (const up of batch) {
         const profile = await classifyUPFn(up.mid);
         upTags[String(up.mid)] = profile.tags;
+        videoCounts[String(up.mid)] = profile.videoCount ?? 0;
         processed += 1;
     }
     await setValueFn("upTags", upTags);
+    await setValueFn("videoCounts", videoCounts);
     await setValueFn("classifyStatus", { lastUpdate: Date.now() });
     console.log("[Background] Classified UPs", processed);
     return processed;
@@ -153,6 +156,14 @@ export async function handleMessage(message, options = {}) {
     }
     if (message.type === "classify_ups") {
         await classifyUpTask(options);
+        return null;
+    }
+    if (message.type === "clear_classify_data") {
+        const setValueFn = options.setValueFn ?? ((key, value) => setValue(key, value));
+        await setValueFn("upTags", {});
+        await setValueFn("videoCounts", {});
+        await setValueFn("classifyStatus", { lastUpdate: 0 });
+        console.log("[Background] Cleared classify data");
         return null;
     }
     if (message.type === "recommend_video") {

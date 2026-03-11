@@ -51,12 +51,14 @@ test("classifyUpTask stores tags", async () => {
         setValueFn: async (_key, value) => {
             stored[_key] = value;
         },
-        classifyUPFn: async (mid) => ({ mid, tags: ["AI"], confidence: 0.5 }),
+        classifyUPFn: async (mid) => ({ mid, tags: ["AI"], confidence: 0.5, videoCount: 2 }),
         batchSize: 1
     });
     assert(count === 1, "expected one classified");
     const upTags = stored["upTags"];
     assert(upTags["1"][0] === "AI", "expected AI tag");
+    const videoCounts = stored["videoCounts"];
+    assert(videoCounts["1"] === 2, "expected video count");
 });
 test("handleAlarm routes to update and classify", async () => {
     let updated = 0;
@@ -74,10 +76,10 @@ test("handleAlarm routes to update and classify", async () => {
         setValueFn: async () => {
             classified += 1;
         },
-        classifyUPFn: async (mid) => ({ mid, tags: [], confidence: 0.3 })
+        classifyUPFn: async (mid) => ({ mid, tags: [], confidence: 0.3, videoCount: 0 })
     });
     assert(updated === 1, "expected update handler");
-    assert(classified === 2, "expected classify handler");
+    assert(classified === 3, "expected classify handler");
 });
 test("handleMessage random_up opens space url", async () => {
     let url = "";
@@ -163,10 +165,23 @@ test("handleMessage classify_ups triggers classify", async () => {
         setValueFn: async () => {
             stored += 1;
         },
-        classifyUPFn: async (mid) => ({ mid, tags: [], confidence: 0.3 }),
+        classifyUPFn: async (mid) => ({ mid, tags: [], confidence: 0.3, videoCount: 0 }),
         tabs: {
             update: () => { }
         }
     });
-    assert(stored === 2, "expected classify store calls");
+    assert(stored === 3, "expected classify store calls");
+});
+test("handleMessage clear_classify_data resets data", async () => {
+    const stored = {};
+    await handleMessage({ type: "clear_classify_data" }, {
+        tabs: {
+            update: () => { }
+        },
+        setValueFn: async (key, value) => {
+            stored[key] = value;
+        }
+    });
+    assert(Object.keys(stored).length === 3, "expected three keys cleared");
+    assert(JSON.stringify(stored["upTags"]) === "{}", "expected empty upTags");
 });
