@@ -12,6 +12,25 @@
         <div class="panel">
           <h2>关注UP</h2>
           <div id="up-list" class="up-list"></div>
+          <div class="filter-area">
+            <div class="filter-section">
+              <h3>筛选条件</h3>
+              <div class="filter-zones">
+                <div class="filter-zone filter-include">
+                  <h4>必须包含</h4>
+                  <div id="filter-include-tags" class="filter-tags"></div>
+                </div>
+                <div class="filter-zone filter-exclude">
+                  <h4>不能包含</h4>
+                  <div id="filter-exclude-tags" class="filter-tags"></div>
+                </div>
+              </div>
+              <div class="filter-actions">
+                <button id="btn-apply-filter" class="action">应用筛选</button>
+                <button id="btn-clear-filter" class="secondary">清除筛选</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="panel">
           <div class="cards">
@@ -29,22 +48,12 @@
             </div>
           </div>
           <div class="section">
-            <h2>操作</h2>
-            <button id="btn-update-up-list" class="action">更新关注UP列表</button>
-            <button id="btn-auto-classify" class="action">自动分类</button>
-          </div>
-          <div class="section">
             <h2>UP分类词条</h2>
-            <div id="tag-list" class="list"></div>
-            <button id="btn-clear-classify" class="danger">清理分类数据</button>
-          </div>
-          <div class="section">
-            <h2>UP接口测试</h2>
-            <div class="probe">
-              <input id="probe-mid" type="number" placeholder="输入UP mid" />
-              <button id="btn-probe-up">测试获取</button>
+            <div class="search-box">
+              <input id="tag-search" type="text" placeholder="搜索标签..." />
             </div>
-            <div id="probe-result" class="list"></div>
+            <div id="tag-list" class="list tag-list-scrollable"></div>
+            <button id="btn-clear-classify" class="danger">清理分类数据</button>
           </div>
         </div>
       </div>

@@ -99,24 +99,23 @@ export function initPopup() {
     if (typeof document === "undefined") {
         return;
     }
-    const randomUpBtn = document.getElementById("btn-random-up");
-    const randomVideoBtn = document.getElementById("btn-random-video");
-    const recommendBtn = document.getElementById("btn-recommend");
     const updateUpBtn = document.getElementById("btn-update-up");
-    const classifyBtn = document.getElementById("btn-classify-up");
     const autoClassifyBtn = document.getElementById("btn-auto-classify");
-    randomUpBtn?.addEventListener("click", () => sendAction("random_up"));
-    randomVideoBtn?.addEventListener("click", () => sendAction("random_video"));
-    recommendBtn?.addEventListener("click", async () => {
-        const response = (await sendActionWithResponse("recommend_video"));
-        setRecommendTitle(response?.title ?? null);
-    });
+    const statsBtn = document.getElementById("btn-stats");
+    const settingsBtn = document.getElementById("btn-settings");
     updateUpBtn?.addEventListener("click", () => sendAction("update_up_list"));
-    classifyBtn?.addEventListener("click", () => sendAction("classify_ups"));
     autoClassifyBtn?.addEventListener("click", () => sendAction("start_auto_classification"));
-    void loadInterests();
+    statsBtn?.addEventListener("click", () => {
+        if (typeof chrome !== "undefined") {
+            chrome.tabs.create({ url: chrome.runtime.getURL("ui/stats/stats.html") });
+        }
+    });
+    settingsBtn?.addEventListener("click", () => {
+        if (typeof chrome !== "undefined") {
+            chrome.tabs.create({ url: chrome.runtime.getURL("ui/options/options.html") });
+        }
+    });
     void loadStatus();
-    setRecommendTitle(null);
 }
 if (typeof document !== "undefined") {
     initPopup();

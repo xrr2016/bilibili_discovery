@@ -170,11 +170,143 @@ h2 {
   font-size: 12px;
 }
 
+.filter-area {
+  margin-top: 16px;
+  padding: 12px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(20, 30, 50, 0.08);
+}
+
+.filter-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.filter-zones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.filter-zone h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #5b6475;
+}
+
+.filter-tags {
+  min-height: 60px;
+  padding: 8px;
+  border: 2px dashed #cbd3e1;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.filter-tags.drag-over {
+  border-color: #2b6cff;
+  background: #f0f4ff;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #2b6cff;
+  color: #fff;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.filter-tag .remove-tag {
+  cursor: pointer;
+  font-weight: bold;
+  opacity: 0.8;
+}
+
+.filter-tag .remove-tag:hover {
+  opacity: 1;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #2b6cff;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.action:hover {
+  background: #1a5ce6;
+}
+
+.secondary {
+  padding: 8px 16px;
+  border: 1px solid #cbd3e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2430;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.secondary:hover {
+  background: #f7f7f9;
+}
+
+.search-box {
+  margin-bottom: 8px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #cbd3e1;
+  border-radius: 6px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #2b6cff;
+}
+
+.tag-list-scrollable {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  opacity: 0.8;
+  z-index: 1000;
+  transform: translate(-50%, -50%);
+}
+
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: 1fr;
   }
   .up-list {
     max-height: 320px;
+  }
+  .filter-zones {
+    grid-template-columns: 1fr;
   }
 }

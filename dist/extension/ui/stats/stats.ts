@@ -48,15 +48,66 @@ export function colorFromTag(tag: string): string {
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
 
-function renderTagPill(tag: string): HTMLSpanElement {
+function renderTagPill(tag: string, count?: number): HTMLSpanElement {
   const pill = document.createElement("span");
   pill.className = "tag-pill";
-  pill.textContent = tag;
+  pill.textContent = count !== undefined ? `${tag} (${count})` : tag;
   pill.style.backgroundColor = colorFromTag(tag);
+  
+  // Make tag draggable
+  pill.draggable = true;
+  pill.addEventListener("dragstart", (e) => {
+    e.dataTransfer?.setData("text/plain", tag);
+    createDragGhost(e, tag);
+  });
+  pill.addEventListener("dragend", () => {
+    removeDragGhost();
+  });
+  
   return pill;
 }
 
-function renderTags(upTags: Record<string, string[]>): void {
+let dragGhost: HTMLElement | null = null;
+
+function createDragGhost(e: DragEvent, tag: string): void {
+  removeDragGhost();
+  const ghost = document.createElement("div");
+  ghost.className = "drag-ghost";
+  ghost.textContent = tag;
+  ghost.style.backgroundColor = colorFromTag(tag);
+  ghost.style.padding = "8px 16px";
+  ghost.style.borderRadius = "999px";
+  ghost.style.color = "#1f2430";
+  ghost.style.fontSize = "13px";
+  ghost.style.fontWeight = "600";
+  document.body.appendChild(ghost);
+  dragGhost = ghost;
+  
+  const moveGhost = (moveEvent: MouseEvent) => {
+    if (dragGhost) {
+      dragGhost.style.left = moveEvent.clientX + "px";
+      dragGhost.style.top = moveEvent.clientY + "px";
+    }
+  };
+  
+  document.addEventListener("mousemove", moveGhost);
+  document.addEventListener("mouseup", () => {
+    document.removeEventListener("mousemove", moveGhost);
+    setTimeout(() => removeDragGhost(), 100);
+  }, { once: true });
+}
+
+function removeDragGhost(): void {
+  if (dragGhost) {
+    dragGhost.remove();
+    dragGhost = null;
+  }
+}
+
+let allTagCounts: Record<string, number> = {};
+let filteredTags: string[] = [];
+
+function renderTags(upTags: Record<string, string[]>, searchTerm: string = ""): void {
   const container = document.getElementById("tag-list");
   if (!container) return;
   container.innerHTML = "";
@@ -68,16 +119,31 @@ function renderTags(upTags: Record<string, string[]>): void {
     container.appendChild(item);
     return;
   }
-  const counts: Record<string, number> = {};
+  
+  // Count all tags
+  allTagCounts = {};
   for (const tag of tags) {
-    counts[tag] = (counts[tag] ?? 0) + 1;
+    allTagCounts[tag] = (allTagCounts[tag] ?? 0) + 1;
   }
-  const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+  
+  // Filter tags by search term
+  if (searchTerm) {
+    filteredTags = Object.keys(allTagCounts).filter(tag => 
+      tag.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  } else {
+    filteredTags = Object.keys(allTagCounts);
+  }
+  
+  // Sort by count
+  const rows = filteredTags.map(tag => [tag, allTagCounts[tag]] as [string, number])
+    .sort((a, b) => b[1] - a[1]);
+  
   for (const [tag, count] of rows) {
     const item = document.createElement("div");
     item.className = "list-item";
     const label = document.createElement("span");
-    label.appendChild(renderTagPill(tag));
+    label.appendChild(renderTagPill(tag, count));
     const value = document.createElement("span");
     value.textContent = String(count);
     item.appendChild(label);
@@ -85,6 +151,9 @@ function renderTags(upTags: Record<string, string[]>): void {
     container.appendChild(item);
   }
 }
+
+let includeTags: string[] = [];
+let excludeTags: string[] = [];
 
 function renderUpList(
   upList: UPCache["upList"],
@@ -100,7 +169,26 @@ function renderUpList(
     container.appendChild(item);
     return;
   }
-  for (const up of upList) {
+  
+  // Filter UP list based on include/exclude tags
+  let filteredUpList = upList;
+  if (includeTags.length > 0 || excludeTags.length > 0) {
+    filteredUpList = upList.filter(up => {
+      const tags = upTags[String(up.mid)] ?? [];
+      
+      // Check if all include tags are present
+      const hasAllIncludeTags = includeTags.length === 0 || 
+        includeTags.every(tag => tags.includes(tag));
+      
+      // Check if none of the exclude tags are present
+      const hasNoExcludeTags = excludeTags.length === 0 || 
+        !excludeTags.some(tag => tags.includes(tag));
+      
+      return hasAllIncludeTags && hasNoExcludeTags;
+    });
+  }
+  
+  for (const up of filteredUpList) {
     const item = document.createElement("div");
     item.className = "up-item";
     const avatar = document.createElement("img");
@@ -155,6 +243,101 @@ function renderInterests(rows: { tag: string; score: number }[]): void {
     item.appendChild(value);
     container.appendChild(item);
   }
+}
+
+function renderFilterTags(): void {
+  const includeContainer = document.getElementById("filter-include-tags");
+  const excludeContainer = document.getElementById("filter-exclude-tags");
+  if (!includeContainer || !excludeContainer) return;
+  
+  includeContainer.innerHTML = "";
+  excludeContainer.innerHTML = "";
+  
+  for (const tag of includeTags) {
+    const tagEl = createFilterTag(tag, "include");
+    includeContainer.appendChild(tagEl);
+  }
+  
+  for (const tag of excludeTags) {
+    const tagEl = createFilterTag(tag, "exclude");
+    excludeContainer.appendChild(tagEl);
+  }
+}
+
+function createFilterTag(tag: string, type: "include" | "exclude"): HTMLElement {
+  const tagEl = document.createElement("div");
+  tagEl.className = "filter-tag";
+  tagEl.textContent = tag;
+  
+  const removeBtn = document.createElement("span");
+  removeBtn.className = "remove-tag";
+  removeBtn.textContent = "×";
+  removeBtn.addEventListener("click", () => {
+    if (type === "include") {
+      includeTags = includeTags.filter(t => t !== tag);
+    } else {
+      excludeTags = excludeTags.filter(t => t !== tag);
+    }
+    renderFilterTags();
+    refreshUpList();
+  });
+  
+  tagEl.appendChild(removeBtn);
+  return tagEl;
+}
+
+function setupDragAndDrop(): void {
+  const includeZone = document.getElementById("filter-include-tags");
+  const excludeZone = document.getElementById("filter-exclude-tags");
+  
+  if (!includeZone || !excludeZone) return;
+  
+  const zones = [
+    { element: includeZone, type: "include" as const },
+    { element: excludeZone, type: "exclude" as const }
+  ];
+  
+  for (const zone of zones) {
+    zone.element.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      zone.element.classList.add("drag-over");
+    });
+    
+    zone.element.addEventListener("dragleave", () => {
+      zone.element.classList.remove("drag-over");
+    });
+    
+    zone.element.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.element.classList.remove("drag-over");
+      
+      const tag = e.dataTransfer?.getData("text/plain");
+      if (!tag) return;
+      
+      // Remove from other zone if exists
+      if (zone.type === "include") {
+        excludeTags = excludeTags.filter(t => t !== tag);
+        if (!includeTags.includes(tag)) {
+          includeTags.push(tag);
+        }
+      } else {
+        includeTags = includeTags.filter(t => t !== tag);
+        if (!excludeTags.includes(tag)) {
+          excludeTags.push(tag);
+        }
+      }
+      
+      renderFilterTags();
+      refreshUpList();
+    });
+  }
+}
+
+let currentUpList: UPCache["upList"] = [];
+let currentUpTags: Record<string, string[]> = {};
+
+function refreshUpList(): void {
+  renderUpList(currentUpList, currentUpTags);
 }
 
 export async function initStats(): Promise<void> {
@@ -215,13 +398,39 @@ export async function initStats(): Promise<void> {
   const upCache = (await getValue<UPCache>("upList")) ?? { upList: [] };
   const upTags = (await getValue<Record<string, string[]>>("upTags")) ?? {};
   const videoCounts = (await getValue<Record<string, number>>("videoCounts")) ?? {};
+  
+  currentUpList = upCache.upList ?? [];
+  currentUpTags = upTags;
 
   setText("stat-up-count", String(upCache.upList?.length ?? 0));
   setText("stat-tag-count", String(countUpTags(upTags)));
   setText("stat-video-count", String(countVideoTotals(videoCounts)));
 
-  renderUpList(upCache.upList ?? [], upTags);
-  renderTags(upTags);
+  renderUpList(currentUpList, currentUpTags);
+  renderTags(currentUpTags);
+  setupDragAndDrop();
+  
+  // Search box event
+  const searchInput = document.getElementById("tag-search") as HTMLInputElement | null;
+  searchInput?.addEventListener("input", (e) => {
+    const searchTerm = (e.target as HTMLInputElement).value;
+    renderTags(currentUpTags, searchTerm);
+  });
+  
+  // Filter buttons
+  const applyFilterBtn = document.getElementById("btn-apply-filter");
+  const clearFilterBtn = document.getElementById("btn-clear-filter");
+  
+  applyFilterBtn?.addEventListener("click", () => {
+    refreshUpList();
+  });
+  
+  clearFilterBtn?.addEventListener("click", () => {
+    includeTags = [];
+    excludeTags = [];
+    renderFilterTags();
+    refreshUpList();
+  });
 }
 
 if (typeof document !== "undefined") {
