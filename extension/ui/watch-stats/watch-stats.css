@@ -114,10 +114,10 @@ body {
 }
 
 .card {
-  background: linear-gradient(135deg, #94c7e5 0%, #957fab 100%);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e9ecef;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -130,14 +130,14 @@ body {
 }
 
 .label {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.9);
 }
 
 .value {
   font-size: 24px;
   font-weight: 700;
-  color: #ffffff;
+  color: #1a1a1a;
 }
 
 .layout {
