@@ -44,6 +44,10 @@ function renderTagPill(tag, count) {
     });
     pill.addEventListener("dragend", () => {
         removeDragGhost();
+        // If tag was not dropped in a valid zone, remove it from category
+        if (dragContext && !dragContext.dropped && dragContext.categoryId) {
+            removeTagFromCategory(dragContext.categoryId, tag);
+        }
         dragContext = null;
     });
     return pill;
@@ -101,6 +105,8 @@ function removeDragGhost() {
 let allTagCounts = {};
 let filteredTags = [];
 let currentCustomTags = [];
+let categories = [];
+let filteredCategories = [];
 function renderTags(upTags, searchTerm = "") {
     const container = document.getElementById("tag-list");
     if (!container)
@@ -147,10 +153,158 @@ function renderTags(upTags, searchTerm = "") {
         container.appendChild(item);
     }
 }
+function renderCategories(searchTerm = "") {
+    const container = document.getElementById("category-list");
+    if (!container)
+        return;
+    container.innerHTML = "";
+    if (categories.length === 0) {
+        const item = document.createElement("div");
+        item.className = "list-item";
+        item.textContent = "暂无大分区";
+        container.appendChild(item);
+        return;
+    }
+    // Filter categories by search term
+    if (searchTerm) {
+        filteredCategories = categories.filter(category => category.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    else {
+        filteredCategories = categories;
+    }
+    for (const category of filteredCategories) {
+        const item = document.createElement("div");
+        item.draggable = true;
+        item.addEventListener("dragstart", (e) => {
+            if (e.dataTransfer) {
+                e.dataTransfer.setData("application/x-bili-category-tag", JSON.stringify({
+                    tag: category.name,
+                    categoryId: category.id
+                }));
+                e.dataTransfer.effectAllowed = "move";
+            }
+            createDragGhost(e, category.name);
+            dragContext = { tag: category.name, categoryId: category.id, dropped: false };
+        });
+        item.addEventListener("dragend", () => {
+            removeDragGhost();
+            dragContext = null;
+        });
+        item.className = "category-item";
+        const header = document.createElement("div");
+        header.className = "category-header";
+        const name = document.createElement("span");
+        name.className = "category-name";
+        name.textContent = category.name;
+        const removeBtn = document.createElement("span");
+        removeBtn.className = "category-remove";
+        removeBtn.textContent = "×";
+        removeBtn.addEventListener("click", () => {
+            removeCategory(category.id);
+        });
+        header.appendChild(name);
+        header.appendChild(removeBtn);
+        const tagsContainer = document.createElement("div");
+        tagsContainer.className = "category-tags";
+        tagsContainer.dataset.categoryId = category.id;
+        // Setup drag and drop for category tags
+        setupCategoryTagDropZone(tagsContainer, category.id);
+        for (const tag of category.tags) {
+            tagsContainer.appendChild(renderCategoryTagPill(tag, category.id));
+        }
+        item.appendChild(header);
+        item.appendChild(tagsContainer);
+        container.appendChild(item);
+    }
+}
+function renderCategoryTagPill(tag, categoryId) {
+    const pill = document.createElement("span");
+    pill.className = "tag-pill";
+    pill.textContent = tag;
+    pill.style.backgroundColor = colorFromTag(tag);
+    pill.draggable = true;
+    pill.addEventListener("dragstart", (e) => {
+        if (e.dataTransfer) {
+            e.dataTransfer.setData("application/x-bili-category-tag", JSON.stringify({ tag, categoryId }));
+            e.dataTransfer.effectAllowed = "move";
+        }
+        createDragGhost(e, tag);
+        dragContext = { tag, categoryId, dropped: false };
+    });
+    pill.addEventListener("dragend", () => {
+        removeDragGhost();
+        // If tag was not dropped in a valid zone, remove it from category
+        if (dragContext && !dragContext.dropped && dragContext.categoryId) {
+            removeTagFromCategory(dragContext.categoryId, tag);
+        }
+        dragContext = null;
+    });
+    return pill;
+}
+function setupCategoryTagDropZone(element, categoryId) {
+    element.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        element.classList.add("drag-over");
+    });
+    element.addEventListener("dragleave", () => {
+        element.classList.remove("drag-over");
+    });
+    element.addEventListener("drop", (e) => {
+        e.preventDefault();
+        element.classList.remove("drag-over");
+        const tag = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
+        if (!tag)
+            return;
+        if (dragContext) {
+            dragContext.dropped = true;
+        }
+        addTagToCategory(categoryId, tag);
+    });
+}
+function addTagToCategory(categoryId, tag) {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category)
+        return;
+    if (!category.tags.includes(tag)) {
+        category.tags.push(tag);
+        saveCategories();
+        renderCategories(document.getElementById("category-search")?.value ?? "");
+    }
+}
+function removeTagFromCategory(categoryId, tag) {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category)
+        return;
+    category.tags = category.tags.filter(t => t !== tag);
+    saveCategories();
+    renderCategories(document.getElementById("category-search")?.value ?? "");
+}
+function addCategory(name) {
+    const id = `category-${Date.now()}`;
+    const newCategory = {
+        id,
+        name,
+        tags: []
+    };
+    categories.push(newCategory);
+    saveCategories();
+    renderCategories(document.getElementById("category-search")?.value ?? "");
+}
+function removeCategory(categoryId) {
+    categories = categories.filter(c => c.id !== categoryId);
+    saveCategories();
+    renderCategories(document.getElementById("category-search")?.value ?? "");
+}
+function saveCategories() {
+    void setValue("categories", categories);
+}
 let includeTags = [];
 let excludeTags = [];
+let includeCategories = [];
+let excludeCategories = [];
 function renderUpList(upList, upTags) {
     const container = document.getElementById("up-list");
+    const searchTerm = document.getElementById("up-search")?.value ?? "";
     if (!container)
         return;
     container.innerHTML = "";
@@ -163,7 +317,7 @@ function renderUpList(upList, upTags) {
     }
     // Filter UP list based on include/exclude tags
     let filteredUpList = upList;
-    if (includeTags.length > 0 || excludeTags.length > 0) {
+    if (includeTags.length > 0 || excludeTags.length > 0 || includeCategories.length > 0 || excludeCategories.length > 0 || searchTerm) {
         filteredUpList = upList.filter(up => {
             const tags = upTags[String(up.mid)] ?? [];
             // Check if all include tags are present
@@ -172,7 +326,22 @@ function renderUpList(upList, upTags) {
             // Check if none of the exclude tags are present
             const hasNoExcludeTags = excludeTags.length === 0 ||
                 !excludeTags.some(tag => tags.includes(tag));
-            return hasAllIncludeTags && hasNoExcludeTags;
+            // Check if at least one tag from include categories is present (OR logic)
+            const hasIncludeCategory = includeCategories.length === 0 ||
+                includeCategories.some(categoryId => {
+                    const category = categories.find(c => c.id === categoryId);
+                    return category && category.tags.some(tag => tags.includes(tag));
+                });
+            // Check if no tag from exclude categories is present
+            const hasNoExcludeCategory = excludeCategories.length === 0 ||
+                !excludeCategories.some(categoryId => {
+                    const category = categories.find(c => c.id === categoryId);
+                    return category && category.tags.some(tag => tags.includes(tag));
+                });
+            // Check if UP name matches search term
+            const matchesSearch = !searchTerm ||
+                up.name.toLowerCase().includes(searchTerm.toLowerCase());
+            return hasAllIncludeTags && hasNoExcludeTags && hasIncludeCategory && hasNoExcludeCategory && matchesSearch;
         });
     }
     for (const up of filteredUpList) {
@@ -253,11 +422,20 @@ function renderFilterTags() {
         const tagEl = createFilterTag(tag, "exclude");
         excludeContainer.appendChild(tagEl);
     }
+    for (const categoryId of includeCategories) {
+        const categoryEl = createFilterCategory(categoryId, "include");
+        includeContainer.appendChild(categoryEl);
+    }
+    for (const categoryId of excludeCategories) {
+        const categoryEl = createFilterCategory(categoryId, "exclude");
+        excludeContainer.appendChild(categoryEl);
+    }
 }
 function createFilterTag(tag, type) {
     const tagEl = document.createElement("div");
     tagEl.className = "filter-tag";
     tagEl.textContent = tag;
+    tagEl.style.backgroundColor = colorFromTag(tag);
     const removeBtn = document.createElement("span");
     removeBtn.className = "remove-tag";
     removeBtn.textContent = "×";
@@ -273,6 +451,35 @@ function createFilterTag(tag, type) {
     });
     tagEl.appendChild(removeBtn);
     return tagEl;
+}
+function createFilterCategory(categoryId, type) {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) {
+        const errorEl = document.createElement("div");
+        errorEl.className = "filter-tag filter-tag-error";
+        errorEl.textContent = "未知分区";
+        return errorEl;
+    }
+    const categoryEl = document.createElement("div");
+    categoryEl.className = "filter-tag filter-tag-category";
+    categoryEl.textContent = category.name;
+    categoryEl.style.backgroundColor = "#2b6cff";
+    categoryEl.style.color = "#fff";
+    const removeBtn = document.createElement("span");
+    removeBtn.className = "remove-tag";
+    removeBtn.textContent = "×";
+    removeBtn.addEventListener("click", () => {
+        if (type === "include") {
+            includeCategories = includeCategories.filter(id => id !== categoryId);
+        }
+        else {
+            excludeCategories = excludeCategories.filter(id => id !== categoryId);
+        }
+        renderFilterTags();
+        refreshUpList();
+    });
+    categoryEl.appendChild(removeBtn);
+    return categoryEl;
 }
 function setupDragAndDrop() {
     const includeZone = document.getElementById("filter-include-tags");
@@ -294,6 +501,36 @@ function setupDragAndDrop() {
         zone.element.addEventListener("drop", (e) => {
             e.preventDefault();
             zone.element.classList.remove("drag-over");
+            // Check if it's a category tag
+            const categoryTagData = e.dataTransfer?.getData("application/x-bili-category-tag");
+            if (categoryTagData) {
+                try {
+                    const { tag, categoryId } = JSON.parse(categoryTagData);
+                    const category = categories.find(c => c.id === categoryId);
+                    if (category) {
+                        // Add category to filter
+                        if (zone.type === "include") {
+                            if (!includeCategories.includes(categoryId)) {
+                                includeCategories.push(categoryId);
+                            }
+                            excludeCategories = excludeCategories.filter(id => id !== categoryId);
+                        }
+                        else {
+                            if (!excludeCategories.includes(categoryId)) {
+                                excludeCategories.push(categoryId);
+                            }
+                            includeCategories = includeCategories.filter(id => id !== categoryId);
+                        }
+                        renderFilterTags();
+                        refreshUpList();
+                    }
+                }
+                catch {
+                    // Ignore parse errors
+                }
+                return;
+            }
+            // Handle regular tag
             const tag = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
             if (!tag)
                 return;
@@ -467,11 +704,13 @@ export async function initStats() {
     currentUpList = upCache.upList ?? [];
     currentUpTags = upTags;
     currentCustomTags = customTags;
+    categories = (await getValue("categories")) ?? [];
     setText("stat-up-count", String(upCache.upList?.length ?? 0));
     setText("stat-tag-count", String(countUpTags(upTags)));
     setText("stat-video-count", String(countVideoTotals(videoCounts)));
     renderUpList(currentUpList, currentUpTags);
     renderTags(currentUpTags);
+    renderCategories();
     setupDragAndDrop();
     // Search box event
     const searchInput = document.getElementById("tag-search");
@@ -479,10 +718,30 @@ export async function initStats() {
         const searchTerm = e.target.value;
         renderTags(currentUpTags, searchTerm);
     });
+    // UP search box event
+    const upSearchInput = document.getElementById("up-search");
+    upSearchInput?.addEventListener("input", () => {
+        refreshUpList();
+    });
     const addTagBtn = document.getElementById("btn-add-tag");
     addTagBtn?.addEventListener("click", () => {
         const value = searchInput?.value ?? "";
         void addCustomTag(value);
+    });
+    // Category search and add
+    const categorySearchInput = document.getElementById("category-search");
+    const addCategoryBtn = document.getElementById("btn-add-category");
+    categorySearchInput?.addEventListener("input", () => {
+        renderCategories(categorySearchInput.value);
+    });
+    addCategoryBtn?.addEventListener("click", () => {
+        const value = categorySearchInput?.value ?? "";
+        if (value.trim()) {
+            addCategory(value.trim());
+            if (categorySearchInput) {
+                categorySearchInput.value = "";
+            }
+        }
     });
     // Filter buttons
     const applyFilterBtn = document.getElementById("btn-apply-filter");
@@ -493,6 +752,8 @@ export async function initStats() {
     clearFilterBtn?.addEventListener("click", () => {
         includeTags = [];
         excludeTags = [];
+        includeCategories = [];
+        excludeCategories = [];
         renderFilterTags();
         refreshUpList();
     });

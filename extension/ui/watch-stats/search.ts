@@ -2,10 +2,19 @@ import { formatSeconds } from "./utils.js";
 import type { WatchStats } from "../../background/modules/common-types.js";
 import type { UP } from "../../storage/storage.js";
 
+// 全局状态
+let includeTags: string[] = [];
+let excludeTags: string[] = [];
+let currentStats: WatchStats | null = null;
+let dragContext: { tag: string; dropped: boolean } | null = null;
+let dragGhost: HTMLElement | null = null;
+let globalDragOverHandler: ((e: DragEvent) => void) | null = null;
+
 /**
  * 初始化视频搜索功能
  */
 export function initVideoSearch(stats: WatchStats): void {
+  currentStats = stats;
   const searchInput = document.getElementById("video-search") as HTMLInputElement;
   const resultsContainer = document.getElementById("video-search-results");
 
@@ -33,8 +42,28 @@ function renderVideoResults(
 
   const videoRows = Object.entries(stats.videoSeconds)
     .filter(([bvid]) => {
+      // 检查标题是否匹配搜索词
       const title = stats.videoTitles[bvid] ?? bvid;
-      return title.toLowerCase().includes(query);
+      if (!title.toLowerCase().includes(query)) {
+        return false;
+      }
+
+      // 检查标签是否匹配过滤条件
+      if (includeTags.length > 0 || excludeTags.length > 0) {
+        const tags = stats.videoTags[bvid] ?? [];
+
+        // 检查是否包含所有必需的标签
+        const hasAllIncludeTags = includeTags.length === 0 ||
+          includeTags.every(tag => tags.includes(tag));
+
+        // 检查是否不包含任何排除的标签
+        const hasNoExcludeTags = excludeTags.length === 0 ||
+          !excludeTags.some(tag => tags.includes(tag));
+
+        return hasAllIncludeTags && hasNoExcludeTags;
+      }
+
+      return true;
     })
     .sort((a, b) => b[1] - a[1])
     .slice(0, 20);
@@ -76,6 +105,7 @@ function renderVideoResults(
  * 初始化标签搜索功能
  */
 export function initTagSearch(stats: WatchStats): void {
+  currentStats = stats;
   const searchInput = document.getElementById("tag-search") as HTMLInputElement;
   const resultsContainer = document.getElementById("tag-search-results");
 
@@ -92,6 +122,9 @@ export function initTagSearch(stats: WatchStats): void {
     const query = (e.target as HTMLInputElement).value.toLowerCase();
     renderTagResults(tagStats, resultsContainer, query);
   });
+
+  // 设置拖放功能
+  setupDragAndDrop();
 }
 
 /**
@@ -149,7 +182,7 @@ function renderTagResults(
     item.className = "list-item";
 
     const label = document.createElement("span");
-    label.textContent = tag;
+    label.appendChild(renderTagPill(tag));
 
     const valueContainer = document.createElement("span");
     valueContainer.style.display = "flex";
@@ -171,4 +204,214 @@ function renderTagResults(
 
     container.appendChild(item);
   }
+}
+
+/**
+ * 渲染标签药丸
+ */
+function renderTagPill(tag: string): HTMLSpanElement {
+  const pill = document.createElement("span");
+  pill.className = "tag-pill";
+  pill.textContent = tag;
+  pill.style.backgroundColor = colorFromTag(tag);
+
+  // 使标签可拖动
+  pill.draggable = true;
+  pill.addEventListener("dragstart", (e) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData("application/x-bili-tag", tag);
+      e.dataTransfer.effectAllowed = "move";
+    }
+    createDragGhost(e, tag);
+    dragContext = { tag, dropped: false };
+  });
+  pill.addEventListener("dragend", () => {
+    removeDragGhost();
+    dragContext = null;
+  });
+
+  return pill;
+}
+
+/**
+ * 根据标签生成颜色
+ */
+function colorFromTag(tag: string): string {
+  let hash = 0;
+  for (let i = 0; i < tag.length; i += 1) {
+    hash = (hash * 31 + tag.charCodeAt(i)) % 360;
+  }
+  const hue = Math.abs(hash) % 360;
+  const sat = 70 + (Math.abs(hash * 7) % 21);
+  const light = 85 + (Math.abs(hash * 13) % 11);
+  return `hsl(${hue} ${sat}% ${light}%)`;
+}
+
+/**
+ * 创建拖动时的幽灵元素
+ */
+function createDragGhost(e: DragEvent, tag: string): void {
+  removeDragGhost();
+  const ghost = document.createElement("div");
+  ghost.className = "drag-ghost";
+  ghost.textContent = tag;
+  ghost.style.backgroundColor = colorFromTag(tag);
+  ghost.style.padding = "8px 16px";
+  ghost.style.borderRadius = "999px";
+  ghost.style.color = "#1f2430";
+  ghost.style.fontSize = "13px";
+  ghost.style.fontWeight = "600";
+  document.body.appendChild(ghost);
+  dragGhost = ghost;
+  if (e.dataTransfer) {
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+  }
+  if (!globalDragOverHandler) {
+    globalDragOverHandler = (event: DragEvent) => {
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+    };
+    document.addEventListener("dragover", globalDragOverHandler);
+  }
+
+  const moveGhost = (moveEvent: MouseEvent) => {
+    if (dragGhost) {
+      dragGhost.style.left = moveEvent.clientX + "px";
+      dragGhost.style.top = moveEvent.clientY + "px";
+    }
+  };
+
+  document.addEventListener("mousemove", moveGhost);
+  document.addEventListener("mouseup", () => {
+    document.removeEventListener("mousemove", moveGhost);
+    setTimeout(() => removeDragGhost(), 100);
+  }, { once: true });
+}
+
+/**
+ * 移除拖动时的幽灵元素
+ */
+function removeDragGhost(): void {
+  if (dragGhost) {
+    dragGhost.remove();
+    dragGhost = null;
+  }
+  if (globalDragOverHandler) {
+    document.removeEventListener("dragover", globalDragOverHandler);
+    globalDragOverHandler = null;
+  }
+}
+
+/**
+ * 设置拖放功能
+ */
+function setupDragAndDrop(): void {
+  const includeZone = document.getElementById("filter-include-tags");
+  const excludeZone = document.getElementById("filter-exclude-tags");
+
+  if (!includeZone || !excludeZone) return;
+
+  const zones = [
+    { element: includeZone, type: "include" as const },
+    { element: excludeZone, type: "exclude" as const }
+  ];
+
+  for (const zone of zones) {
+    zone.element.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      zone.element.classList.add("drag-over");
+    });
+
+    zone.element.addEventListener("dragleave", () => {
+      zone.element.classList.remove("drag-over");
+    });
+
+    zone.element.addEventListener("drop", (e) => {
+      e.preventDefault();
+      zone.element.classList.remove("drag-over");
+
+      const tag = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
+      if (!tag) return;
+      if (dragContext) {
+        dragContext.dropped = true;
+      }
+
+      // 如果已存在于另一个区域，则移除
+      if (zone.type === "include") {
+        excludeTags = excludeTags.filter(t => t !== tag);
+        if (!includeTags.includes(tag)) {
+          includeTags.push(tag);
+        }
+      } else {
+        includeTags = includeTags.filter(t => t !== tag);
+        if (!excludeTags.includes(tag)) {
+          excludeTags.push(tag);
+        }
+      }
+
+      renderFilterTags();
+      refreshVideoResults();
+    });
+  }
+}
+
+/**
+ * 渲染过滤标签
+ */
+function renderFilterTags(): void {
+  const includeContainer = document.getElementById("filter-include-tags");
+  const excludeContainer = document.getElementById("filter-exclude-tags");
+  if (!includeContainer || !excludeContainer) return;
+
+  includeContainer.innerHTML = "";
+  excludeContainer.innerHTML = "";
+
+  for (const tag of includeTags) {
+    const tagEl = createFilterTag(tag, "include");
+    includeContainer.appendChild(tagEl);
+  }
+
+  for (const tag of excludeTags) {
+    const tagEl = createFilterTag(tag, "exclude");
+    excludeContainer.appendChild(tagEl);
+  }
+}
+
+/**
+ * 创建过滤标签元素
+ */
+function createFilterTag(tag: string, type: "include" | "exclude"): HTMLElement {
+  const tagEl = document.createElement("div");
+  tagEl.className = "filter-tag";
+  tagEl.textContent = tag;
+
+  const removeBtn = document.createElement("span");
+  removeBtn.className = "remove-tag";
+  removeBtn.textContent = "×";
+  removeBtn.addEventListener("click", () => {
+    if (type === "include") {
+      includeTags = includeTags.filter(t => t !== tag);
+    } else {
+      excludeTags = excludeTags.filter(t => t !== tag);
+    }
+    renderFilterTags();
+    refreshVideoResults();
+  });
+
+  tagEl.appendChild(removeBtn);
+  return tagEl;
+}
+
+/**
+ * 刷新视频搜索结果
+ */
+function refreshVideoResults(): void {
+  if (!currentStats) return;
+  const searchInput = document.getElementById("video-search") as HTMLInputElement;
+  const resultsContainer = document.getElementById("video-search-results");
+  if (!searchInput || !resultsContainer) return;
+  const query = searchInput.value.toLowerCase();
+  renderVideoResults(currentStats, resultsContainer, query);
 }

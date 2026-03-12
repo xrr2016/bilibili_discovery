@@ -236,16 +236,30 @@ h2 {
 .filter-tag {
   display: inline-flex;
   align-items: center;
-  padding: 6px 15px;
+  padding: 3px 12px;
   border-radius: 999px;
-  background: #2b6cff;
-  color: #fff;
-  font-size: 18px;
-  gap: 9px;
+  color: #1f2430;
+  font-size: 16.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+  gap: 6px;
 }
 
 .filter-tag .remove-tag {
   cursor: pointer;
+}
+
+.filter-tag-category {
+  background: #2b6cff;
+  color: #fff;
+  border: 2px solid #1a4fc7;
+  font-weight: 600;
+}
+
+.filter-tag-error {
+  background: #dc3545;
+  color: #fff;
+}
   font-weight: bold;
   opacity: 0.8;
 }
@@ -339,6 +353,65 @@ h2 {
 .tag-list-scrollable {
   max-height: 600px;
   overflow-y: auto;
+}
+
+.category-list-scrollable {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.category-item {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.category-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2430;
+}
+
+.category-remove {
+  cursor: pointer;
+  color: #dc3545;
+  font-size: 20px;
+  padding: 4px 8px;
+}
+
+.category-remove:hover {
+  color: #c82333;
+}
+
+.category-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.category-tags.drag-over {
+  border-color: #2b6cff;
+  background: #f0f4ff;
+}
+
+.content-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
 .drag-ghost {
