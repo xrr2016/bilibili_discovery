@@ -127,7 +127,7 @@ npm run build
 ### 项目结构
 
 ```
-bili-random-up/
+bilibili_discovery/
 ├── extension/          # 扩展源码
 │   ├── api/          # B站API接口
 │   ├── background/    # 后台服务
@@ -194,7 +194,7 @@ npm run probe:bili
 
 ## 许可证
 
-MIT License
+Apache2.0 License
 
 ## 致谢
 
