@@ -26,9 +26,16 @@ export function initBackground() {
     }
     if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
         chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+            console.log("[Background] Received message:", message.type, message);
             void handleMessage(message)
-                .then((result) => sendResponse(result))
-                .catch(() => sendResponse(null));
+                .then((result) => {
+                console.log("[Background] Message handled, result:", result);
+                sendResponse(result);
+            })
+                .catch((error) => {
+                console.error("[Background] Message handling error:", error);
+                sendResponse(null);
+            });
             return true;
         });
     }

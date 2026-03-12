@@ -8,6 +8,8 @@ interface WatchStats {
   videoTitles: Record<string, string>;
   videoTags: Record<string, string[]>;
   videoUpIds: Record<string, number>;
+  videoWatchCount: Record<string, number>;
+  videoFirstWatched: Record<string, number>;
   lastUpdate: number;
 }
 
@@ -109,7 +111,10 @@ function buildTopRows(
     }));
 }
 
-async function initWatchStats(): Promise<void> {
+let refreshInterval: number | null = null;
+
+async function refreshStats(): Promise<void> {
+  console.log("[WatchStats UI] Refreshing stats...");
   const stats =
     (await getValue<WatchStats>("watchStats")) ?? {
       totalSeconds: 0,
@@ -119,9 +124,11 @@ async function initWatchStats(): Promise<void> {
       videoTitles: {},
       videoTags: {},
       videoUpIds: {},
+      videoWatchCount: {},
+      videoFirstWatched: {},
       lastUpdate: 0
     };
-
+  console.log("[WatchStats UI] Retrieved stats:", stats);
   const todayKey = getRecentDays(1)[0];
   const last7Days = getRecentDays(7);
   const total7Days = last7Days.reduce((sum, day) => sum + (stats.dailySeconds[day] ?? 0), 0);
@@ -167,9 +174,11 @@ async function initWatchStats(): Promise<void> {
       const title = stats.videoTitles[key] ?? key;
       const upId = stats.videoUpIds[key] ?? 0;
       const tagList = (stats.videoTags[key] ?? []).join(", ");
+      const watchCount = stats.videoWatchCount[key] ?? 1;
+      const firstWatched = stats.videoFirstWatched[key] ? formatTime(stats.videoFirstWatched[key]) : "-";
       return {
         label: `${title} | ${key}`,
-        value: `${formatSeconds(stats.videoSeconds[key] ?? 0)} | up: ${upId} | tags: ${tagList}`
+        value: `${formatSeconds(stats.videoSeconds[key] ?? 0)} | up: ${upId} | tags: ${tagList} | 次数: ${watchCount} | 首次: ${firstWatched}`
       };
     });
   renderKeyValueList("video-detail", videoDetailRows);
@@ -183,6 +192,29 @@ async function initWatchStats(): Promise<void> {
   renderKeyValueList("up-detail", upDetailRows);
 }
 
+async function initWatchStats(): Promise<void> {
+  // 添加刷新按钮事件
+  const refreshBtn = document.getElementById("btn-refresh");
+  refreshBtn?.addEventListener("click", () => {
+    void refreshStats();
+  });
+
+  // 初始加载数据
+  await refreshStats();
+
+  // 设置自动刷新（每5秒刷新一次）
+  refreshInterval = window.setInterval(() => {
+    void refreshStats();
+  }, 5000);
+}
+
 if (typeof document !== "undefined") {
   void initWatchStats();
+  // 页面卸载时清除定时器
+  window.addEventListener("beforeunload", () => {
+    if (refreshInterval !== null) {
+      clearInterval(refreshInterval);
+      refreshInterval = null;
+    }
+  });
 }

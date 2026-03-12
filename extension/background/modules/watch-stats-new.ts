@@ -48,7 +48,7 @@ export async function updateWatchStats(
     stats.videoFirstWatched[videoKey] = payload.timestamp;
     stats.videoWatchCount[videoKey] = 1; // 第一次观看，次数设为1
     console.log("[WatchStats] First time watching video:", videoKey);
-    
+
     // 只在第一次观看时更新视频标题、标签和UP信息
     if (payload.title) {
       stats.videoTitles[videoKey] = payload.title;
@@ -68,21 +68,6 @@ export async function updateWatchStats(
     if (payload.upMid && stats.videoUpIds[videoKey]) {
       const upKey = String(payload.upMid);
       stats.upSeconds[upKey] = (stats.upSeconds[upKey] ?? 0) + delta;
-    }
-    
-    // 判断是否完整看完视频（观看时长 >= 视频总时长的90%）
-    const currentTotalWatched = stats.videoSeconds[videoKey] ?? 0;
-    const videoDuration = payload.duration ?? 0;
-    const completionThreshold = videoDuration * 0.9; // 90%算完整看完
-    
-    // 计算已经完整看完的次数
-    const completedCount = Math.floor(currentTotalWatched / completionThreshold);
-    const previousCount = stats.videoWatchCount[videoKey] ?? 1;
-    
-    // 如果完整看完的次数大于当前记录的次数，更新观看次数
-    if (completedCount > previousCount) {
-      stats.videoWatchCount[videoKey] = completedCount;
-      console.log(`[WatchStats] Video ${videoKey} completed ${completedCount} times`);
     }
   }
 

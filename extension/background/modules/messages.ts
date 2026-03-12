@@ -59,13 +59,20 @@ export async function handleMessage(
     if (!payload?.bvid) {
       return null;
     }
+    // 获取当前统计数据以判断是否是第一次观看
+    const stats = await getValueFn("watchStats") as any;
+    const videoKey = payload.bvid || payload.title || "unknown";
+    const isFirstWatch = !stats?.videoFirstWatched?.[videoKey];
+    
     await updateWatchStats(payload, options);
     await updateInterestFromWatchFn({
       tags: payload.tags ?? [],
       watch_time: payload.watchedSeconds ?? 0,
       duration: payload.duration ?? 0
     });
-    if (payload.tags && payload.tags.length > 0) {
+    
+    // 只在第一次观看时更新 UP 标签
+    if (isFirstWatch && payload.tags && payload.tags.length > 0) {
       const existingTags = ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
       const customTags = ((await getValueFn("customTags")) as string[] | null) ?? [];
       const knownTagSet = new Set<string>([

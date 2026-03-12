@@ -94,5 +94,7 @@ export interface WatchStats {
   videoTitles: Record<string, string>;
   videoTags: Record<string, string[]>;
   videoUpIds: Record<string, number>;
+  videoWatchCount: Record<string, number>;
+  videoFirstWatched: Record<string, number>;
   lastUpdate: number;
 }
