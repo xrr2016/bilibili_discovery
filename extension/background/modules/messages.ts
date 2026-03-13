@@ -16,7 +16,7 @@ import { classifyUpTask } from "./classify-api.js";
 import { handleUPPageCollected, getPageClassifyProgress, startAutoClassification } from "./classify-page.js";
 import { updateUpListTask } from "./up-list.js";
 import { proxyApiRequest } from "./proxy.js";
-import { updateWatchStats } from "./watch-stats.js";
+import { updateWatchStats, initializeVideoInfo, processUPInfo, processVideoTags } from "./watch-stats.js";
 
 declare const chrome: {
   tabs?: {
@@ -69,10 +69,7 @@ export async function handleMessage(
     if (!payload?.bvid) {
       return null;
     }
-    // 获取当前统计数据以判断是否是第一次观看
-    const stats = await getValueFn("watchStats") as any;
-    const videoKey = payload.bvid || payload.title || "unknown";
-    const isFirstWatch = !stats?.videoFirstWatched?.[videoKey];
+    // 只更新观看时间，不判断是否第一次观看
     
     await updateWatchStats(payload, options);
     await updateInterestFromWatchFn({
@@ -81,19 +78,40 @@ export async function handleMessage(
       duration: payload.duration ?? 0
     });
     
-    // 只在第一次观看时更新 UP 标签统计
-    if (isFirstWatch && payload.tags && payload.tags.length > 0) {
-      // 将标签名称添加到标签库，并获取标签ID
-      const addedTags = await addTagsToLibrary(payload.tags);
-      const tagIds = addedTags.map(tag => tag.id);
-      
-      // 更新UP的标签权重
-      if (payload.upMid) {
-        await updateUPTagWeights(payload.upMid, tagIds);
-        console.log(`[Background] Updated tag weights for UP ${payload.upMid}:`, tagIds);
-      }
 
+
+      
+
+    return null;
+  }
+
+  if (message.type === "initialize_video_info") {
+    const payload = message.payload as WatchProgressPayload | undefined;
+    if (!payload?.bvid) {
+      return null;
     }
+    // 初始化视频信息
+    await initializeVideoInfo(payload, options);
+    return null;
+  }
+
+  if (message.type === "process_up_info") {
+    const payload = message.payload as WatchProgressPayload | undefined;
+    if (!payload?.upMid) {
+      return null;
+    }
+    // 处理UP信息
+    await processUPInfo(payload, options);
+    return null;
+  }
+
+  if (message.type === "process_video_tags") {
+    const payload = message.payload as WatchProgressPayload | undefined;
+    if (!payload?.bvid) {
+      return null;
+    }
+    // 处理视频标签
+    await processVideoTags(payload, options);
     return null;
   }
 

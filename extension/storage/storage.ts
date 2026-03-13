@@ -86,6 +86,8 @@ export interface Tag {
   id: string; // 标签唯一标识
   name: string; // 标签名称
   created_at: number; // 创建时间
+  editable: boolean; // 是否可编辑（true=用户手动添加，false=程序自动收集）
+  count: number; // 计数器，用于程序收集的标签统计优先级
 }
 
 /**
@@ -99,6 +101,7 @@ export type TagLibrary = Record<string, Tag>;
 export interface UPTagWeight {
   tag_id: string; // 标签ID
   weight: number; // 权重
+  editable: boolean; // 是否可编辑（true=用户手动添加，false=程序自动收集）
 }
 
 /**
@@ -326,13 +329,20 @@ export async function saveTagLibrary(library: TagLibrary): Promise<void> {
 
 /**
  * 添加标签到标签库
+ * @param name 标签名称
+ * @param editable 是否可编辑（true=用户手动添加，false=程序自动收集），默认为 true
  */
-export async function addTagToLibrary(name: string): Promise<Tag> {
+export async function addTagToLibrary(name: string, editable: boolean = true): Promise<Tag> {
   const library = await getTagLibrary();
 
   // 检查是否已存在相同名称的标签
   const existingTag = Object.values(library).find(tag => tag.name === name);
   if (existingTag) {
+    // 如果标签已存在且不是手动添加的，增加计数器
+    if (!existingTag.editable) {
+      existingTag.count = (existingTag.count ?? 0) + 1;
+      await putRecord("tagLibrary", existingTag);
+    }
     return existingTag;
   }
 
@@ -341,7 +351,9 @@ export async function addTagToLibrary(name: string): Promise<Tag> {
   const tag: Tag = {
     id,
     name,
-    created_at: Date.now()
+    created_at: Date.now(),
+    editable,
+    count: editable ? 0 : 1 // 手动添加的标签计数为0，程序收集的标签计数为1
   };
 
   await putRecord("tagLibrary", tag);
@@ -365,9 +377,28 @@ export async function getTagIdByName(name: string): Promise<string | null> {
 }
 
 /**
- * 批量添加标签到标签库
+ * 获取标签列表，按计数器降序排序
+ * @param editable 可选，筛选是否可编辑的标签
  */
-export async function addTagsToLibrary(names: string[]): Promise<Tag[]> {
+export async function getTagsSortedByCount(editable?: boolean): Promise<Tag[]> {
+  const library = await getTagLibrary();
+  let tags = Object.values(library);
+  
+  // 如果指定了 editable 参数，进行筛选
+  if (editable !== undefined) {
+    tags = tags.filter(tag => tag.editable === editable);
+  }
+  
+  // 按计数器降序排序
+  return tags.sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
+}
+
+/**
+ * 批量添加标签到标签库
+ * @param names 标签名称数组
+ * @param editable 是否可编辑（true=用户手动添加，false=程序自动收集），默认为 true
+ */
+export async function addTagsToLibrary(names: string[], editable: boolean = true): Promise<Tag[]> {
   const library = await getTagLibrary();
   const addedTags: Tag[] = [];
 
@@ -375,6 +406,11 @@ export async function addTagsToLibrary(names: string[]): Promise<Tag[]> {
     // 检查是否已存在
     const existingTag = Object.values(library).find(tag => tag.name === name);
     if (existingTag) {
+      // 如果标签已存在且不是手动添加的，增加计数器
+      if (!existingTag.editable) {
+        existingTag.count = (existingTag.count ?? 0) + 1;
+        await putRecord("tagLibrary", existingTag);
+      }
       addedTags.push(existingTag);
       continue;
     }
@@ -384,7 +420,9 @@ export async function addTagsToLibrary(names: string[]): Promise<Tag[]> {
     const tag: Tag = {
       id,
       name,
-      created_at: Date.now()
+      created_at: Date.now(),
+      editable,
+      count: editable ? 0 : 1 // 手动添加的标签计数为0，程序收集的标签计数为1
     };
 
     await putRecord("tagLibrary", tag);
@@ -405,20 +443,27 @@ export async function getUPTagWeights(mid: number): Promise<UPTagWeights | null>
 
 /**
  * 更新UP的标签权重
+ * @param mid UP的mid
+ * @param tagIds 标签ID数组
+ * @param editable 是否可编辑（true=用户手动添加，false=程序自动收集），默认为 true
  */
-export async function updateUPTagWeights(mid: number, tagIds: string[]): Promise<void> {
+export async function updateUPTagWeights(mid: number, tagIds: string[], editable: boolean = true): Promise<void> {
   const existingWeights = await getUPTagWeights(mid) ?? { mid, tags: [], lastUpdate: 0 };
-  const existingTagsMap = new Map(existingWeights.tags.map(t => [t.tag_id, t.weight]));
+    const existingTagsMap = new Map<string, { weight: number; editable: boolean }>(
+    existingWeights.tags.map(t => [t.tag_id, { weight: t.weight, editable: t.editable }])
+  );
+
 
   // 更新标签权重
   for (const tagId of tagIds) {
-    const currentWeight = existingTagsMap.get(tagId) ?? 0;
-    existingTagsMap.set(tagId, currentWeight + 1);
+    const existing = existingTagsMap.get(tagId);
+    const currentWeight = existing?.weight ?? 0;
+    existingTagsMap.set(tagId, { weight: currentWeight + 1, editable });
   }
 
   // 转换回数组并按权重降序排序
   const updatedTags = Array.from(existingTagsMap.entries())
-    .map(([tag_id, weight]) => ({ tag_id, weight }))
+    .map(([tag_id, value]) => ({ tag_id, weight: value.weight, editable: value.editable }))
     .sort((a, b) => b.weight - a.weight);
 
   // 保存更新
@@ -482,6 +527,9 @@ export async function setUPManualTags(mid: number, tagIds: string[]): Promise<vo
     tag_ids: tagIds,
     lastUpdate: Date.now()
   });
+  
+  // 更新标签权重，手动添加的标签 editable 为 true
+  await updateUPTagWeights(mid, tagIds, true);
 }
 
 /**
@@ -493,6 +541,9 @@ export async function addTagToUPManualTags(mid: number, tagId: string): Promise<
     existing.tag_ids.push(tagId);
     existing.lastUpdate = Date.now();
     await putRecord("upManualTagsCache", existing);
+    
+    // 更新标签权重，手动添加的标签 editable 为 true
+    await updateUPTagWeights(mid, [tagId], true);
   }
 }
 
@@ -505,6 +556,13 @@ export async function removeTagFromUPManualTags(mid: number, tagId: string): Pro
     existing.tag_ids = existing.tag_ids.filter(id => id !== tagId);
     existing.lastUpdate = Date.now();
     await putRecord("upManualTagsCache", existing);
+    
+    // 从标签权重中移除该标签
+    const weights = await getUPTagWeights(mid);
+    if (weights) {
+      weights.tags = weights.tags.filter(t => t.tag_id !== tagId);
+      await putRecord("upTagWeightsCache", weights);
+    }
   }
 }
 

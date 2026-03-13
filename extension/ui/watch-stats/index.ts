@@ -50,7 +50,7 @@ async function refreshStats(): Promise<WatchStats | null> {
   renderLineChart(stats.dailySeconds);
 
   // 渲染标签列表
-  renderTagList(stats);
+  await renderTagList(stats);
 
   // 渲染UP列表
   renderUPList(stats, upInfoMap);

@@ -1,4 +1,4 @@
-import { getValue, setValue } from "../../storage/storage.js";
+import { getValue, setValue, saveUPList, loadUPList, addTagsToLibrary, getTagLibrary, updateUPTagWeights, type UP, type Tag } from "../../storage/storage.js";
 import type { BackgroundOptions, WatchProgressPayload, WatchStats } from "./common-types.js";
 
 function toLocalDateKey(timestamp: number): string {
@@ -12,7 +12,59 @@ export async function updateWatchStats(
   payload: WatchProgressPayload,
   options: BackgroundOptions = {}
 ): Promise<void> {
-  console.log("[WatchStats] Updating stats with payload:", payload);
+  console.log("[WatchStats] Updating watch time stats with payload:", payload);
+  const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
+  const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
+
+  const delta = Math.max(0, payload.watchedSeconds || 0);
+  if (delta <= 0) {
+    return;
+  }
+
+  const existingStats = await getValueFn("watchStats") as WatchStats | null;
+  const stats: WatchStats = {
+    totalSeconds: (existingStats?.totalSeconds ?? 0) + delta,
+    dailySeconds: existingStats?.dailySeconds ?? {},
+    upSeconds: existingStats?.upSeconds ?? {},
+    videoSeconds: existingStats?.videoSeconds ?? {},
+    videoTitles: existingStats?.videoTitles ?? {},
+    videoTags: existingStats?.videoTags ?? {},
+    videoUpIds: existingStats?.videoUpIds ?? {},
+    videoWatchCount: existingStats?.videoWatchCount ?? {},
+    videoFirstWatched: existingStats?.videoFirstWatched ?? {},
+    videoCreatedAt: existingStats?.videoCreatedAt ?? {},
+    lastUpdate: Date.now()
+  };
+
+  // 更新总观看时长
+  stats.totalSeconds += delta;
+
+  // 更新每日观看时长
+  const dateKey = toLocalDateKey(payload.timestamp);
+  stats.dailySeconds[dateKey] = (stats.dailySeconds[dateKey] ?? 0) + delta;
+
+  // 更新视频和UP的观看时长
+  const videoKey = payload.bvid || payload.title || "unknown";
+  stats.videoSeconds[videoKey] = (stats.videoSeconds[videoKey] ?? 0) + delta;
+
+  if (payload.upMid) {
+    const upKey = String(payload.upMid);
+    stats.upSeconds[upKey] = (stats.upSeconds[upKey] ?? 0) + delta;
+  }
+
+  console.log("[WatchStats] Watch time stats updated:", stats);
+  await setValueFn("watchStats", stats);
+  console.log("[WatchStats] Watch time stats saved to storage");
+}
+
+/**
+ * 初始化视频信息（第一次观看时调用）
+ */
+export async function initializeVideoInfo(
+  payload: WatchProgressPayload,
+  options: BackgroundOptions = {}
+): Promise<void> {
+  console.log("[WatchStats] Initializing video info with payload:", payload);
   const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
   const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
 
@@ -30,72 +82,130 @@ export async function updateWatchStats(
     videoCreatedAt: existingStats?.videoCreatedAt ?? {},
     lastUpdate: existingStats?.lastUpdate ?? 0
   };
-  console.log("[WatchStats] Current stats before update:", stats);
-
-  const delta = Math.max(0, payload.watchedSeconds || 0);
-  if (delta <= 0) {
-    return;
-  }
-
-  const dateKey = toLocalDateKey(payload.timestamp);
-  stats.totalSeconds += delta;
-  stats.dailySeconds[dateKey] = (stats.dailySeconds[dateKey] ?? 0) + delta;
 
   const videoKey = payload.bvid || payload.title || "unknown";
 
-  // 判断是否是第一次观看
-  const isFirstWatch = !stats.videoFirstWatched[videoKey];
-  if (isFirstWatch) {
-    stats.videoFirstWatched[videoKey] = payload.timestamp;
-    stats.videoWatchCount[videoKey] = 1; // 第一次观看，次数设为1
-    // 记录视频创建时间戳
-    if (!stats.videoCreatedAt) {
-      stats.videoCreatedAt = {};
-    }
-    stats.videoCreatedAt[videoKey] = Date.now();
-    console.log("[WatchStats] First time watching video:", videoKey);
-    
-    // 只在第一次观看时更新视频标题、标签和UP信息
-    if (payload.title) {
-      stats.videoTitles[videoKey] = payload.title;
-    }
-    if (payload.tags && payload.tags.length > 0) {
-      stats.videoTags[videoKey] = Array.from(new Set(payload.tags));
-    }
-    if (payload.upMid) {
-      stats.videoUpIds[videoKey] = payload.upMid;
-      // 第一次观看时，初始化UP的观看时长
-      const upKey = String(payload.upMid);
-      stats.upSeconds[upKey] = (stats.upSeconds[upKey] ?? 0) + delta;
-    }
-    // 第一次观看时也更新视频观看时长
-    stats.videoSeconds[videoKey] = (stats.videoSeconds[videoKey] ?? 0) + delta;
-  } else {
-    // 不是第一次观看，只更新视频观看时长和UP观看时长（如果UP已存在）
-    stats.videoSeconds[videoKey] = (stats.videoSeconds[videoKey] ?? 0) + delta;
-    if (payload.upMid && stats.videoUpIds[videoKey]) {
-      const upKey = String(payload.upMid);
-      stats.upSeconds[upKey] = (stats.upSeconds[upKey] ?? 0) + delta;
-    }
-    
-    // 判断是否完整看完视频（观看时长 >= 视频总时长的90%）
-    const currentTotalWatched = stats.videoSeconds[videoKey] ?? 0;
-    const videoDuration = payload.duration ?? 0;
-    const completionThreshold = videoDuration * 0.9; // 90%算完整看完
-    
-    // 计算已经完整看完的次数
-    const completedCount = Math.floor(currentTotalWatched / completionThreshold);
-    const previousCount = stats.videoWatchCount[videoKey] ?? 1;
-    
-    // 如果完整看完的次数大于当前记录的次数，更新观看次数
-    if (completedCount > previousCount) {
-      stats.videoWatchCount[videoKey] = completedCount;
-      console.log(`[WatchStats] Video ${videoKey} completed ${completedCount} times`);
-    }
+  // 检查是否已经初始化过
+  if (stats.videoFirstWatched[videoKey]) {
+    console.log("[WatchStats] Video already initialized:", videoKey);
+    return;
   }
 
-  stats.lastUpdate = Date.now();
-  console.log("[WatchStats] Stats after update:", stats);
+  // 初始化视频信息
+  stats.videoFirstWatched[videoKey] = payload.timestamp;
+  stats.videoWatchCount[videoKey] = 1;
+  // 确保 videoCreatedAt 已定义
+  if (!stats.videoCreatedAt) {
+    stats.videoCreatedAt = {};
+  }
+  stats.videoCreatedAt[videoKey] = Date.now();
+
+  if (payload.title) {
+    stats.videoTitles[videoKey] = payload.title;
+  }
+
+  if (payload.upMid) {
+    stats.videoUpIds[videoKey] = payload.upMid;
+  }
+
+  console.log("[WatchStats] Video info initialized:", videoKey);
   await setValueFn("watchStats", stats);
-  console.log("[WatchStats] Stats saved to storage");
+  console.log("[WatchStats] Video info saved to storage");
+}
+
+/**
+ * 处理UP信息（添加新UP或更新现有UP）
+ */
+export async function processUPInfo(
+  payload: WatchProgressPayload,
+  options: BackgroundOptions = {}
+): Promise<void> {
+  if (!payload.upMid) {
+    return;
+  }
+
+  console.log("[WatchStats] Processing UP info:", payload.upMid);
+  const cache = await loadUPList();
+  const existingUP = cache?.upList.find(up => up.mid === payload.upMid);
+
+  if (!existingUP) {
+    // UP不存在于数据库中，添加并标记为未关注
+    console.log("[WatchStats] Adding new UP to database:", payload.upMid);
+    const newUP: UP = {
+      mid: payload.upMid,
+      name: payload.upName || "",
+      face: payload.upFace || "",
+      sign: "",
+      follow_time: 0,
+      is_followed: false
+    };
+    const currentUPList = cache?.upList ?? [];
+    await saveUPList([...currentUPList, newUP]);
+    console.log("[WatchStats] New UP added to database:", payload.upMid);
+  } else {
+    // 更新现有UP的信息（如果需要）
+    let needUpdate = false;
+    if (payload.upName && existingUP.name !== payload.upName) {
+      existingUP.name = payload.upName;
+      needUpdate = true;
+    }
+    if (payload.upFace && existingUP.face !== payload.upFace) {
+      existingUP.face = payload.upFace;
+      needUpdate = true;
+    }
+    if (needUpdate) {
+      await saveUPList(cache?.upList ?? []);
+      console.log("[WatchStats] UP info updated:", payload.upMid);
+    }
+  }
+}
+
+/**
+ * 处理视频标签（添加到标签库并更新UP的标签权重）
+ */
+export async function processVideoTags(
+  payload: WatchProgressPayload,
+  options: BackgroundOptions = {}
+): Promise<void> {
+  if (!payload.tags || payload.tags.length === 0) {
+    return;
+  }
+
+  console.log("[WatchStats] Processing video tags:", payload.tags);
+
+  // 将标签添加到标签库，并获取标签ID（程序自动收集的标签）
+  const tags = await addTagsToLibrary(payload.tags, false);
+  const tagIds = tags.map(tag => tag.id);
+
+  // 更新视频的标签信息
+  const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
+  const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
+
+  const existingStats = await getValueFn("watchStats") as WatchStats | null;
+  const stats: WatchStats = {
+    totalSeconds: existingStats?.totalSeconds ?? 0,
+    dailySeconds: existingStats?.dailySeconds ?? {},
+    upSeconds: existingStats?.upSeconds ?? {},
+    videoSeconds: existingStats?.videoSeconds ?? {},
+    videoTitles: existingStats?.videoTitles ?? {},
+    videoTags: existingStats?.videoTags ?? {},
+    videoUpIds: existingStats?.videoUpIds ?? {},
+    videoWatchCount: existingStats?.videoWatchCount ?? {},
+    videoFirstWatched: existingStats?.videoFirstWatched ?? {},
+    videoCreatedAt: existingStats?.videoCreatedAt ?? {},
+    lastUpdate: existingStats?.lastUpdate ?? 0
+  };
+
+  const videoKey = payload.bvid || payload.title || "unknown";
+  stats.videoTags[videoKey] = tagIds;
+
+  // 如果有UP，更新UP的标签权重
+  if (payload.upMid) {
+    await updateUPTagWeights(payload.upMid, tagIds, false);
+    console.log(`[WatchStats] Updated tag weights for UP ${payload.upMid}`);
+  }
+
+  console.log("[WatchStats] Video tags processed");
+  await setValueFn("watchStats", stats);
+  console.log("[WatchStats] Video tags saved to storage");
 }

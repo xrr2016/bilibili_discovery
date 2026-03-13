@@ -136,6 +136,21 @@ h2 {
   white-space: nowrap;
 }
 
+.tag-pill-auto {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.tag-divider {
+  margin: 16px 0;
+  padding: 8px 0;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+}
+
 .up-tags {
   font-size: 18px;
   color: #5b6475;

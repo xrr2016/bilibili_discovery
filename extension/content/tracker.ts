@@ -6,6 +6,8 @@ interface WatchProgress {
   bvid: string;
   title: string;
   upMid?: number;
+  upName?: string;
+  upFace?: string;
   tags: string[];
   watchedSeconds: number;
   duration: number;
@@ -43,9 +45,74 @@ function sendWatchProgress(event: WatchProgress): void {
   }
 }
 
+function sendInitializeVideoInfo(event: WatchProgress): void {
+  console.log("[Tracker] Send initialize video info", event);
+  try {
+    if (typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
+      return;
+    }
+    chrome.runtime.sendMessage({ type: "initialize_video_info", payload: event }, (response) => {
+      if (chrome.runtime.lastError) {
+        const errorMsg = chrome.runtime.lastError.message || "";
+        if (errorMsg.includes("Extension context invalidated")) {
+          console.log("[Tracker] Extension context invalidated, this is expected during reload");
+        } else {
+          console.warn("[Tracker] Send initialize video info failed:", chrome.runtime.lastError);
+        }
+      }
+    });
+  } catch (error) {
+    console.warn("[Tracker] Send initialize video info failed", error);
+  }
+}
+
+function sendProcessUPInfo(event: WatchProgress): void {
+  console.log("[Tracker] Send process UP info", event);
+  try {
+    if (typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
+      return;
+    }
+    chrome.runtime.sendMessage({ type: "process_up_info", payload: event }, (response) => {
+      if (chrome.runtime.lastError) {
+        const errorMsg = chrome.runtime.lastError.message || "";
+        if (errorMsg.includes("Extension context invalidated")) {
+          console.log("[Tracker] Extension context invalidated, this is expected during reload");
+        } else {
+          console.warn("[Tracker] Send process UP info failed:", chrome.runtime.lastError);
+        }
+      }
+    });
+  } catch (error) {
+    console.warn("[Tracker] Send process UP info failed", error);
+  }
+}
+
+function sendProcessVideoTags(event: WatchProgress): void {
+  console.log("[Tracker] Send process video tags", event);
+  try {
+    if (typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
+      return;
+    }
+    chrome.runtime.sendMessage({ type: "process_video_tags", payload: event }, (response) => {
+      if (chrome.runtime.lastError) {
+        const errorMsg = chrome.runtime.lastError.message || "";
+        if (errorMsg.includes("Extension context invalidated")) {
+          console.log("[Tracker] Extension context invalidated, this is expected during reload");
+        } else {
+          console.warn("[Tracker] Send process video tags failed:", chrome.runtime.lastError);
+        }
+      }
+    });
+  } catch (error) {
+    console.warn("[Tracker] Send process video tags failed", error);
+  }
+}
+
 interface VideoMeta {
   title: string;
   upMid?: number;
+  upName?: string;
+  upFace?: string;
   tags: string[];
 }
 
@@ -72,7 +139,7 @@ function extractVideoMeta(): VideoMeta {
 
   let upMid: number | undefined = undefined;
   const win = window as unknown as {
-    __INITIAL_STATE__?: { videoData?: { owner?: { mid?: number } }; tags?: Array<{ tag_name?: string }> };
+    __INITIAL_STATE__?: { videoData?: { owner?: { mid?: number; name?: string; face?: string } }; tags?: Array<{ tag_name?: string }> };
   };
   const stateMid = win.__INITIAL_STATE__?.videoData?.owner?.mid;
   if (typeof stateMid === "number") {
@@ -91,6 +158,31 @@ function extractVideoMeta(): VideoMeta {
       tags.add(tag.tag_name);
     }
   }
+  
+  // 提取UP名称
+  let upName: string | undefined = undefined;
+  const videoDataOwner = win.__INITIAL_STATE__?.videoData?.owner;
+  if (videoDataOwner?.name) {
+    upName = videoDataOwner.name;
+  } else {
+    // 如果从__INITIAL_STATE__中获取不到，尝试从页面中提取
+    const upNameElement = document.querySelector('.up-name, .author-name, [class*="author"], [class*="up-name"], [class*="uploader"]');
+    if (upNameElement) {
+      upName = upNameElement.textContent?.trim();
+    }
+  }
+  
+  // 提取UP头像
+  let upFace: string | undefined = undefined;
+  if (videoDataOwner?.face) {
+    upFace = videoDataOwner.face;
+  } else {
+    // 如果从__INITIAL_STATE__中获取不到，尝试从页面中提取
+    const upFaceElement = document.querySelector('.up-avatar, .author-avatar, [class*="avatar"], [class*="up-face"], img[src*="bili"]');
+    if (upFaceElement) {
+      upFace = (upFaceElement as HTMLImageElement).src;
+    }
+  }
   const tagElements = document.querySelectorAll('a[href*="/tag/"], a[href*="search?keyword="], .tag-link, .tag-item');
   for (const el of Array.from(tagElements)) {
     const text = el.textContent?.trim();
@@ -99,7 +191,7 @@ function extractVideoMeta(): VideoMeta {
     }
   }
 
-  return { title, upMid, tags: Array.from(tags) };
+  return { title, upMid, upName, upFace, tags: Array.from(tags) };
 }
 
 function trackVideoPlayback(
@@ -120,14 +212,14 @@ function trackVideoPlayback(
     if (accumulated < 1) {
       return;
     }
-    if (!cachedMeta || !cachedMeta.title) {
-      refreshMeta();
-    }
+    // 只在初始化时提取一次元数据，避免重复查询DOM
     const meta = cachedMeta ?? extractVideoMeta();
     const event: WatchProgress = {
       bvid,
       title: meta.title,
       upMid: meta.upMid,
+      upName: meta.upName,
+      upFace: meta.upFace,
       tags: meta.tags,
       watchedSeconds: accumulated,
       duration: Number.isFinite(video.duration) ? video.duration : 0,
@@ -140,6 +232,34 @@ function trackVideoPlayback(
   };
 
   refreshMeta();
+  
+  // 初始化视频信息、UP信息和标签（只执行一次）
+  if (cachedMeta) {
+    const initEvent: WatchProgress = {
+      bvid,
+      title: cachedMeta.title,
+      upMid: cachedMeta.upMid,
+      upName: cachedMeta.upName,
+      upFace: cachedMeta.upFace,
+      tags: cachedMeta.tags,
+      watchedSeconds: 0,
+      duration: Number.isFinite(video.duration) ? video.duration : 0,
+      timestamp: Date.now()
+    };
+    
+    // 初始化视频信息
+    sendInitializeVideoInfo(initEvent);
+    
+    // 处理UP信息
+    if (cachedMeta.upMid) {
+      sendProcessUPInfo(initEvent);
+    }
+    
+    // 处理视频标签
+    if (cachedMeta.tags && cachedMeta.tags.length > 0) {
+      sendProcessVideoTags(initEvent);
+    }
+  }
 
   video.addEventListener("timeupdate", () => {
     if (video.seeking) {

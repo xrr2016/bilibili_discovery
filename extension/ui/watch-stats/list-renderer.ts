@@ -1,6 +1,7 @@
 import { formatSeconds } from "./utils.js";
 import type { WatchStats } from "../../background/modules/common-types.js";
 import type { UP } from "../../storage/storage.js";
+import { getTagLibrary } from "../../storage/storage.js";
 
 /**
  * 渲染简单的列表
@@ -65,13 +66,16 @@ export function renderKeyValueList(
 /**
  * 渲染标签列表
  */
-export function renderTagList(
+export async function renderTagList(
   stats: WatchStats
-): void {
+): Promise<void> {
   const tagTotals: Record<string, number> = {};
   const tagVideoCounts: Record<string, number> = {};
+  
+  // 获取标签库，用于将标签ID转换为标签名称
+  const tagLibrary = await getTagLibrary();
 
-  for (const [videoKey, tags] of Object.entries(stats.videoTags)) {
+  for (const [videoKey, tagIds] of Object.entries(stats.videoTags)) {
     const seconds = stats.videoSeconds[videoKey] ?? 0;
     const upId = stats.videoUpIds[videoKey];
     const upKey = upId ? String(upId) : null;
@@ -80,9 +84,11 @@ export function renderTagList(
     // 使用视频观看时长，如果没有则使用UP观看时长（作为近似值）
     const effectiveSeconds = seconds > 0 ? seconds : upSeconds;
     
-    for (const tag of tags || []) {
-      tagTotals[tag] = (tagTotals[tag] ?? 0) + effectiveSeconds;
-      tagVideoCounts[tag] = (tagVideoCounts[tag] ?? 0) + 1;
+    for (const tagId of tagIds || []) {
+      const tag = tagLibrary[tagId];
+      const tagName = tag ? tag.name : tagId;
+      tagTotals[tagName] = (tagTotals[tagName] ?? 0) + effectiveSeconds;
+      tagVideoCounts[tagName] = (tagVideoCounts[tagName] ?? 0) + 1;
     }
   }
 

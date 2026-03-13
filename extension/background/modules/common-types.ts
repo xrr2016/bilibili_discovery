@@ -80,6 +80,8 @@ export interface WatchProgressPayload {
   bvid: string;
   title: string;
   upMid?: number;
+  upName?: string;
+  upFace?: string;
   tags: string[];
   watchedSeconds: number;
   duration: number;
@@ -92,7 +94,7 @@ export interface WatchStats {
   upSeconds: Record<string, number>;
   videoSeconds: Record<string, number>;
   videoTitles: Record<string, string>;
-  videoTags: Record<string, string[]>;
+  videoTags: Record<string, string[]>; // 存储标签ID数组
   videoUpIds: Record<string, number>;
   videoWatchCount: Record<string, number>;
   videoFirstWatched: Record<string, number>;

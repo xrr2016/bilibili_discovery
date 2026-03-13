@@ -2,7 +2,7 @@
  * Stats page logic.
  */
 
-import { getValue, setValue, getUPTagCounts, getUPManualTags, getAllUPManualTags, addTagToUPManualTags, removeTagFromUPManualTags, getTagLibrary, addTagToLibrary, type UPTagCache } from "../../storage/storage.js";
+import { getValue, setValue, getUPTagCounts, getUPManualTags, getAllUPManualTags, addTagToUPManualTags, removeTagFromUPManualTags, getTagLibrary, addTagToLibrary, getTagsSortedByCount, type Tag, type UPTagCache } from "../../storage/storage.js";
 
 export interface InterestProfile {
   [tag: string]: { tag: string; score: number };
@@ -382,13 +382,21 @@ let upTagCache: UPTagCache = {};
 /**
  * 获取UP的自动标签（权重最高的前3个，且不与手动标签重复）
  */
-function getAutoTagsForUp(mid: number, manualTags: string[]): { tag: string; count: number }[] {
+async function getAutoTagsForUp(mid: number, manualTags: string[]): Promise<{ tag: string; count: number }[]> {
   const autoTags = upTagCache[String(mid)]?.tags ?? [];
   const manualTagSet = new Set(manualTags);
+  
+  // 获取标签库，用于筛选不可编辑的标签
+  const tagLibrary = await getTagLibrary();
+  const tagLibraryMap = new Map(Object.values(tagLibrary).map(t => [t.name, t]));
 
-  // 过滤掉与手动标签重复的标签，并取前3个
+  // 过滤掉与手动标签重复的标签，只保留不可编辑的标签，并取前3个
   return autoTags
-    .filter((tag: UPTagCount) => !manualTagSet.has(tag.tag))
+    .filter((tag: UPTagCount) => {
+      const tagInfo = tagLibraryMap.get(tag.tag);
+      // 只返回不可编辑的标签（程序自动收集的）
+      return !manualTagSet.has(tag.tag) && tagInfo && !tagInfo.editable;
+    })
     .slice(0, 3);
 }
 
@@ -479,30 +487,30 @@ function renderUpList(
     const manualTagList = upTags[String(up.mid)] ?? [];
 
     // 获取自动标签（权重最高的前3个）
-    const autoTagList = getAutoTagsForUp(up.mid, manualTagList);
+    getAutoTagsForUp(up.mid, manualTagList).then(autoTagList => {
+      // 渲染标签
+      if (manualTagList.length === 0 && autoTagList.length === 0) {
+        tags.textContent = "暂无分类";
+      } else {
+        // 先渲染手动标签
+        for (const tag of manualTagList) {
+          tags.appendChild(renderUpTagPill(tag, up.mid));
+        }
 
-    // 渲染标签
-    if (manualTagList.length === 0 && autoTagList.length === 0) {
-      tags.textContent = "暂无分类";
-    } else {
-      // 先渲染手动标签
-      for (const tag of manualTagList) {
-        tags.appendChild(renderUpTagPill(tag, up.mid));
-      }
+        // 添加分隔符
+        if (manualTagList.length > 0 && autoTagList.length > 0) {
+          const separator = document.createElement("span");
+          separator.className = "tag-separator";
+          separator.textContent = "|";
+          tags.appendChild(separator);
+        }
 
-      // 添加分隔符
-      if (manualTagList.length > 0 && autoTagList.length > 0) {
-        const separator = document.createElement("span");
-        separator.className = "tag-separator";
-        separator.textContent = "|";
-        tags.appendChild(separator);
+        // 再渲染自动标签
+        for (const autoTag of autoTagList) {
+          tags.appendChild(renderAutoTagPill(autoTag.tag, autoTag.count));
+        }
       }
-
-      // 再渲染自动标签
-      for (const autoTag of autoTagList) {
-        tags.appendChild(renderAutoTagPill(autoTag.tag, autoTag.count));
-      }
-    }
+    });
 
     info.appendChild(name);
     info.appendChild(tags);
@@ -808,7 +816,14 @@ function renderUpTagPill(tag: string, mid: number): HTMLSpanElement {
 function renderAutoTagPill(tag: string, count: number): HTMLSpanElement {
   const pill = document.createElement("span");
   pill.className = "tag-pill tag-pill-auto";
-  pill.textContent = `${tag} (${count})`;
+  
+  // 获取标签信息，显示计数器值
+  getTagsSortedByCount(false).then(autoTags => {
+    const tagInfo = autoTags.find(t => t.name === tag);
+    const displayCount = tagInfo?.count ?? 0;
+    pill.textContent = `${tag} (${displayCount})`;
+  });
+  
   pill.style.backgroundColor = colorFromTag(tag);
   pill.style.opacity = "0.7";
   // 自动标签不可拖拽
