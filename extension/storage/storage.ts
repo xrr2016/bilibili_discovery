@@ -138,6 +138,7 @@ export type UPManualTagsCache = Record<string, UPManualTag>;
 export interface UPTagCount {
   tag: string;
   count: number;
+  editable?: boolean; // 是否可编辑（true=用户手动添加，false=程序自动收集）
 }
 
 /**
@@ -489,7 +490,7 @@ export async function getUPTagCounts(): Promise<UPTagCache> {
   const cache: UPTagCache = {};
   for (const weight of weights) {
     cache[String(weight.mid)] = {
-      tags: weight.tags.map(t => ({ tag: t.tag_id, count: t.weight })),
+      tags: weight.tags.map(t => ({ tag: t.tag_id, count: t.weight, editable: t.editable })),
       lastUpdate: weight.lastUpdate
     };
   }

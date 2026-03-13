@@ -2,7 +2,7 @@
  * Stats page logic.
  */
 
-import { getValue, setValue, getUPTagCounts, getUPManualTags, getAllUPManualTags, addTagToUPManualTags, removeTagFromUPManualTags, getTagLibrary, addTagToLibrary, getTagsSortedByCount, type Tag, type UPTagCache } from "../../storage/storage.js";
+import { getValue, setValue, getUPTagCounts, getUPManualTags, getAllUPManualTags, addTagToUPManualTags, removeTagFromUPManualTags, getTagLibrary, addTagToLibrary, getTagsSortedByCount, type Tag, type UPTagCache, type UPTagCount } from "../../storage/storage.js";
 
 export interface InterestProfile {
   [tag: string]: { tag: string; score: number };
@@ -10,11 +10,6 @@ export interface InterestProfile {
 
 export interface UPCache {
   upList: { mid: number; name: string; face: string; is_followed?: boolean }[];
-}
-
-export interface UPTagCount {
-  tag: string;
-  count: number;
 }
 
 export interface Category {
@@ -111,7 +106,13 @@ function createDragGhost(e: DragEvent, tag: string): void {
     globalDragOverHandler = (event: DragEvent) => {
       event.preventDefault();
       if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "move";
+        // 根据 effectAllowed 设置 dropEffect
+        const effectAllowed = event.dataTransfer.effectAllowed;
+        if (effectAllowed === "copy") {
+          event.dataTransfer.dropEffect = "copy";
+        } else {
+          event.dataTransfer.dropEffect = "move";
+        }
       }
     };
     document.addEventListener("dragover", globalDragOverHandler);
@@ -378,6 +379,8 @@ let excludeTags: string[] = [];
 let includeCategories: string[] = [];
 let excludeCategories: string[] = [];
 let upTagCache: UPTagCache = {};
+let upManualTagsMap: Record<string, string[]> = {};
+let upAutoTags: Record<string, string[]> = {};
 
 /**
  * 获取UP的自动标签（权重最高的前3个，且不与手动标签重复）
@@ -388,16 +391,26 @@ async function getAutoTagsForUp(mid: number, manualTags: string[]): Promise<{ ta
   
   // 获取标签库，用于筛选不可编辑的标签
   const tagLibrary = await getTagLibrary();
-  const tagLibraryMap = new Map(Object.values(tagLibrary).map(t => [t.name, t]));
+  // 使用 tag.id 作为键，因为 tag.tag 可能是ID
+  const tagLibraryMap = new Map(Object.values(tagLibrary).map(t => [t.id, t]));
 
-  // 过滤掉与手动标签重复的标签，只保留不可编辑的标签，并取前3个
+  // 过滤掉与手动标签重复的标签，只保留不可编辑的标签，并取前5个
   return autoTags
     .filter((tag: UPTagCount) => {
       const tagInfo = tagLibraryMap.get(tag.tag);
       // 只返回不可编辑的标签（程序自动收集的）
-      return !manualTagSet.has(tag.tag) && tagInfo && !tagInfo.editable;
+      // 使用 tag.editable 或 tagInfo.editable 判断
+      const isEditable = tag.editable || (tagInfo && tagInfo.editable);
+      return !manualTagSet.has(tag.tag) && !isEditable;
     })
-    .slice(0, 3);
+    .map(tag => {
+      const tagInfo = tagLibraryMap.get(tag.tag);
+      return {
+        tag: tagInfo ? tagInfo.name : tag.tag,
+        count: tag.count
+      };
+    })
+    .slice(0, 5);
 }
 
 function renderUpList(
@@ -462,6 +475,7 @@ function renderUpList(
   for (const up of filteredUpList) {
     const item = document.createElement("div");
     item.className = "up-item";
+    item.dataset.mid = String(up.mid);
     const avatarLink = document.createElement("a");
     avatarLink.href = `https://space.bilibili.com/${up.mid}`;
     avatarLink.target = "_blank";
@@ -484,7 +498,7 @@ function renderUpList(
     setupUpTagDropZone(tags, up.mid);
 
     // 获取手动标签
-    const manualTagList = upTags[String(up.mid)] ?? [];
+    const manualTagList = upManualTagsMap[String(up.mid)] ?? [];
 
     // 获取自动标签（权重最高的前3个）
     getAutoTagsForUp(up.mid, manualTagList).then(autoTagList => {
@@ -502,6 +516,11 @@ function renderUpList(
           const separator = document.createElement("span");
           separator.className = "tag-separator";
           separator.textContent = "|";
+          separator.style.margin = "0 12px";
+          separator.style.opacity = "0.5";
+          separator.style.fontSize = "16px";
+          separator.style.height = "20px";
+          separator.style.display = "inline-block";
           tags.appendChild(separator);
         }
 
@@ -730,22 +749,51 @@ async function addTagToUp(mid: number, tag: string): Promise<void> {
   const nextTag = normalizeTag(tag);
   if (!nextTag) return;
   const key = String(mid);
-  const existing = currentUpTags[key] ?? [];
+  const existing = upManualTagsMap[key] ?? [];
   if (existing.includes(nextTag)) return;
   
   // 将 tag 名称添加到标签库，并获取 tag ID
   const tagObj = await addTagToLibrary(nextTag);
   
   const next = [...existing, nextTag];
-  currentUpTags = { ...currentUpTags, [key]: next };
+  upManualTagsMap = { ...upManualTagsMap, [key]: next };
+  // 更新 currentUpTags
+  currentUpTags[key] = [...new Set([...(upAutoTags[key] || []), ...next])];
   await addTagToUPManualTags(mid, tagObj.id);
-  renderUpList(currentUpList, currentUpTags);
+  
+  // 只更新当前UP的标签，不刷新整个列表
+  const upTagsEl = document.querySelector(`[data-mid="${mid}"] .up-tags`);
+  if (upTagsEl) {
+    upTagsEl.innerHTML = "";
+    // 渲染手动标签
+    for (const t of next) {
+      upTagsEl.appendChild(renderUpTagPill(t, mid));
+    }
+    // 渲染自动标签
+    getAutoTagsForUp(mid, next).then(autoTagList => {
+      if (next.length > 0 && autoTagList.length > 0) {
+        const separator = document.createElement("span");
+        separator.className = "tag-separator";
+        separator.textContent = "|";
+        separator.style.margin = "0 12px";
+        separator.style.opacity = "0.5";
+        separator.style.fontSize = "16px";
+        separator.style.height = "20px";
+        separator.style.display = "inline-block";
+        upTagsEl.appendChild(separator);
+      }
+      for (const autoTag of autoTagList) {
+        upTagsEl.appendChild(renderAutoTagPill(autoTag.tag, autoTag.count));
+      }
+    });
+  }
   renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
 }
 
+
 async function removeTagFromUp(mid: number, tag: string): Promise<void> {
   const key = String(mid);
-  const existing = currentUpTags[key] ?? [];
+  const existing = upManualTagsMap[key] ?? [];
   if (!existing.includes(tag)) return;
   
   // 获取标签库，将 tag 名称转换为 tag ID
@@ -753,14 +801,42 @@ async function removeTagFromUp(mid: number, tag: string): Promise<void> {
   const tagObj = Object.values(tagLibrary).find(t => t.name === tag);
   
   const next = existing.filter((t) => t !== tag);
-  currentUpTags = { ...currentUpTags, [key]: next };
+  upManualTagsMap = { ...upManualTagsMap, [key]: next };
+  // 更新 currentUpTags
+  currentUpTags[key] = [...new Set([...(upAutoTags[key] || []), ...next])];
   
   if (tagObj) {
     await removeTagFromUPManualTags(mid, tagObj.id);
   }
   
-  renderUpList(currentUpList, currentUpTags);
+  // 只更新当前UP的标签，不刷新整个列表
+  const upTagsEl = document.querySelector(`[data-mid="${mid}"] .up-tags`);
+  if (upTagsEl) {
+    upTagsEl.innerHTML = "";
+    // 渲染手动标签
+    for (const t of next) {
+      upTagsEl.appendChild(renderUpTagPill(t, mid));
+    }
+    // 渲染自动标签
+    getAutoTagsForUp(mid, next).then(autoTagList => {
+      if (next.length > 0 && autoTagList.length > 0) {
+        const separator = document.createElement("span");
+        separator.className = "tag-separator";
+        separator.textContent = "|";
+        separator.style.margin = "0 12px";
+        separator.style.opacity = "0.5";
+        separator.style.fontSize = "16px";
+        separator.style.height = "20px";
+        separator.style.display = "inline-block";
+        upTagsEl.appendChild(separator);
+      }
+      for (const autoTag of autoTagList) {
+        upTagsEl.appendChild(renderAutoTagPill(autoTag.tag, autoTag.count));
+      }
+    });
+  }
   renderTags(currentUpTags, (document.getElementById("tag-search") as HTMLInputElement | null)?.value ?? "");
+
 }
 
 function setupUpTagDropZone(tagsEl: HTMLElement, mid: number): void {
@@ -817,24 +893,39 @@ function renderAutoTagPill(tag: string, count: number): HTMLSpanElement {
   const pill = document.createElement("span");
   pill.className = "tag-pill tag-pill-auto";
   
-  // 获取标签信息，显示计数器值
-  getTagsSortedByCount(false).then(autoTags => {
-    const tagInfo = autoTags.find(t => t.name === tag);
-    const displayCount = tagInfo?.count ?? 0;
-    pill.textContent = `${tag} (${displayCount})`;
-  });
+  // 直接使用传入的 count 参数显示计数器值
+  pill.textContent = `${tag} (${count})`;
   
   pill.style.backgroundColor = colorFromTag(tag);
-  pill.style.opacity = "0.7";
-  // 自动标签不可拖拽
-  pill.draggable = false;
-  // 自动标签不可交互，只能查看
-  pill.style.cursor = "default";
+  // 自动标签可拖拽
+  pill.draggable = true;
+  // 自动标签可拖拽到筛选条件，使用 grab 光标
+  pill.style.cursor = "grab";
   // 添加自动标签标识
   const icon = document.createElement("i");
   icon.className = "auto-tag-icon";
   icon.textContent = "✧";
   pill.appendChild(icon);
+
+  // 添加拖拽事件处理
+  pill.addEventListener("dragstart", (e) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData("application/x-bili-tag", tag);
+      e.dataTransfer.effectAllowed = "copy";
+    }
+    createDragGhost(e, tag);
+    dragContext = { tag, dropped: false };
+    // 拖拽时使用 grabbing 光标
+    pill.style.cursor = "grabbing";
+  });
+
+  pill.addEventListener("dragend", () => {
+    removeDragGhost();
+    dragContext = null;
+    // 恢复 grab 光标
+    pill.style.cursor = "grab";
+  });
+
   return pill;
 }
 
@@ -904,6 +995,7 @@ export async function initStats(): Promise<void> {
 
   const upCache = (await getValue<UPCache>("upList")) ?? { upList: [] };
   const upTagCounts = await getUPTagCounts();
+  upTagCache = upTagCounts; // 初始化 upTagCache
   const upManualTags = await getAllUPManualTags();
   const customTags = (await getValue<string[]>("customTags")) ?? [];
   const videoCounts = (await getValue<Record<string, number>>("videoCounts")) ?? {};
@@ -911,26 +1003,32 @@ export async function initStats(): Promise<void> {
   // 获取标签库，用于将 tag ID 转换为 tag 名称
   const tagLibrary = await getTagLibrary();
   
-  // 将 upTagCounts 转换为 upTags 格式
-  const upTags: Record<string, string[]> = {};
+  // 将 upTagCounts 转换为 upAutoTags 格式（自动标签）
+  upAutoTags = {};
   for (const [mid, tagData] of Object.entries(upTagCounts)) {
-    upTags[mid] = tagData.tags.map(t => {
+    upAutoTags[mid] = tagData.tags.map(t => {
       const tag = tagLibrary[t.tag];
       return tag ? tag.name : t.tag;
     });
   }
   
-  // 合并手动标签
+  // 手动标签
+  upManualTagsMap = {};
   for (const [mid, tagIds] of Object.entries(upManualTags)) {
-    if (!upTags[mid]) {
-      upTags[mid] = [];
-    }
-    for (const tagId of tagIds) {
+    upManualTagsMap[mid] = tagIds.map(tagId => {
       const tag = tagLibrary[tagId];
-      const tagName = tag ? tag.name : tagId;
-      if (!upTags[mid].includes(tagName)) {
-        upTags[mid].push(tagName);
-      }
+      return tag ? tag.name : tagId;
+    });
+  }
+
+  // 合并手动标签和自动标签用于过滤
+  const upTags: Record<string, string[]> = {};
+  for (const mid of Object.keys(upAutoTags)) {
+    upTags[mid] = [...new Set([...(upAutoTags[mid] || []), ...(upManualTagsMap[mid] || [])])];
+  }
+  for (const mid of Object.keys(upManualTagsMap)) {
+    if (!upTags[mid]) {
+      upTags[mid] = upManualTagsMap[mid];
     }
   }
   

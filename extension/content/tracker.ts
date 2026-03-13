@@ -235,13 +235,14 @@ function trackVideoPlayback(
   
   // 初始化视频信息、UP信息和标签（只执行一次）
   if (cachedMeta) {
+    const meta: VideoMeta = cachedMeta;
     const initEvent: WatchProgress = {
       bvid,
-      title: cachedMeta.title,
-      upMid: cachedMeta.upMid,
-      upName: cachedMeta.upName,
-      upFace: cachedMeta.upFace,
-      tags: cachedMeta.tags,
+      title: meta.title,
+      upMid: meta.upMid,
+      upName: meta.upName,
+      upFace: meta.upFace,
+      tags: meta.tags,
       watchedSeconds: 0,
       duration: Number.isFinite(video.duration) ? video.duration : 0,
       timestamp: Date.now()
@@ -251,12 +252,12 @@ function trackVideoPlayback(
     sendInitializeVideoInfo(initEvent);
     
     // 处理UP信息
-    if (cachedMeta.upMid) {
+    if (meta.upMid) {
       sendProcessUPInfo(initEvent);
     }
     
     // 处理视频标签
-    if (cachedMeta.tags && cachedMeta.tags.length > 0) {
+    if (meta.tags && meta.tags.length > 0) {
       sendProcessVideoTags(initEvent);
     }
   }
