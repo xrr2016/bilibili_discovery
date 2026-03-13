@@ -88,18 +88,32 @@ export function renderTagPill(tag: string, count?: number): HTMLSpanElement {
 export function renderAutoTagPill(tag: string, count: number): HTMLSpanElement {
   const pill = document.createElement("span");
   pill.className = "tag-pill tag-pill-auto";
-  pill.textContent = `${tag} (${count})`;
+
+  // 将标签文本单独放在一个元素中，方便标签过滤系统获取
+  const tagText = document.createElement("span");
+  tagText.className = "tag-text";
+  tagText.textContent = tag;
+  pill.appendChild(tagText);
+
+  // 单独渲染数量
+  const countSpan = document.createElement("span");
+  countSpan.className = "tag-count";
+  countSpan.textContent = ` (${count})`;
+  pill.appendChild(countSpan);
+
+  // 添加自动标签标识
+  const icon = document.createElement("i");
+  icon.className = "auto-tag-icon";
+  icon.textContent = "✧";
+  pill.appendChild(icon);
+
   pill.style.backgroundColor = colorFromTag(tag);
   pill.style.opacity = "0.7";
   // 自动标签不可拖拽
   pill.draggable = false;
   // 自动标签不可交互，只能查看
   pill.style.cursor = "default";
-  // 添加自动标签标识
-  const icon = document.createElement("i");
-  icon.className = "auto-tag-icon";
-  icon.textContent = "✧";
-  pill.appendChild(icon);
+
   return pill;
 }
 
@@ -166,7 +180,9 @@ export async function addCustomTag(
 ): Promise<void> {
   const next = normalizeTag(tag);
   if (!next) return;
-  if (currentCustomTags.includes(next)) return;
+  // 只检查完全匹配的标签，而不是部分匹配
+  const hasExactMatch = currentCustomTags.some(existingTag => existingTag === next);
+  if (hasExactMatch) return;
   currentCustomTags = [...currentCustomTags, next];
   // This will be handled by the main module
   const event = new CustomEvent("saveCustomTags", {

@@ -98,5 +98,6 @@ export interface WatchStats {
   videoUpIds: Record<string, number>;
   videoWatchCount: Record<string, number>;
   videoFirstWatched: Record<string, number>;
+  videoCreatedAt?: Record<string, number>; // 视频记录创建时间戳
   lastUpdate: number;
 }

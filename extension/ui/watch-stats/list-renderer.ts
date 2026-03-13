@@ -220,7 +220,11 @@ export function renderVideoList(stats: WatchStats): void {
 
   videoListContainer.innerHTML = "";
   const videoRows = Object.entries(stats.videoSeconds)
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => {
+      const aCreatedAt = stats.videoCreatedAt?.[a[0]] ?? 0;
+      const bCreatedAt = stats.videoCreatedAt?.[b[0]] ?? 0;
+      return bCreatedAt - aCreatedAt;
+    })
     .slice(0, 10);
 
   if (videoRows.length === 0) {

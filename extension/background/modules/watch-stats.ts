@@ -27,6 +27,7 @@ export async function updateWatchStats(
     videoUpIds: existingStats?.videoUpIds ?? {},
     videoWatchCount: existingStats?.videoWatchCount ?? {},
     videoFirstWatched: existingStats?.videoFirstWatched ?? {},
+    videoCreatedAt: existingStats?.videoCreatedAt ?? {},
     lastUpdate: existingStats?.lastUpdate ?? 0
   };
   console.log("[WatchStats] Current stats before update:", stats);
@@ -47,6 +48,11 @@ export async function updateWatchStats(
   if (isFirstWatch) {
     stats.videoFirstWatched[videoKey] = payload.timestamp;
     stats.videoWatchCount[videoKey] = 1; // 第一次观看，次数设为1
+    // 记录视频创建时间戳
+    if (!stats.videoCreatedAt) {
+      stats.videoCreatedAt = {};
+    }
+    stats.videoCreatedAt[videoKey] = Date.now();
     console.log("[WatchStats] First time watching video:", videoKey);
     
     // 只在第一次观看时更新视频标题、标签和UP信息

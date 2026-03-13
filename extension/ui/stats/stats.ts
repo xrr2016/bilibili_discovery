@@ -131,29 +131,40 @@ async function renderUpList(
   // Filter UP list based on include/exclude tags
   let filteredUpList = upList;
   if (includeTags.length > 0 || excludeTags.length > 0 || includeCategories.length > 0 || excludeCategories.length > 0 || searchTerm) {
+    // 需要先获取所有UP的自动标签，以便在过滤时使用
+    const autoTagsCache = new Map<number, string[]>();
+    for (const up of upList) {
+      const manualTags = upTags[String(up.mid)] ?? [];
+      const autoTags = await getAutoTagsForUp(up.mid, manualTags);
+      autoTagsCache.set(up.mid, autoTags.map(at => at.tag));
+    }
+
     filteredUpList = upList.filter(up => {
-      const tags = upTags[String(up.mid)] ?? [];
+      // 合并手动标签和自动标签进行过滤
+      const manualTags = upTags[String(up.mid)] ?? [];
+      const autoTags = autoTagsCache.get(up.mid) ?? [];
+      const allTags = [...manualTags, ...autoTags];
 
       // Check if all include tags are present
       const hasAllIncludeTags = includeTags.length === 0 ||
-        includeTags.every(tag => tags.includes(tag));
+        includeTags.every(tag => allTags.includes(tag));
 
       // Check if none of the exclude tags are present
       const hasNoExcludeTags = excludeTags.length === 0 ||
-        !excludeTags.some(tag => tags.includes(tag));
+        !excludeTags.some(tag => allTags.includes(tag));
 
       // Check if at least one tag from include categories is present (OR logic)
       const hasIncludeCategory = includeCategories.length === 0 ||
         includeCategories.some(categoryId => {
           const category = getCategories().find(c => c.id === categoryId);
-          return category && category.tag_ids.some(tag => tags.includes(tag));
+          return category && category.tag_ids.some(tag => allTags.includes(tag));
         });
 
       // Check if no tag from exclude categories is present
       const hasNoExcludeCategory = excludeCategories.length === 0 ||
         !excludeCategories.some(categoryId => {
           const category = getCategories().find(c => c.id === categoryId);
-          return category && category.tag_ids.some(tag => tags.includes(tag));
+          return category && category.tag_ids.some(tag => allTags.includes(tag));
         });
 
       // Check if UP name matches search term
@@ -553,15 +564,14 @@ export async function initStats(): Promise<void> {
   const upTags = (await getValue<Record<string, string[]>>("upTags")) ?? {};
   const customTags = (await getValue<string[]>("customTags")) ?? [];
   const videoCounts = (await getValue<Record<string, number>>("videoCounts")) ?? {};
-
-  // 加载标签库
-  tagLibrary = await getTagLibrary();
-
+  
   // 加载分类库
   const categoryLibrary = await getCategoryLibrary();
   setCategories(Object.values(categoryLibrary));
 
-  currentUpList = upCache.upList ?? [];
+  // 设置当前UP列表和缓存
+  currentUpList = followedUPs;
+  upCache = { upList: followedUPs};
   currentUpTags = upTags;
   setCurrentCustomTags(customTags);
 

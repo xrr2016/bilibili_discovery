@@ -35,6 +35,7 @@ export interface Video {
   duration: number;
   pubdate: number;
   tags: string[]; // 标签ID列表，引用自标签库
+  created_at?: number; // 创建时间戳
 }
 
 /**

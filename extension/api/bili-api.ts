@@ -29,6 +29,7 @@ export interface Video {
   duration: number;
   pubdate: number;
   tags: string[];
+  created_at?: number; // 创建时间戳
 }
 
 export interface UPProfile {
