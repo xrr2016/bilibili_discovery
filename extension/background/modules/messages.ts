@@ -1,6 +1,6 @@
 import { getUPInfo, getUPVideos, getVideoTags } from "../../api/bili-api.js";
 import { randomUP, randomVideo, recommendUP, recommendVideo, updateInterestFromWatch } from "../../engine/recommender.js";
-import { getValue, setValue, type UP } from "../../storage/storage.js";
+import { getValue, setValue, updateUPTagCounts, type UP } from "../../storage/storage.js";
 import type { BackgroundOptions, MessageLike, WatchProgressPayload } from "./common-types.js";
 import { classifyUpTask } from "./classify-api.js";
 import { handleUPPageCollected, getPageClassifyProgress, startAutoClassification } from "./classify-page.js";
@@ -71,8 +71,15 @@ export async function handleMessage(
       duration: payload.duration ?? 0
     });
     
-    // 只在第一次观看时更新 UP 标签
+    // 只在第一次观看时更新 UP 标签统计
     if (isFirstWatch && payload.tags && payload.tags.length > 0) {
+      // 更新UP的标签统计
+      if (payload.upMid) {
+        await updateUPTagCounts(payload.upMid, payload.tags);
+        console.log(`[Background] Updated tag counts for UP ${payload.upMid}:`, payload.tags);
+      }
+
+      // 更新自定义标签列表
       const existingTags = ((await getValueFn("upTags")) as Record<string, string[]> | null) ?? {};
       const customTags = ((await getValueFn("customTags")) as string[] | null) ?? [];
       const knownTagSet = new Set<string>([

@@ -48,6 +48,20 @@ export interface UserInterest {
 
 export type InterestProfile = Record<string, UserInterest>;
 
+/**
+ * UP标签统计项
+ */
+export interface UPTagCount {
+  tag: string;
+  count: number;
+}
+
+/**
+ * UP标签统计缓存
+ * 键为UP的mid，值为该UP的标签统计列表
+ */
+export type UPTagCache = Record<string, { tags: UPTagCount[]; lastUpdate: number }>;
+
 interface StorageOptions {
   storage?: StorageProvider;
 }
@@ -145,4 +159,80 @@ export async function updateInterest(
   profile[tag] = next;
   await setValue("interestProfile", profile, options);
   return next;
+}
+
+/**
+ * 获取UP的标签统计
+ */
+export async function getUPTagCounts(
+  mid: number,
+  options: StorageOptions = {}
+): Promise<UPTagCount[] | null> {
+  const cache = await getValue<UPTagCache>("upTagCache", options);
+  if (!cache || !cache[String(mid)]) {
+    return null;
+  }
+  return cache[String(mid)].tags;
+}
+
+/**
+ * 更新UP的标签统计
+ * @param mid UP的mid
+ * @param tags 要更新的标签列表
+ * @param options 存储选项
+ */
+export async function updateUPTagCounts(
+  mid: number,
+  tags: string[],
+  options: StorageOptions = {}
+): Promise<void> {
+  const cache = (await getValue<UPTagCache>("upTagCache", options)) ?? {};
+  const midKey = String(mid);
+
+  // 获取现有标签统计
+  const existingEntry = cache[midKey] ?? { tags: [], lastUpdate: 0 };
+  const existingTagsMap = new Map(existingEntry.tags.map(t => [t.tag, t.count]));
+
+  // 更新标签计数
+  for (const tag of tags) {
+    const currentCount = existingTagsMap.get(tag) ?? 0;
+    existingTagsMap.set(tag, currentCount + 1);
+  }
+
+  // 转换回数组并按数量降序排序
+  const updatedTags = Array.from(existingTagsMap.entries())
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count);
+
+  // 保存更新
+  cache[midKey] = {
+    tags: updatedTags,
+    lastUpdate: Date.now()
+  };
+
+  await setValue("upTagCache", cache, options);
+}
+
+/**
+ * 获取所有UP的标签统计
+ */
+export async function getAllUPTagCounts(
+  options: StorageOptions = {}
+): Promise<UPTagCache | null> {
+  return getValue<UPTagCache>("upTagCache", options);
+}
+
+/**
+ * 清除指定UP的标签统计
+ */
+export async function clearUPTagCounts(
+  mid: number,
+  options: StorageOptions = {}
+): Promise<void> {
+  const cache = (await getValue<UPTagCache>("upTagCache", options)) ?? {};
+  const midKey = String(mid);
+  if (cache[midKey]) {
+    delete cache[midKey];
+    await setValue("upTagCache", cache, options);
+  }
 }
