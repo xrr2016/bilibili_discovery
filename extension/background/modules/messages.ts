@@ -1,6 +1,6 @@
 import { getUPInfo, getUPVideos, getVideoTags } from "../../api/bili-api.js";
 import { randomUP, randomVideo, recommendUP, recommendVideo, updateInterestFromWatch } from "../../engine/recommender.js";
-import { getValue, setValue, updateUPTagCounts, type UP } from "../../storage/storage.js";
+import { getValue, setValue, updateUPTagCounts, loadUPList, saveUPList, type UP } from "../../storage/storage.js";
 import type { BackgroundOptions, MessageLike, WatchProgressPayload } from "./common-types.js";
 import { classifyUpTask } from "./classify-api.js";
 import { handleUPPageCollected, getPageClassifyProgress, startAutoClassification } from "./classify-page.js";
@@ -207,6 +207,73 @@ export async function handleMessage(
     await setValueFn("videoCounts", {});
     await setValueFn("classifyStatus", { lastUpdate: 0 });
     console.log("[Background] Cleared classify data");
+    return null;
+  }
+
+  if (message.type === "follow_status_changed") {
+    const payload = message.payload as {
+      mid?: number;
+      name?: string;
+      face?: string;
+      sign?: string;
+      followed?: boolean;
+    };
+
+    if (!payload?.mid) {
+      console.warn("[Background] Invalid follow status payload");
+      return null;
+    }
+
+    const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
+    const upCache = await loadUPList();
+    const upList = upCache?.upList ?? [];
+
+    try {
+      if (payload.followed) {
+        // 关注：添加到列表
+        const exists = upList.some(up => up.mid === payload.mid);
+        if (exists) {
+          console.log("[Background] UP already in follow list, skipping:", payload.mid);
+          // 更新UP信息（可能名称或头像有变化）
+          const index = upList.findIndex(up => up.mid === payload.mid);
+          if (index !== -1) {
+            upList[index] = {
+              ...upList[index],
+              name: payload.name || upList[index].name,
+              face: payload.face || upList[index].face,
+              sign: payload.sign || upList[index].sign
+            };
+            await saveUPList(upList);
+            console.log("[Background] Updated UP info:", payload.mid);
+          }
+        } else {
+          const newUP: UP = {
+            mid: payload.mid,
+            name: payload.name || "",
+            face: payload.face || "",
+            sign: payload.sign || "",
+            follow_time: Date.now()
+          };
+          upList.push(newUP);
+          await saveUPList(upList);
+          console.log("[Background] Added UP to follow list:", newUP);
+        }
+      } else {
+        // 取关：从列表中移除
+        const index = upList.findIndex(up => up.mid === payload.mid);
+        if (index === -1) {
+          console.log("[Background] UP not in follow list, skipping removal:", payload.mid);
+        } else {
+          upList.splice(index, 1);
+          await saveUPList(upList);
+          console.log("[Background] Removed UP from follow list:", payload.mid);
+        }
+      }
+    } catch (error) {
+      console.error("[Background] Error updating follow list:", error);
+      return { success: false, error: "Failed to update follow list" };
+    }
+
     return null;
   }
 

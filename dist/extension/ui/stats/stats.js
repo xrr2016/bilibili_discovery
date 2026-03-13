@@ -302,6 +302,18 @@ let includeTags = [];
 let excludeTags = [];
 let includeCategories = [];
 let excludeCategories = [];
+let upTagCache = {};
+/**
+ * 获取UP的自动标签（权重最高的前3个，且不与手动标签重复）
+ */
+function getAutoTagsForUp(mid, manualTags) {
+    const autoTags = upTagCache[String(mid)]?.tags ?? [];
+    const manualTagSet = new Set(manualTags);
+    // 过滤掉与手动标签重复的标签，并取前3个
+    return autoTags
+        .filter(tag => !manualTagSet.has(tag.tag))
+        .slice(0, 3);
+}
 function renderUpList(upList, upTags) {
     const container = document.getElementById("up-list");
     const searchTerm = document.getElementById("up-search")?.value ?? "";
@@ -367,13 +379,29 @@ function renderUpList(upList, upTags) {
         const tags = document.createElement("div");
         tags.className = "up-tags";
         setupUpTagDropZone(tags, up.mid);
-        const tagList = upTags[String(up.mid)] ?? [];
-        if (tagList.length === 0) {
+        // 获取手动标签
+        const manualTagList = upTags[String(up.mid)] ?? [];
+        // 获取自动标签（权重最高的前3个）
+        const autoTagList = getAutoTagsForUp(up.mid, manualTagList);
+        // 渲染标签
+        if (manualTagList.length === 0 && autoTagList.length === 0) {
             tags.textContent = "暂无分类";
         }
         else {
-            for (const tag of tagList) {
+            // 先渲染手动标签
+            for (const tag of manualTagList) {
                 tags.appendChild(renderUpTagPill(tag, up.mid));
+            }
+            // 添加分隔符
+            if (manualTagList.length > 0 && autoTagList.length > 0) {
+                const separator = document.createElement("span");
+                separator.className = "tag-separator";
+                separator.textContent = "|";
+                tags.appendChild(separator);
+            }
+            // 再渲染自动标签
+            for (const autoTag of autoTagList) {
+                tags.appendChild(renderAutoTagPill(autoTag.tag, autoTag.count));
             }
         }
         info.appendChild(name);
@@ -633,6 +661,23 @@ function renderUpTagPill(tag, mid) {
         }
         dragContext = null;
     });
+    return pill;
+}
+function renderAutoTagPill(tag, count) {
+    const pill = document.createElement("span");
+    pill.className = "tag-pill tag-pill-auto";
+    pill.textContent = `${tag} (${count})`;
+    pill.style.backgroundColor = colorFromTag(tag);
+    pill.style.opacity = "0.7";
+    // 自动标签不可拖拽
+    pill.draggable = false;
+    // 自动标签不可交互，只能查看
+    pill.style.cursor = "default";
+    // 添加自动标签标识
+    const icon = document.createElement("i");
+    icon.className = "auto-tag-icon";
+    icon.textContent = "✧";
+    pill.appendChild(icon);
     return pill;
 }
 async function addCustomTag(tag) {

@@ -22,7 +22,7 @@
     },
     {
       "matches": ["https://www.bilibili.com/*"],
-      "js": ["content/uid.ts"],
+      "js": ["content/uid.ts", "content/follow-tracker.ts"],
       "run_at": "document_idle"
     },
     {

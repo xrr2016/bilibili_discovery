@@ -866,7 +866,6 @@ export async function initStats(): Promise<void> {
   currentUpList = upCache.upList ?? [];
   currentUpTags = upTags;
   currentCustomTags = customTags;
-  upTagCache = upTagCacheData;
   categories = (await getValue<Category[]>("categories")) ?? [];
 
   setText("stat-up-count", String(upCache.upList?.length ?? 0));
