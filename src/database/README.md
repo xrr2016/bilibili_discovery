@@ -24,14 +24,35 @@ database/
 │   ├── analytics.ts   # 分析数据结构
 │   └── index.ts       # 类型统一导出
 ├── interfaces/         # 接口规范定义
-│   ├── creator.interface.ts
-│   ├── video.interface.ts
-│   ├── behavior.interface.ts
-│   ├── semantic.interface.ts
-│   ├── note.interface.ts
-│   ├── collection.interface.ts
-│   ├── analytics.interface.ts
+│   ├── creator/       # 创作者接口
+│   ├── video/         # 视频接口
+│   ├── behavior/      # 行为接口
+│   ├── semantic/      # 语义接口
+│   ├── note/          # 笔记接口
+│   ├── collection/    # 收藏接口
+│   ├── analytics/     # 分析接口
 │   └── index.ts       # 接口统一导出
+├── implementations/    # 接口实现
+│   ├── tag-repository.impl.ts
+│   ├── category-repository.impl.ts
+│   ├── creator-repository.impl.ts
+│   ├── video-repository.impl.ts
+│   ├── collection-repository.impl.ts
+│   ├── collection-item-repository.impl.ts
+│   ├── interest-score-repository.impl.ts
+│   ├── watch-event-repository.impl.ts
+│   ├── interaction-event-repository.impl.ts
+│   ├── search-event-repository.impl.ts
+│   ├── video-note-repository.impl.ts
+│   ├── note-segment-repository.impl.ts
+│   ├── knowledge-entry-repository.impl.ts
+│   └── index.ts       # 实现统一导出
+├── indexeddb/         # IndexedDB 基础设施
+│   ├── config.ts       # 数据库配置
+│   ├── db-manager.ts   # 数据库管理器
+│   ├── db-utils.ts     # 数据库工具类
+│   ├── USAGE.md       # 使用说明
+│   └── index.ts       # 统一导出
 └── README.md          # 本文件
 ```
 
@@ -95,6 +116,17 @@ import {
 ### 使用示例
 
 ```typescript
+// 初始化数据库
+import { dbManager } from '../database/indexeddb';
+await dbManager.init();
+
+// 导入实现类
+import { CreatorRepository, VideoRepository } from '../database/implementations';
+
+// 创建实例
+const creatorRepo = new CreatorRepository();
+const videoRepo = new VideoRepository();
+
 // 创建创作者
 const creator: Creator = {
   creatorId: '123456',
@@ -109,9 +141,28 @@ const creator: Creator = {
   tagWeights: []
 };
 
-// 使用接口操作
-await creatorRepository.upsertCreator(creator);
-const creatorData = await creatorRepository.getCreator('123456', 'bilibili');
+await creatorRepo.upsertCreator(creator);
+
+// 获取创作者
+const creatorData = await creatorRepo.getCreator('123456', 'bilibili');
+
+// 创建视频
+const video: Video = {
+  videoId: 'BV123456',
+  platform: 'bilibili',
+  creatorId: '123456',
+  title: '视频标题',
+  description: '视频描述',
+  duration: 300,
+  publishTime: Date.now(),
+  tags: ['tag1', 'tag2'],
+  createdAt: Date.now()
+};
+
+await videoRepo.upsertVideo(video);
+
+// 获取视频
+const videoData = await videoRepo.getVideo('BV123456', 'bilibili');
 ```
 
 ## 接口规范
@@ -160,6 +211,65 @@ upsertCreator(creator: Creator): Promise<void>;
 5. 时间范围查询使用 TimeRange
 6. 平台类型使用 Platform 类型
 
+## 从旧存储迁移
+
+旧存储（`src/storage/storage.ts`）的功能已迁移到新数据库结构：
+
+### 已迁移的功能
+
+1. **标签库操作**
+   - 创建标签
+   - 获取标签
+   - 搜索标签
+   - 批量操作
+
+2. **分区操作**
+   - 创建分区
+   - 管理分区标签
+   - 获取分区树
+
+3. **创作者操作**
+   - 保存UP信息
+   - 更新关注状态
+   - 获取关注列表
+   - 搜索创作者
+
+4. **视频操作**
+   - 保存视频信息
+   - 获取视频列表
+   - 按标签查询
+
+5. **收藏操作**
+   - 创建收藏夹
+   - 添加/移除视频
+   - 搜索收藏
+
+6. **兴趣操作**
+   - 更新兴趣分数
+   - 获取兴趣统计
+
+7. **行为记录**
+   - 记录观看事件
+   - 记录互动事件
+   - 记录搜索事件
+
+### 差异说明
+
+1. **数据结构优化**
+   - 新结构支持多平台
+   - 更清晰的类型定义
+   - 更完善的索引设计
+
+2. **接口改进**
+   - 分离接口定义和实现
+   - 明确的能力边界
+   - 完整的文档注释
+
+3. **功能增强**
+   - 支持分页查询
+   - 批量操作优化
+   - 更灵活的搜索
+
 ## 未来扩展
 
 该数据结构设计支持以下未来功能：
@@ -172,3 +282,4 @@ upsertCreator(creator: Creator): Promise<void>;
 - 知识库管理
 - LLM 对话
 - 用户行为分析
+- 兴趣星球可视化
