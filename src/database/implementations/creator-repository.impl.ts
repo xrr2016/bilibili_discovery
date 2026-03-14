@@ -66,7 +66,7 @@ export class CreatorRepository implements ICreatorRepository {
   /**
    * 更新创作者关注状态
    */
-  async updateFollowStatus(creatorId: string, platform: Platform, isFollowing: boolean): Promise<void> {
+  async updateFollowStatus(creatorId: string, platform: Platform, isFollowing: number): Promise<void> {
     const creator = await this.getCreator(creatorId, platform);
     if (!creator) {
       throw new Error(`Creator not found: ${creatorId}`);
@@ -191,7 +191,7 @@ export class CreatorRepository implements ICreatorRepository {
 
     const updated: Creator = {
       ...creator,
-      isLogout: true
+      isLogout: 1
     };
 
     await this.upsertCreator(updated);

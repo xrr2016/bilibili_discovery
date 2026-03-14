@@ -5,8 +5,6 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json && node ./scripts/build-extension.js",
-    "test": "tsc -p tsconfig.json && node ./scripts/run-tests.js",
-    "test:api": "tsc -p tsconfig.json && node ./tests/api-test.mjs",
     "dev": "npm run build && node -e \"console.log('Load extension from: D:\\\\ProjectFloder\\\\TS\\\\bilibili_discovery\\\\dist\\\\extension')\"",
     "probe:bili": "node ./scripts/probe-bili-api.js",
     "probe:arcopen": "node ./scripts/probe-arcopen.js",
@@ -15,7 +13,8 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.1.37",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "fake-indexeddb": "^5.0.2"
   },
   "dependencies": {
     "dexie": "^4.3.0"

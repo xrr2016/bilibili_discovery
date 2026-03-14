@@ -110,7 +110,7 @@ export interface ICreatorRepository {
    * - 不处理创作者的其他信息
    * - 不触发相关数据更新
    */
-  updateFollowStatus(creatorId: string, platform: Platform, isFollowing: boolean): Promise<void>;
+  updateFollowStatus(creatorId: string, platform: Platform, isFollowing: number): Promise<void>;
 
   /**
    * 更新创作者标签权重
