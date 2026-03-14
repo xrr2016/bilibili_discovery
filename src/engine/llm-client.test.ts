@@ -1,4 +1,4 @@
-import { buildChatRequestBody, parseTagsFromContent } from "../engine/llm-client.js";
+import { buildChatRequestBody, parseTagsFromContent } from "./llm-client.js";
 import { assert, test } from "../tests/test-runner.js";
 
 test("parseTagsFromContent parses JSON array", () => {

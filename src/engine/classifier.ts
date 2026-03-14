@@ -3,7 +3,7 @@
  */
 
 import { getUPInfo, getUPVideos, getUPVideosForClassification, getVideoTags } from "../api/bili-api.js";
-import { chatComplete, parseTagsFromContent } from "../engine/llm-client.js";
+import { chatComplete, parseTagsFromContent } from "./llm-client.js";
 
 export interface Video {
   bvid: string;
