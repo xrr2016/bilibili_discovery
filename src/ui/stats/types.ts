@@ -1,0 +1,40 @@
+import type { UPTagCache } from "../../storage/storage.js";
+
+export interface UPCache {
+  upList: { mid: number; name: string; face: string; is_followed?: boolean }[];
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  tags: string[];
+}
+
+export interface FilterState {
+  includeTags: string[];
+  excludeTags: string[];
+  includeCategories: string[];
+  excludeCategories: string[];
+}
+
+export interface DragContext {
+  tag: string;
+  originUpMid?: number;
+  categoryId?: string;
+  dropped: boolean;
+}
+
+export interface StatsState {
+  allTagCounts: Record<string, number>;
+  filteredTags: string[];
+  currentCustomTags: string[];
+  categories: Category[];
+  filteredCategories: Category[];
+  showFollowedOnly: boolean;
+  filters: FilterState;
+  currentUpList: UPCache["upList"];
+  currentUpTags: Record<string, string[]>;
+  upTagCache: UPTagCache;
+  upManualTagsMap: Record<string, string[]>;
+  upAutoTags: Record<string, string[]>;
+}
