@@ -87,6 +87,15 @@ export class TagRepository implements ITagRepository {
   }
 
   /**
+   * 通过名称查找标签
+   */
+  async findTagByName(name: string): Promise<Tag | null> {
+    const normalized = name.trim().toLowerCase();
+    const allTags = await DBUtils.getAll<Tag>(STORE_NAMES.TAGS);
+    return allTags.find(tag => tag.name.trim().toLowerCase() === normalized) ?? null;
+  }
+
+  /**
    * 更新标签
    */
   async updateTag(tagId: string, updates: Partial<Omit<Tag, 'tagId' | 'createdAt'>>): Promise<void> {

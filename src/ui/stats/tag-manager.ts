@@ -1,12 +1,11 @@
 import {
-  addTagToLibrary,
-  addTagToUPManualTags,
-  getTagLibrary,
-  removeTagFromUPManualTags,
-  setValue,
-  type Tag,
-  type UPTagCount
-} from "../../database/bilibili-data.js";
+  addStatsPageManualTag,
+  getStatsPageTagLibrary,
+  removeStatsPageManualTag,
+  setStatsPageCustomTags,
+  type StatsPageTag,
+  type StatsPageUPTagCount
+} from "../../database/implementations/index.js";
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, getInputValue, normalizeTag } from "./helpers.js";
 import type { StatsState } from "./types.js";
@@ -20,11 +19,11 @@ export async function getAutoTagsForUp(
 ): Promise<{ tag: string; count: number }[]> {
   const autoTags = state.upTagCache[String(mid)]?.tags ?? [];
   const manualTagSet = new Set(manualTags);
-  const tagLibrary = await getTagLibrary();
+  const tagLibrary = await getStatsPageTagLibrary();
   const tagLibraryMap = new Map(Object.values(tagLibrary).map((tag) => [tag.id, tag]));
 
   return autoTags
-    .filter((tag: UPTagCount) => {
+    .filter((tag: StatsPageUPTagCount) => {
       const tagInfo = tagLibraryMap.get(tag.tag);
       const isEditable = tag.editable || (tagInfo && tagInfo.editable);
       return !manualTagSet.has(tag.tag) && !isEditable;
@@ -100,8 +99,8 @@ export function renderAutoTagPill(tag: string, count: number): HTMLSpanElement {
   return pill;
 }
 
-async function resolveTagByName(tag: string): Promise<Tag | undefined> {
-  const tagLibrary = await getTagLibrary();
+async function resolveTagByName(tag: string): Promise<StatsPageTag | undefined> {
+  const tagLibrary = await getStatsPageTagLibrary();
   return Object.values(tagLibrary).find((entry) => entry.name === tag);
 }
 
@@ -122,11 +121,10 @@ export async function addTagToUp(
     return;
   }
 
-  const tagObj = await addTagToLibrary(nextTag);
+  await addStatsPageManualTag(mid, nextTag);
   const next = [...existing, nextTag];
   state.upManualTagsMap = { ...state.upManualTagsMap, [key]: next };
   state.currentUpTags[key] = [...new Set([...(state.upAutoTags[key] || []), ...next])];
-  await addTagToUPManualTags(mid, tagObj.id);
   onChanged();
 }
 
@@ -148,7 +146,7 @@ export async function removeTagFromUp(
 
   const tagObj = await resolveTagByName(tag);
   if (tagObj) {
-    await removeTagFromUPManualTags(mid, tagObj.id);
+    await removeStatsPageManualTag(mid, tagObj.name);
   }
 
   onChanged();
@@ -160,7 +158,7 @@ export async function addCustomTag(state: StatsState, tag: string, onChanged: Re
     return;
   }
   state.currentCustomTags = [...state.currentCustomTags, next];
-  await setValue("customTags", state.currentCustomTags);
+  await setStatsPageCustomTags(state.currentCustomTags);
   onChanged();
 }
 

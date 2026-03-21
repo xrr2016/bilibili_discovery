@@ -64,6 +64,19 @@ export class CreatorRepository implements ICreatorRepository {
   }
 
   /**
+   * 获取指定平台的全部创作者
+   */
+  async getAllCreators(platform: Platform): Promise<Creator[]> {
+    const allCreators = await DBUtils.getByIndex<Creator>(
+      STORE_NAMES.CREATORS,
+      'platform',
+      platform
+    );
+
+    return allCreators.sort((a, b) => b.followTime - a.followTime);
+  }
+
+  /**
    * 更新创作者关注状态
    */
   async updateFollowStatus(creatorId: string, platform: Platform, isFollowing: number): Promise<void> {

@@ -1,4 +1,4 @@
-import type { UPTagCache } from "../../database/bilibili-data.js";
+import type { StatsPageUPTagCache as UPTagCache } from "../../database/implementations/index.js";
 
 export interface UPCache {
   upList: { mid: number; name: string; face: string; is_followed?: boolean }[];

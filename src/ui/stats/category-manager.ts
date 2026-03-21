@@ -1,27 +1,26 @@
-import { setValue } from "../../database/bilibili-data.js";
+import {
+  addTagNameToStatsPageCategory,
+  createStatsPageCategory,
+  deleteStatsPageCategory,
+  removeTagNameFromStatsPageCategory
+} from "../../database/implementations/index.js";
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, findCategory, getInputValue } from "./helpers.js";
 import type { Category, StatsState } from "./types.js";
 
 type RenderFn = () => void;
 
-function saveCategories(state: StatsState): void {
-  void setValue("categories", state.categories);
-}
-
 export function addCategory(state: StatsState, name: string, onChanged: RenderFn): void {
-  state.categories.push({
-    id: `category-${Date.now()}`,
-    name,
-    tags: []
-  });
-  saveCategories(state);
-  onChanged();
+  void (async () => {
+    const category = await createStatsPageCategory(name);
+    state.categories.push(category);
+    onChanged();
+  })();
 }
 
 export function removeCategory(state: StatsState, categoryId: string, onChanged: RenderFn): void {
   state.categories = state.categories.filter((category) => category.id !== categoryId);
-  saveCategories(state);
+  void deleteStatsPageCategory(categoryId);
   onChanged();
 }
 
@@ -31,7 +30,7 @@ export function addTagToCategory(state: StatsState, categoryId: string, tag: str
     return;
   }
   category.tags.push(tag);
-  saveCategories(state);
+  void addTagNameToStatsPageCategory(categoryId, tag);
   onChanged();
 }
 
@@ -46,7 +45,7 @@ export function removeTagFromCategory(
     return;
   }
   category.tags = category.tags.filter((item) => item !== tag);
-  saveCategories(state);
+  void removeTagNameFromStatsPageCategory(categoryId, tag);
   onChanged();
 }
 
