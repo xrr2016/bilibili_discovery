@@ -79,6 +79,10 @@ export interface IFavoriteDataSource {
   getFavoriteFolders(up_mid: number): Promise<Array<{ id: number; title: string; media_count: number }>>;
   /** 获取收藏夹视频 */
   getFavoriteVideos(media_id: number, pn: number, ps: number): Promise<Array<{ bvid: string; intro: string }>>;
+  /** 获取用户订阅的合集列表 */
+  getCollectedFolders(up_mid: number): Promise<Array<{ id: number; title: string; media_count: number; upper: { mid: number; name: string } }>>;
+  /** 获取订阅收藏夹视频 */
+  getCollectedVideos(media_id: number, pn: number, ps: number): Promise<Array<{ bvid: string; intro: string }>>;
 }
 
 /**

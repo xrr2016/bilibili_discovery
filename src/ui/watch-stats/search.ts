@@ -65,16 +65,7 @@ function renderVideoResults(
       }
 
       return true;
-    })
-    .sort((a, b) => {
-      if (b[1] !== a[1]) {
-        return b[1] - a[1];
-      }
-      const aTime = stats.videoFirstWatched?.[a[0]] ?? stats.videoCreatedAt?.[a[0]] ?? 0;
-      const bTime = stats.videoFirstWatched?.[b[0]] ?? stats.videoCreatedAt?.[b[0]] ?? 0;
-      return bTime - aTime;
-    })
-    .slice(0, 20);
+    });
 
   if (videoRows.length === 0) {
     const item = document.createElement("div");

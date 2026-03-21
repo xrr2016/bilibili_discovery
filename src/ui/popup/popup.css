@@ -5,18 +5,18 @@
 body {
   margin: 0;
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #1f2430;
   min-height: 100vh;
 }
 
 .app {
-  width: 320px;
+  width: 270px;
   padding: 20px;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
+  overflow: hidden;
 }
 
 .header {

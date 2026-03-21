@@ -5,6 +5,7 @@
  */
 
 import type { IVideoDataSource, IFavoriteDataSource } from "./types.js";
+import type { CollectedFolder } from "../../../api/bili-api.js";
 
 /**
  * B站API视频数据源适配器
@@ -63,6 +64,8 @@ export class BiliApiFavoriteDataSource implements IFavoriteDataSource {
     private getAllFavoriteVideosFn: (up_mid: number) => Promise<Array<{ bvid: string; intro: string }>>,
     private getFavoriteFoldersFn?: (up_mid: number) => Promise<Array<{ id: number; title: string; media_count: number }>>,
     private getFavoriteVideosFn?: (media_id: number, pn: number, ps: number) => Promise<Array<{ bvid: string; intro: string }>>,
+    private getCollectedFoldersFn?: (up_mid: number) => Promise<CollectedFolder[]>,
+    private getCollectedVideosFn?: (media_id: number, pn: number, ps: number) => Promise<Array<{ bvid: string; intro: string }>>,
     requestInterval?: number
   ) {
     if (requestInterval !== undefined) {
@@ -165,6 +168,32 @@ export class BiliApiFavoriteDataSource implements IFavoriteDataSource {
     const result = await this.getFavoriteVideosFn(media_id, pn, ps);
     console.log(`[BiliApiFavoriteDataSource] getFavoriteVideosFn returned ${result.length} videos`);
     return result;
+  }
+
+  async getCollectedFolders(up_mid: number): Promise<Array<{ id: number; title: string; media_count: number; upper: { mid: number; name: string } }>> {
+    if (!this.getCollectedFoldersFn) {
+      throw new Error("getCollectedFoldersFn not provided");
+    }
+    await this.ensureRequestInterval();
+    const collectedFolders = await this.getCollectedFoldersFn(up_mid);
+    // 转换为统一格式，保留 upper 信息
+    return collectedFolders.map(folder => ({
+      id: folder.id,
+      title: folder.title,
+      media_count: folder.media_count,
+      upper: {
+        mid: folder.upper.mid,
+        name: folder.upper.name
+      }
+    }));
+  }
+
+  async getCollectedVideos(media_id: number, pn: number, ps: number): Promise<Array<{ bvid: string; intro: string }>> {
+    if (!this.getCollectedVideosFn) {
+      throw new Error("getCollectedVideosFn not provided");
+    }
+    await this.ensureRequestInterval();
+    return this.getCollectedVideosFn(media_id, pn, ps);
   }
 }
 

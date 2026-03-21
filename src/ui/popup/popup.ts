@@ -1,4 +1,5 @@
 import { getValue, loadUPList, type ClassifyStatus, type InterestProfile } from "../../database/implementations/index.js";
+import { getAllCollectionVideos } from "../../database/implementations/collection-data-access.impl.js";
 import { armProgressTimeout, bindProgressListener, hideProgress, showProgress, updateProgress } from "./popup-progress.js";
 import { hasChromeRuntime, navigateCurrentTab, openExtensionPage, sendMessage } from "./popup-runtime.js";
 import type { InterestRow } from "./popup-types.js";
@@ -156,10 +157,26 @@ async function jumpToRandomUP(): Promise<void> {
   await navigateCurrentTab(`https://space.bilibili.com/${randomUP.mid}`);
 }
 
+async function jumpToRandomFavorite(): Promise<void> {
+  try {
+    const allVideos = await getAllCollectionVideos();
+    if (!allVideos || allVideos.length === 0) {
+      alert("没有已收藏的视频，请先添加收藏");
+      return;
+    }
+    const randomVideo = allVideos[Math.floor(Math.random() * allVideos.length)];
+    await navigateCurrentTab(`https://www.bilibili.com/video/${randomVideo.videoId}`);
+  } catch (error) {
+    console.error("[Popup] Jump to random favorite error", error);
+    alert("跳转失败，请稍后重试");
+  }
+}
+
 function bindButtons(): void {
   document.getElementById("btn-update-up")?.addEventListener("click", () => void handleUpdateUpList());
   document.getElementById("btn-auto-classify")?.addEventListener("click", () => void handleAutoClassify());
   document.getElementById("btn-random-up")?.addEventListener("click", () => void jumpToRandomUP());
+  document.getElementById("btn-random-favorite")?.addEventListener("click", () => void jumpToRandomFavorite());
   document.getElementById("btn-stats")?.addEventListener("click", () => openExtensionPage("ui/stats/stats.html"));
   document.getElementById("btn-watch-stats")?.addEventListener("click", () => openExtensionPage("ui/watch-stats/watch-stats.html"));
   document.getElementById("btn-favorites")?.addEventListener("click", () => openExtensionPage("ui/favorites/favorites.html"));

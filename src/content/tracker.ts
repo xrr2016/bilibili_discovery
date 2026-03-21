@@ -105,134 +105,25 @@ function extractVideoMeta(): VideoMeta {
   }
 
   let upMid: number | undefined = undefined;
-  const win = window as unknown as {
-    __INITIAL_STATE__?: { videoData?: { owner?: { mid?: number; name?: string; face?: string } }; tags?: Array<{ tag_name?: string }> };
-  };
-  console.log("[Tracker] __INITIAL_STATE__ exists:", !!win.__INITIAL_STATE__);
-  console.log("[Tracker] __INITIAL_STATE__.videoData exists:", !!win.__INITIAL_STATE__?.videoData);
-  console.log("[Tracker] __INITIAL_STATE__.videoData.owner exists:", !!win.__INITIAL_STATE__?.videoData?.owner);
-  console.log("[Tracker] __INITIAL_STATE__.videoData.owner:", win.__INITIAL_STATE__?.videoData?.owner);
-
-  const stateMid = win.__INITIAL_STATE__?.videoData?.owner?.mid;
-  if (typeof stateMid === "number") {
-    upMid = stateMid;
-  } else {
-    const ownerSelectors = [
-      ".up-name[href*='space.bilibili.com']",
-      ".author-name[href*='space.bilibili.com']",
-      ".staff-name[href*='space.bilibili.com']",
-      ".up-detail-top a[href*='space.bilibili.com']",
-      ".video-info-author a[href*='space.bilibili.com']"
-    ];
-    for (const selector of ownerSelectors) {
-      const upLink = document.querySelector(selector) as HTMLAnchorElement | null;
-      const mid = extractMidFromSpaceLink(upLink?.href);
-      if (mid) {
-        upMid = mid;
-        break;
-      }
+  // 直接从DOM中提取UP主ID
+  const ownerSelectors = [
+    ".up-name[href*='space.bilibili.com']",
+    ".author-name[href*='space.bilibili.com']",
+    ".staff-name[href*='space.bilibili.com']",
+    ".up-detail-top a[href*='space.bilibili.com']",
+    ".video-info-author a[href*='space.bilibili.com']"
+  ];
+  for (const selector of ownerSelectors) {
+    const upLink = document.querySelector(selector) as HTMLAnchorElement | null;
+    const mid = extractMidFromSpaceLink(upLink?.href);
+    if (mid) {
+      upMid = mid;
+      break;
     }
   }
 
   const tags = new Set<string>();
-  for (const tag of win.__INITIAL_STATE__?.tags ?? []) {
-    if (tag.tag_name) {
-      tags.add(tag.tag_name);
-    }
-  }
-  
-  // 提取UP名称
-  let upName: string | undefined = undefined;
-  const videoDataOwner = win.__INITIAL_STATE__?.videoData?.owner;
-  if (videoDataOwner?.name) {
-    upName = videoDataOwner.name;
-  } else {
-    // 如果从__INITIAL_STATE__中获取不到，尝试从页面中提取
-    const upNameElement = document.querySelector('.up-name, .author-name, [class*="author"], [class*="up-name"], [class*="uploader"]');
-    if (upNameElement) {
-      upName = upNameElement.textContent?.trim();
-    }
-  }
-  
-  // 提取UP头像
-  let upFace: string | undefined = undefined;
-  console.log("[Tracker] Extracting UP face, videoDataOwner.face:", videoDataOwner?.face);
-
-  if (videoDataOwner?.face) {
-    upFace = videoDataOwner.face;
-    console.log("[Tracker] UP face from __INITIAL_STATE__:", upFace);
-  } else {
-    // 如果从__INITIAL_STATE__中获取不到，尝试从页面中提取
-    // 尝试多个选择器来查找头像元素
-    const selectors = [
-      '.bili-avatar', 
-      'bili-avatar-img bili-avatar-face bili-avatar-img-radius'
-    ];
-
-    // 首先尝试使用XPath查找头像
-    console.log("[Tracker] Trying to find avatar with XPath");
-    try {
-      const xpathResult = document.evaluate(
-        '/html/body/div[2]/div[2]/div[2]/div/div[1]/div[1]/div[1]/div/a/div/img',
-        document,
-        null,
-        XPathResult.FIRST_ORDERED_NODE_TYPE,
-        null
-      );
-      const imgElement = xpathResult.singleNodeValue as HTMLImageElement | null;
-      if (imgElement) {
-        upFace = imgElement.src;
-        console.log("[Tracker] UP face from XPath:", upFace);
-        // 确保URL包含协议部分
-        if (upFace && upFace.startsWith('//')) {
-          upFace = 'https:' + upFace;
-          console.log("[Tracker] UP face after adding protocol:", upFace);
-        }
-      } else {
-        console.log("[Tracker] XPath did not find avatar element");
-      }
-    } catch (error) {
-      console.error("[Tracker] Error finding avatar with XPath:", error);
-    }
-
-    // 如果XPath没有找到，尝试CSS选择器
-    if (!upFace) {
-      console.log("[Tracker] XPath failed, trying CSS selectors");
-      for (const selector of selectors) {
-        console.log("[Tracker] Trying selector:", selector);
-        const element = document.querySelector(selector) as HTMLImageElement | null;
-        if (element) {
-          console.log("[Tracker] Found element with selector:", selector, "Tag:", element.tagName);
-
-          // 如果找到的是img元素，直接获取src
-          if (element.tagName === 'IMG') {
-            upFace = element.src;
-            console.log("[Tracker] UP face from img element:", upFace);
-          } else {
-            // 如果找到的是容器元素，查找内部的img
-            const img = element.querySelector('img') as HTMLImageElement | null;
-            if (img) {
-              upFace = img.src;
-              console.log("[Tracker] UP face from container img:", upFace);
-            }
-          }
-
-          // 确保URL包含协议部分
-          if (upFace && upFace.startsWith('//')) {
-            upFace = 'https:' + upFace;
-            console.log("[Tracker] UP face after adding protocol:", upFace);
-          }
-
-          // 如果找到了头像，就不再尝试其他选择器
-          if (upFace) {
-            break;
-          }
-        }
-      }
-    }
-
-    console.log("[Tracker] Final UP face value:", upFace);
-  }
+  // 直接从DOM中提取标签
   const tagElements = document.querySelectorAll('a[href*="/tag/"], a[href*="search?keyword="], .tag-link, .tag-item');
   for (const el of Array.from(tagElements)) {
     const text = el.textContent?.trim();
@@ -240,6 +131,88 @@ function extractVideoMeta(): VideoMeta {
       tags.add(text);
     }
   }
+  
+  // 提取UP名称
+  let upName: string | undefined = undefined;
+  // 直接从页面中提取UP名称
+  const upNameElement = document.querySelector('.up-name, .author-name, [class*="author"], [class*="up-name"], [class*="uploader"]');
+  if (upNameElement) {
+    upName = upNameElement.textContent?.trim();
+  }
+  
+  // 提取UP头像
+  let upFace: string | undefined = undefined;
+  console.log("[Tracker] Extracting UP face from DOM");
+
+  // 尝试多个选择器来查找头像元素
+  const selectors = [
+    '.bili-avatar', 
+    'bili-avatar-img bili-avatar-face bili-avatar-img-radius'
+  ];
+
+  // 首先尝试使用XPath查找头像
+  console.log("[Tracker] Trying to find avatar with XPath");
+  try {
+    const xpathResult = document.evaluate(
+      '/html/body/div[2]/div[2]/div[2]/div/div[1]/div[1]/div[1]/div/a/div/img',
+      document,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null
+    );
+    const imgElement = xpathResult.singleNodeValue as HTMLImageElement | null;
+    if (imgElement) {
+      upFace = imgElement.src;
+      console.log("[Tracker] UP face from XPath:", upFace);
+      // 确保URL包含协议部分
+      if (upFace && upFace.startsWith('//')) {
+        upFace = 'https:' + upFace;
+        console.log("[Tracker] UP face after adding protocol:", upFace);
+      }
+    } else {
+      console.log("[Tracker] XPath did not find avatar element");
+    }
+  } catch (error) {
+    console.error("[Tracker] Error finding avatar with XPath:", error);
+  }
+
+  // 如果XPath没有找到，尝试CSS选择器
+  if (!upFace) {
+    console.log("[Tracker] XPath failed, trying CSS selectors");
+    for (const selector of selectors) {
+      console.log("[Tracker] Trying selector:", selector);
+      const element = document.querySelector(selector) as HTMLImageElement | null;
+      if (element) {
+        console.log("[Tracker] Found element with selector:", selector, "Tag:", element.tagName);
+
+        // 如果找到的是img元素，直接获取src
+        if (element.tagName === 'IMG') {
+          upFace = element.src;
+          console.log("[Tracker] UP face from img element:", upFace);
+        } else {
+          // 如果找到的是容器元素，查找内部的img
+          const img = element.querySelector('img') as HTMLImageElement | null;
+          if (img) {
+            upFace = img.src;
+            console.log("[Tracker] UP face from container img:", upFace);
+          }
+        }
+
+        // 确保URL包含协议部分
+        if (upFace && upFace.startsWith('//')) {
+          upFace = 'https:' + upFace;
+          console.log("[Tracker] UP face after adding protocol:", upFace);
+        }
+
+        // 如果找到了头像，就不再尝试其他选择器
+        if (upFace) {
+          break;
+        }
+      }
+    }
+  }
+
+  console.log("[Tracker] Final UP face value:", upFace);
 
   return { title, upMid, upName, upFace, tags: Array.from(tags) };
 }

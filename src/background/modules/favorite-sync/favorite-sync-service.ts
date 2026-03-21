@@ -45,9 +45,13 @@ export class FavoriteSyncService {
       if (this.config.createMultipleCollections) {
         // 获取B站收藏夹列表
         const folders = await this.dependencies.favoriteDataSource.getFavoriteFolders(up_mid);
+        // 获取用户订阅的合集列表
+        const collectedFolders = await this.dependencies.favoriteDataSource.getCollectedFolders(up_mid);
+        // 合并收藏夹和合集列表
+        const allFolders = [...folders, ...collectedFolders];
         
-        // 为每个B站收藏夹创建对应的本地收藏夹
-        for (const folder of folders) {
+        // 为每个B站收藏夹和合集创建对应的本地收藏夹
+        for (const folder of allFolders) {
           // 检查是否应该停止同步
           if (shouldStop) {
             const shouldStopValue = await shouldStop();
@@ -60,7 +64,12 @@ export class FavoriteSyncService {
 
           // 使用B站API返回的收藏夹ID作为本地收藏夹ID
           const collectionId = folder.id.toString();
-          const folderCollection = await this.getOrCreateCollection(collectionId, folder.title, `从B站收藏夹"${folder.title}"同步的收藏视频`);
+          // 检查是否为订阅收藏夹（包含 upper 信息）
+          const isCollectedFolder = 'upper' in folder;
+          const description = isCollectedFolder 
+            ? `从UP主"${(folder as any).upper.name}"的合集"${folder.title}"同步的收藏视频`
+            : `从B站收藏夹"${folder.title}"同步的收藏视频`;
+          const folderCollection = await this.getOrCreateCollection(collectionId, folder.title, description);
           if (folderCollection) {
             // 获取本地收藏夹中的视频数量
             const localVideoCount = await this.dependencies.collectionItemRepository.countCollectionItems(collectionId);
@@ -102,7 +111,11 @@ export class FavoriteSyncService {
                 }
               }
 
-              const videos = await this.dependencies.favoriteDataSource.getFavoriteVideos(folder.id, page, pageSize);
+              // 根据收藏夹类型选择使用不同的方法
+              const isCollectedFolder = 'upper' in folder;
+              const videos = isCollectedFolder
+                ? await this.dependencies.favoriteDataSource.getCollectedVideos(folder.id, page, pageSize)
+                : await this.dependencies.favoriteDataSource.getFavoriteVideos(folder.id, page, pageSize);
               if (videos.length === 0) {
                 hasMore = false;
                 break;

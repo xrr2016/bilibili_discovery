@@ -483,6 +483,37 @@ export interface FavoriteFolder {
   media_count: number;
 }
 
+export interface CollectedFolder {
+  id: number;
+  fid: number;
+  mid: number;
+  attr: number;
+  attr_desc: string;
+  title: string;
+  cover: string;
+  upper: {
+    mid: number;
+    name: string;
+    face: string;
+    jump_link: string;
+  };
+  cover_type: number;
+  intro: string;
+  ctime: number;
+  mtime: number;
+  state: number;
+  fav_state: number;
+  media_count: number;
+  view_count: number;
+  vt: number;
+  is_top: boolean;
+  recent_fav: any;
+  play_switch: number;
+  type: number;
+  link: string;
+  bvid: string;
+}
+
 /**
  * 获取用户收藏夹列表
  * @param up_mid 用户ID
@@ -495,6 +526,41 @@ export async function getFavoriteFolders(
   const url = `https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${up_mid}`;
   const data = await apiRequest<{ data?: { list?: FavoriteFolder[] } }>(url, options);
   return data?.data?.list ?? [];
+}
+
+/**
+ * 获取用户订阅的合集列表
+ * @param up_mid 用户ID
+ * @param options API请求选项
+ */
+export async function getCollectedFolders(
+  up_mid: number,
+  options: ApiRequestOptions = {}
+): Promise<CollectedFolder[]> {
+  const allFolders: CollectedFolder[] = [];
+  let page = 1;
+  const pageSize = 50;
+
+  while (true) {
+    const url = `https://api.bilibili.com/x/v3/fav/folder/collected/list?pn=${page}&ps=${pageSize}&up_mid=${up_mid}&platform=web&web_location=333.1387`;
+    const data = await apiRequest<{ data?: { list?: CollectedFolder[] } }>(url, options);
+    const folders = data?.data?.list ?? [];
+    
+    if (folders.length === 0) {
+      break;
+    }
+    
+    allFolders.push(...folders);
+    
+    // 如果获取的数量小于页大小，说明已经没有更多数据
+    if (folders.length < pageSize) {
+      break;
+    }
+    
+    page++;
+  }
+  
+  return allFolders;
 }
 
 export interface FavoriteVideo {
@@ -555,6 +621,24 @@ export async function getAllFavoriteVideos(
  * @param options API请求选项
  */
 export async function getFavoriteVideos(
+  media_id: number,
+  pn = 1,
+  ps = 20,
+  options: ApiRequestOptions = {}
+): Promise<FavoriteVideo[]> {
+  const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${media_id}&pn=${pn}&ps=${ps}`;
+  const data = await apiRequest<{ data?: { medias?: FavoriteVideo[] } }>(url, options);
+  return data?.data?.medias ?? [];
+}
+
+/**
+ * 获取订阅收藏夹视频
+ * @param media_id 收藏夹ID
+ * @param pn 页码
+ * @param ps 每页数量
+ * @param options API请求选项
+ */
+export async function getCollectedVideos(
   media_id: number,
   pn = 1,
   ps = 20,
