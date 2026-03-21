@@ -13,7 +13,7 @@
 - 原始统计数据由后台模块写入数据库
 
 主要文件：
-- `index.ts`：页面主入口
+- `watch-stats.ts`：页面主入口
 - `list-renderer.ts`：列表渲染
 - `search.ts`：标签与视频搜索
 - `heatmap.ts` / `line-chart.ts`：图表绘制

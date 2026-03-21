@@ -1,15 +1,15 @@
 import { formatSeconds } from "./utils.js";
 import type { WatchStats } from "../../background/modules/common-types.js";
-import type { UP } from "../../database/implementations/index.js";
 import { getTagLibrary } from "../../database/implementations/index.js";
+import { colorFromTag, createDragGhost, createTagPill, removeDragGhost } from "./tag-utils.js";
 
 // 全局状态
 let includeTags: string[] = [];
 let excludeTags: string[] = [];
 let currentStats: WatchStats | null = null;
 let dragContext: { tag: string; dropped: boolean } | null = null;
-let dragGhost: HTMLElement | null = null;
-let globalDragOverHandler: ((e: DragEvent) => void) | null = null;
+let videoTagNamesMap: Record<string, string[]> = {};
+let tagStatsCache = new Map<string, { seconds: number; videoCount: number }>();
 
 /**
  * 初始化视频搜索功能
@@ -51,7 +51,7 @@ function renderVideoResults(
 
       // 检查标签是否匹配过滤条件
       if (includeTags.length > 0 || excludeTags.length > 0) {
-        const tags = stats.videoTags[bvid] ?? [];
+        const tags = videoTagNamesMap[bvid] ?? [];
 
         // 检查是否包含所有必需的标签
         const hasAllIncludeTags = includeTags.length === 0 ||
@@ -67,7 +67,9 @@ function renderVideoResults(
       return true;
     })
     .sort((a, b) => {
-      // 按最近观看时间排序（使用videoFirstWatched或videoCreatedAt）
+      if (b[1] !== a[1]) {
+        return b[1] - a[1];
+      }
       const aTime = stats.videoFirstWatched?.[a[0]] ?? stats.videoCreatedAt?.[a[0]] ?? 0;
       const bTime = stats.videoFirstWatched?.[b[0]] ?? stats.videoCreatedAt?.[b[0]] ?? 0;
       return bTime - aTime;
@@ -118,15 +120,15 @@ export async function initTagSearch(stats: WatchStats): Promise<void> {
   if (!searchInput || !resultsContainer) return;
 
   // 计算所有标签的统计信息
-  const tagStats = await calculateTagStats(stats);
+  tagStatsCache = await calculateTagStats(stats);
 
   // 初始显示所有标签（按观看时长排序）
-  renderTagResults(tagStats, resultsContainer, "");
+  renderTagResults(tagStatsCache, resultsContainer, "");
 
   // 添加搜索事件
   searchInput.addEventListener("input", (e) => {
     const query = (e.target as HTMLInputElement).value.toLowerCase();
-    renderTagResults(tagStats, resultsContainer, query);
+    renderTagResults(tagStatsCache, resultsContainer, query);
   });
 
   // 设置拖放功能
@@ -141,6 +143,7 @@ async function calculateTagStats(stats: WatchStats): Promise<Map<string, { secon
   
   // 获取标签库，用于将标签ID转换为标签名称
   const tagLibrary = await getTagLibrary();
+  videoTagNamesMap = {};
 
   for (const [videoKey, tagIds] of Object.entries(stats.videoTags)) {
     const seconds = stats.videoSeconds[videoKey] ?? 0;
@@ -151,10 +154,12 @@ async function calculateTagStats(stats: WatchStats): Promise<Map<string, { secon
     // 使用视频观看时长，如果没有则使用UP观看时长（作为近似值）
     const effectiveSeconds = seconds > 0 ? seconds : upSeconds;
     
+    const tagNames: string[] = [];
     for (const tagId of tagIds || []) {
       // 将标签ID转换为标签名称
       const tag = tagLibrary[tagId];
       const tagName = tag ? tag.name : tagId;
+      tagNames.push(tagName);
       
       const existing = tagStats.get(tagName) ?? { seconds: 0, videoCount: 0 };
       tagStats.set(tagName, {
@@ -162,6 +167,7 @@ async function calculateTagStats(stats: WatchStats): Promise<Map<string, { secon
         videoCount: existing.videoCount + 1
       });
     }
+    videoTagNamesMap[videoKey] = tagNames;
   }
 
   return tagStats;
@@ -223,10 +229,7 @@ function renderTagResults(
  * 渲染标签药丸
  */
 function renderTagPill(tag: string): HTMLSpanElement {
-  const pill = document.createElement("span");
-  pill.className = "tag-pill";
-  pill.textContent = tag;
-  pill.style.backgroundColor = colorFromTag(tag);
+  const pill = createTagPill(tag);
 
   // 使标签可拖动
   pill.draggable = true;
@@ -244,77 +247,6 @@ function renderTagPill(tag: string): HTMLSpanElement {
   });
 
   return pill;
-}
-
-/**
- * 根据标签生成颜色
- */
-function colorFromTag(tag: string): string {
-  let hash = 0;
-  for (let i = 0; i < tag.length; i += 1) {
-    hash = (hash * 31 + tag.charCodeAt(i)) % 360;
-  }
-  const hue = Math.abs(hash) % 360;
-  const sat = 70 + (Math.abs(hash * 7) % 21);
-  const light = 85 + (Math.abs(hash * 13) % 11);
-  return `hsl(${hue} ${sat}% ${light}%)`;
-}
-
-/**
- * 创建拖动时的幽灵元素
- */
-function createDragGhost(e: DragEvent, tag: string): void {
-  removeDragGhost();
-  const ghost = document.createElement("div");
-  ghost.className = "drag-ghost";
-  ghost.textContent = tag;
-  ghost.style.backgroundColor = colorFromTag(tag);
-  ghost.style.padding = "8px 16px";
-  ghost.style.borderRadius = "999px";
-  ghost.style.color = "#1f2430";
-  ghost.style.fontSize = "13px";
-  ghost.style.fontWeight = "600";
-  document.body.appendChild(ghost);
-  dragGhost = ghost;
-  if (e.dataTransfer) {
-    e.dataTransfer.setDragImage(ghost, 0, 0);
-  }
-  if (!globalDragOverHandler) {
-    globalDragOverHandler = (event: DragEvent) => {
-      event.preventDefault();
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "move";
-      }
-    };
-    document.addEventListener("dragover", globalDragOverHandler);
-  }
-
-  const moveGhost = (moveEvent: MouseEvent) => {
-    if (dragGhost) {
-      dragGhost.style.left = moveEvent.clientX + "px";
-      dragGhost.style.top = moveEvent.clientY + "px";
-    }
-  };
-
-  document.addEventListener("mousemove", moveGhost);
-  document.addEventListener("mouseup", () => {
-    document.removeEventListener("mousemove", moveGhost);
-    setTimeout(() => removeDragGhost(), 100);
-  }, { once: true });
-}
-
-/**
- * 移除拖动时的幽灵元素
- */
-function removeDragGhost(): void {
-  if (dragGhost) {
-    dragGhost.remove();
-    dragGhost = null;
-  }
-  if (globalDragOverHandler) {
-    document.removeEventListener("dragover", globalDragOverHandler);
-    globalDragOverHandler = null;
-  }
 }
 
 /**

@@ -113,12 +113,12 @@ export function getHeatmapColor(seconds: number, maxSeconds = 8 * 3600): string 
   // 明度从50%降到25%
   // 纯度从20%升到100%
   const colorStops = [
-    { position: 0.0, h: 240, s: 80, l: 90 },      // 红色
-    { position: 0.2, h: 120, s: 80, l: 90 },     // 黄色
-    { position: 0.4, h: 0, s: 80, l: 90 },     // 绿色
-    { position: 0.6, h: 180, s: 80, l: 90 },     // 青色
-    { position: 0.8, h: 300, s: 80, l: 90 },     // 蓝色
-    { position: 1.0, h: 60, s: 80, l: 90 }     // 紫红色
+    { position: 0.0, h: 240, s: 0, l: 95 },      // 白色
+    { position: 0.2, h: 120, s: 80, l: 90 },     
+    { position: 0.4, h: 0, s: 80, l: 90 },     
+    { position: 0.6, h: 180, s: 80, l: 90 },     
+    { position: 0.8, h: 300, s: 80, l: 90 },     
+    { position: 1.0, h: 60, s: 80, l: 90 }    
   ];
 
   // 找到ratio所在的区间

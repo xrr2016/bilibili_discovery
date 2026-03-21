@@ -30,12 +30,11 @@ export class VideoRepository implements IVideoRepository {
    * 获取视频信息
    */
   async getVideo(videoId: string, platform: Platform): Promise<Video | null> {
-    const videos = await DBUtils.getByIndex<Video>(
-      STORE_NAMES.VIDEOS,
-      'videoId',
-      videoId
-    );
-    return videos.find(v => v.platform === platform) || null;
+    const video = await DBUtils.get<Video>(STORE_NAMES.VIDEOS, videoId);
+    if (!video || video.platform !== platform) {
+      return null;
+    }
+    return video;
   }
 
   /**

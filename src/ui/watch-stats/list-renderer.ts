@@ -2,6 +2,7 @@ import { formatSeconds } from "./utils.js";
 import type { WatchStats } from "../../background/modules/common-types.js";
 import type { UP } from "../../database/implementations/index.js";
 import { getTagLibrary } from "../../database/implementations/index.js";
+import { createTagPill } from "./tag-utils.js";
 
 /**
  * 渲染简单的列表
@@ -114,7 +115,7 @@ export async function renderTagList(
         const item = document.createElement("div");
         item.className = "list-item";
         const label = document.createElement("span");
-        label.textContent = row.label;
+        label.appendChild(createTagPill(row.label));
         const valueContainer = document.createElement("span");
         valueContainer.style.display = "flex";
         valueContainer.style.gap = "12px";
@@ -227,6 +228,9 @@ export function renderVideoList(stats: WatchStats): void {
   videoListContainer.innerHTML = "";
   const videoRows = Object.entries(stats.videoSeconds)
     .sort((a, b) => {
+      if (b[1] !== a[1]) {
+        return b[1] - a[1];
+      }
       const aCreatedAt = stats.videoCreatedAt?.[a[0]] ?? 0;
       const bCreatedAt = stats.videoCreatedAt?.[b[0]] ?? 0;
       return bCreatedAt - aCreatedAt;

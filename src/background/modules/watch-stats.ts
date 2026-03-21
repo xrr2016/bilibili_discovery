@@ -1,60 +1,29 @@
-import { getValue, setValue, saveUPList, loadUPList, addTagsToLibrary, getTagLibrary, updateUPTagWeights, type UP, type AppTag as Tag } from "../../database/implementations/index.js";
-import type { BackgroundOptions, WatchProgressPayload, WatchStats } from "./common-types.js";
-
-function toLocalDateKey(timestamp: number): string {
-  const date = new Date(timestamp);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
+import {
+  addTagsToLibrary,
+  getValue,
+  loadUPList,
+  recordWatchProgressEvent,
+  saveUPList,
+  updateUPTagWeights,
+  upsertTrackedVideo,
+  type UP
+} from "../../database/implementations/index.js";
+import type { BackgroundOptions, WatchProgressPayload } from "./common-types.js";
 
 export async function updateWatchStats(
   payload: WatchProgressPayload,
   options: BackgroundOptions = {}
 ): Promise<void> {
   console.log("[WatchStats] Updating watch time stats with payload:", payload);
-  const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
-  const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
 
   const delta = Math.max(0, payload.watchedSeconds || 0);
-  if (delta <= 0) {
+  if (delta <= 0 || !payload.bvid || !payload.upMid) {
     return;
   }
 
-  const existingStats = await getValueFn("watchStats") as WatchStats | null;
-  const stats: WatchStats = {
-    totalSeconds: (existingStats?.totalSeconds ?? 0) + delta,
-    dailySeconds: existingStats?.dailySeconds ?? {},
-    upSeconds: existingStats?.upSeconds ?? {},
-    videoSeconds: existingStats?.videoSeconds ?? {},
-    videoTitles: existingStats?.videoTitles ?? {},
-    videoTags: existingStats?.videoTags ?? {},
-    videoUpIds: existingStats?.videoUpIds ?? {},
-    videoWatchCount: existingStats?.videoWatchCount ?? {},
-    videoFirstWatched: existingStats?.videoFirstWatched ?? {},
-    videoCreatedAt: existingStats?.videoCreatedAt ?? {},
-    lastUpdate: Date.now()
-  };
-
-  // 更新总观看时长
-  stats.totalSeconds += delta;
-
-  // 更新每日观看时长
-  const dateKey = toLocalDateKey(payload.timestamp);
-  stats.dailySeconds[dateKey] = (stats.dailySeconds[dateKey] ?? 0) + delta;
-
-  // 更新视频和UP的观看时长
-  const videoKey = payload.bvid || payload.title || "unknown";
-  stats.videoSeconds[videoKey] = (stats.videoSeconds[videoKey] ?? 0) + delta;
-
-  if (payload.upMid) {
-    const upKey = String(payload.upMid);
-    stats.upSeconds[upKey] = (stats.upSeconds[upKey] ?? 0) + delta;
-  }
-
-  console.log("[WatchStats] Watch time stats updated:", stats);
-  await setValueFn("watchStats", stats);
-  console.log("[WatchStats] Watch time stats saved to storage");
+  await recordWatchProgressEvent(payload);
+  await upsertTrackedVideo(payload);
+  console.log("[WatchStats] Watch event saved to database");
 }
 
 /**
@@ -65,52 +34,12 @@ export async function initializeVideoInfo(
   options: BackgroundOptions = {}
 ): Promise<void> {
   console.log("[WatchStats] Initializing video info with payload:", payload);
-  const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
-  const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
-
-  const existingStats = await getValueFn("watchStats") as WatchStats | null;
-  const stats: WatchStats = {
-    totalSeconds: existingStats?.totalSeconds ?? 0,
-    dailySeconds: existingStats?.dailySeconds ?? {},
-    upSeconds: existingStats?.upSeconds ?? {},
-    videoSeconds: existingStats?.videoSeconds ?? {},
-    videoTitles: existingStats?.videoTitles ?? {},
-    videoTags: existingStats?.videoTags ?? {},
-    videoUpIds: existingStats?.videoUpIds ?? {},
-    videoWatchCount: existingStats?.videoWatchCount ?? {},
-    videoFirstWatched: existingStats?.videoFirstWatched ?? {},
-    videoCreatedAt: existingStats?.videoCreatedAt ?? {},
-    lastUpdate: existingStats?.lastUpdate ?? 0
-  };
-
-  const videoKey = payload.bvid || payload.title || "unknown";
-
-  // 检查是否已经初始化过
-  if (stats.videoFirstWatched[videoKey]) {
-    console.log("[WatchStats] Video already initialized:", videoKey);
+  if (!payload.bvid) {
     return;
   }
 
-  // 初始化视频信息
-  stats.videoFirstWatched[videoKey] = payload.timestamp;
-  stats.videoWatchCount[videoKey] = 1;
-  // 确保 videoCreatedAt 已定义
-  if (!stats.videoCreatedAt) {
-    stats.videoCreatedAt = {};
-  }
-  stats.videoCreatedAt[videoKey] = Date.now();
-
-  if (payload.title) {
-    stats.videoTitles[videoKey] = payload.title;
-  }
-
-  if (payload.upMid) {
-    stats.videoUpIds[videoKey] = payload.upMid;
-  }
-
-  console.log("[WatchStats] Video info initialized:", videoKey);
-  await setValueFn("watchStats", stats);
-  console.log("[WatchStats] Video info saved to storage");
+  await upsertTrackedVideo(payload);
+  console.log("[WatchStats] Video info saved to database:", payload.bvid);
 }
 
 /**
@@ -184,28 +113,7 @@ export async function processVideoTags(
   // 将标签添加到标签库，并获取标签ID（程序自动收集的标签）
   const tags = await addTagsToLibrary(payload.tags, false);
   const tagIds = tags.map(tag => tag.id);
-
-  // 更新视频的标签信息
-  const getValueFn = options.getValueFn ?? ((key: string) => getValue(key));
-  const setValueFn = options.setValueFn ?? ((key: string, value: unknown) => setValue(key, value));
-
-  const existingStats = await getValueFn("watchStats") as WatchStats | null;
-  const stats: WatchStats = {
-    totalSeconds: existingStats?.totalSeconds ?? 0,
-    dailySeconds: existingStats?.dailySeconds ?? {},
-    upSeconds: existingStats?.upSeconds ?? {},
-    videoSeconds: existingStats?.videoSeconds ?? {},
-    videoTitles: existingStats?.videoTitles ?? {},
-    videoTags: existingStats?.videoTags ?? {},
-    videoUpIds: existingStats?.videoUpIds ?? {},
-    videoWatchCount: existingStats?.videoWatchCount ?? {},
-    videoFirstWatched: existingStats?.videoFirstWatched ?? {},
-    videoCreatedAt: existingStats?.videoCreatedAt ?? {},
-    lastUpdate: existingStats?.lastUpdate ?? 0
-  };
-
-  const videoKey = payload.bvid || payload.title || "unknown";
-  stats.videoTags[videoKey] = tagIds;
+  await upsertTrackedVideo(payload, tagIds);
 
   // 如果有UP，更新UP的标签权重
   if (payload.upMid) {
@@ -213,7 +121,5 @@ export async function processVideoTags(
     console.log(`[WatchStats] Updated tag weights for UP ${payload.upMid}`);
   }
 
-  console.log("[WatchStats] Video tags processed");
-  await setValueFn("watchStats", stats);
-  console.log("[WatchStats] Video tags saved to storage");
+  console.log("[WatchStats] Video tags saved to database");
 }

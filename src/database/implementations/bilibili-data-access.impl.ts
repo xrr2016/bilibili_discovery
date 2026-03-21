@@ -1,12 +1,13 @@
 import { getAppState, setAppState, clearAppStateByPrefix } from "../app-state.js";
 import { DBUtils, STORE_NAMES } from "../indexeddb/index.js";
-import { Platform, TagSource } from "../types/base.js";
+import { Platform, TagSource, VideoSource, type ID } from "../types/base.js";
 import type { Creator as DBCreator, CreatorTagWeight as DBCreatorTagWeight } from "../types/creator.js";
 import type { Category as DBCategory, Tag as DBTag } from "../types/semantic.js";
+import type { Video as DBVideo } from "../types/video.js";
 import type {
   AppCategory as Category,
   AppTag as Tag,
-  AppVideo as Video,
+  AppVideo as LegacyVideo,
   CategoryLibrary,
   InterestProfile,
   TagLibrary,
@@ -21,11 +22,15 @@ import { CategoryRepository } from "./category-repository.impl.js";
 import { CreatorRepository } from "./creator-repository.impl.js";
 import { InterestScoreRepository } from "./interest-score-repository.impl.js";
 import { TagRepository } from "./tag-repository.impl.js";
+import { VideoRepository } from "./video-repository.impl.js";
+import { WatchEventRepository } from "./watch-event-repository.impl.js";
 
 const creatorRepository = new CreatorRepository();
 const tagRepository = new TagRepository();
 const categoryRepository = new CategoryRepository();
 const interestRepository = new InterestScoreRepository();
+const videoRepository = new VideoRepository();
+const watchEventRepository = new WatchEventRepository();
 const BILIBILI = Platform.BILIBILI;
 
 let allCreatorsCache: DBCreator[] | null = null;
@@ -60,8 +65,49 @@ function videoCacheKey(mid: number): string {
   return `video_cache:${mid}`;
 }
 
+function toLocalDateKey(timestamp: number): string {
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export interface TrackedWatchPayload {
+  bvid: string;
+  title: string;
+  upMid?: number;
+  watchedSeconds: number;
+  currentTime?: number;
+  duration: number;
+  timestamp: number;
+}
+
+export interface AggregatedWatchStats {
+  totalSeconds: number;
+  dailySeconds: Record<string, number>;
+  upSeconds: Record<string, number>;
+  videoSeconds: Record<string, number>;
+  videoTitles: Record<string, string>;
+  videoTags: Record<string, string[]>;
+  videoUpIds: Record<string, number>;
+  videoWatchCount: Record<string, number>;
+  videoFirstWatched: Record<string, number>;
+  videoCreatedAt?: Record<string, number>;
+  lastUpdate: number;
+}
+
 function isDataUrl(value: string | undefined): boolean {
   return Boolean(value && value.startsWith("data:"));
+}
+
+function normalizeRemoteUrl(url: string | undefined): string {
+  if (!url) {
+    return "";
+  }
+  if (url.startsWith("//")) {
+    return `https:${url}`;
+  }
+  return url;
 }
 
 function toBase64(buffer: ArrayBuffer): string {
@@ -76,12 +122,13 @@ function toBase64(buffer: ArrayBuffer): string {
 }
 
 async function fetchAvatarAsDataUrl(url: string): Promise<string | null> {
-  if (!url || isDataUrl(url) || typeof fetch === "undefined") {
-    return url || null;
+  const normalizedUrl = normalizeRemoteUrl(url);
+  if (!normalizedUrl || isDataUrl(normalizedUrl) || typeof fetch === "undefined") {
+    return normalizedUrl || null;
   }
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(normalizedUrl);
     if (!response.ok) {
       return null;
     }
@@ -89,7 +136,7 @@ async function fetchAvatarAsDataUrl(url: string): Promise<string | null> {
     const buffer = await response.arrayBuffer();
     return `data:${contentType};base64,${toBase64(buffer)}`;
   } catch (error) {
-    console.warn("[DB] Failed to cache avatar data:", url, error);
+    console.warn("[DB] Failed to cache avatar data:", normalizedUrl, error);
     return null;
   }
 }
@@ -98,15 +145,16 @@ async function resolveAvatarValue(up: UP, existingAvatar?: string): Promise<stri
   if (isDataUrl(up.face_data)) {
     return up.face_data as string;
   }
-  if (isDataUrl(up.face)) {
-    return up.face;
+  const normalizedFace = normalizeRemoteUrl(up.face);
+  if (isDataUrl(normalizedFace)) {
+    return normalizedFace;
   }
   if (isDataUrl(existingAvatar)) {
     return existingAvatar as string;
   }
 
-  const avatarData = await fetchAvatarAsDataUrl(up.face);
-  return avatarData ?? up.face ?? existingAvatar ?? "";
+  const avatarData = await fetchAvatarAsDataUrl(normalizedFace);
+  return avatarData ?? normalizedFace ?? existingAvatar ?? "";
 }
 
 function toLegacyUP(creator: DBCreator): UP {
@@ -440,12 +488,151 @@ export async function updateUPFollowStatus(mid: number, isFollowed: boolean): Pr
   invalidateCreatorCache();
 }
 
-export async function saveVideoCache(mid: number, videos: Video[]): Promise<void> {
+export async function saveVideoCache(mid: number, videos: LegacyVideo[]): Promise<void> {
   await setAppState(videoCacheKey(mid), { videos, lastUpdate: Date.now() } satisfies VideoCacheEntry);
 }
 
 export async function loadVideoCache(mid: number): Promise<VideoCacheEntry | null> {
   return getAppState<VideoCacheEntry>(videoCacheKey(mid));
+}
+
+export async function upsertTrackedVideo(
+  payload: {
+    bvid: string;
+    title: string;
+    upMid?: number;
+    duration: number;
+    timestamp: number;
+  },
+  tagIds?: ID[]
+): Promise<void> {
+  if (!payload.bvid) {
+    return;
+  }
+
+  const existingVideo = await videoRepository.getVideo(payload.bvid, BILIBILI);
+  const nextVideo: DBVideo = {
+    videoId: payload.bvid,
+    platform: BILIBILI,
+    creatorId: payload.upMid ? String(payload.upMid) : existingVideo?.creatorId ?? "",
+    title: payload.title || existingVideo?.title || payload.bvid,
+    description: existingVideo?.description ?? "",
+    duration: payload.duration || existingVideo?.duration || 0,
+    publishTime: existingVideo?.publishTime ?? payload.timestamp,
+    tags: tagIds ?? existingVideo?.tags ?? [],
+    createdAt: existingVideo?.createdAt ?? Date.now(),
+    videoUrl: existingVideo?.videoUrl ?? `https://www.bilibili.com/video/${payload.bvid}`
+  };
+
+  await videoRepository.upsertVideo(nextVideo);
+}
+
+export async function recordWatchProgressEvent(payload: TrackedWatchPayload): Promise<void> {
+  const delta = Math.max(0, payload.watchedSeconds || 0);
+  if (delta <= 0 || !payload.bvid || !payload.upMid) {
+    return;
+  }
+
+  const currentTime = Math.max(0, payload.currentTime ?? 0);
+  const duration = Math.max(0, payload.duration || 0);
+  const progress = duration > 0 ? currentTime / duration : 0;
+
+  await watchEventRepository.recordWatchEvent({
+    platform: BILIBILI,
+    videoId: payload.bvid,
+    creatorId: String(payload.upMid),
+    watchTime: payload.timestamp,
+    watchDuration: delta,
+    videoDuration: duration,
+    progress,
+    source: VideoSource.DIRECT,
+    isComplete: progress >= 0.9 ? 1 : 0,
+    endTime: payload.timestamp
+  });
+}
+
+export async function getAggregatedWatchStats(): Promise<AggregatedWatchStats | null> {
+  const eventsResult = await watchEventRepository.getWatchEventsByTimeRange(
+    { startTime: 0, endTime: Date.now() },
+    BILIBILI,
+    { page: 0, pageSize: 100000 }
+  );
+  const events = eventsResult.items;
+
+  if (events.length === 0) {
+    return null;
+  }
+
+  const videoIds = [...new Set(events.map((event) => event.videoId))];
+  const videos = await videoRepository.getVideos(videoIds, BILIBILI);
+  const videosById = new Map<string, DBVideo>(videos.map((video) => [video.videoId, video]));
+  const legacyStats = await getAppState<AggregatedWatchStats>("watchStats");
+
+  const stats: AggregatedWatchStats = {
+    totalSeconds: 0,
+    dailySeconds: {},
+    upSeconds: {},
+    videoSeconds: {},
+    videoTitles: {},
+    videoTags: {},
+    videoUpIds: {},
+    videoWatchCount: {},
+    videoFirstWatched: {},
+    videoCreatedAt: {},
+    lastUpdate: 0
+  };
+
+  for (const event of events) {
+    const delta = Math.max(0, event.watchDuration || 0);
+    const videoId = event.videoId;
+    const creatorId = event.creatorId;
+    const watchTime = event.watchTime;
+    const endTime = event.endTime || event.watchTime;
+
+    stats.totalSeconds += delta;
+    stats.lastUpdate = Math.max(stats.lastUpdate, endTime);
+
+    const dateKey = toLocalDateKey(watchTime);
+    stats.dailySeconds[dateKey] = (stats.dailySeconds[dateKey] ?? 0) + delta;
+    stats.videoSeconds[videoId] = (stats.videoSeconds[videoId] ?? 0) + delta;
+    stats.upSeconds[creatorId] = (stats.upSeconds[creatorId] ?? 0) + delta;
+    stats.videoWatchCount[videoId] = (stats.videoWatchCount[videoId] ?? 0) + 1;
+    stats.videoFirstWatched[videoId] = Math.min(stats.videoFirstWatched[videoId] ?? watchTime, watchTime);
+
+    const creatorIdNum = Number(creatorId);
+    if (Number.isFinite(creatorIdNum) && creatorIdNum > 0) {
+      stats.videoUpIds[videoId] = creatorIdNum;
+    }
+  }
+
+  for (const videoId of videoIds) {
+    const video = videosById.get(videoId);
+    stats.videoTitles[videoId] = video?.title ?? legacyStats?.videoTitles?.[videoId] ?? videoId;
+    stats.videoTags[videoId] = video?.tags?.length
+      ? video.tags
+      : (legacyStats?.videoTags?.[videoId] ?? []);
+    if (video?.createdAt && stats.videoCreatedAt) {
+      stats.videoCreatedAt[videoId] = video.createdAt;
+    } else if (legacyStats?.videoCreatedAt?.[videoId] && stats.videoCreatedAt) {
+      stats.videoCreatedAt[videoId] = legacyStats.videoCreatedAt[videoId];
+    }
+    if (video?.creatorId) {
+      const creatorIdNum = Number(video.creatorId);
+      if (Number.isFinite(creatorIdNum) && creatorIdNum > 0) {
+        stats.videoUpIds[videoId] = creatorIdNum;
+      }
+    } else if (legacyStats?.videoUpIds?.[videoId]) {
+      stats.videoUpIds[videoId] = legacyStats.videoUpIds[videoId];
+    }
+    if (!stats.videoFirstWatched[videoId] && legacyStats?.videoFirstWatched?.[videoId]) {
+      stats.videoFirstWatched[videoId] = legacyStats.videoFirstWatched[videoId];
+    }
+    if (!stats.videoWatchCount[videoId] && legacyStats?.videoWatchCount?.[videoId]) {
+      stats.videoWatchCount[videoId] = legacyStats.videoWatchCount[videoId];
+    }
+  }
+
+  return stats;
 }
 
 export async function updateInterest(tag: string, score: number): Promise<UserInterest> {

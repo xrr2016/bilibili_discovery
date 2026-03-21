@@ -84,6 +84,7 @@ export interface WatchProgressPayload {
   upFace?: string;
   tags: string[];
   watchedSeconds: number;
+  currentTime?: number;
   duration: number;
   timestamp: number;
 }

@@ -10,6 +10,7 @@ interface WatchProgress {
   upFace?: string;
   tags: string[];
   watchedSeconds: number;
+  currentTime?: number;
   duration: number;
   timestamp: number;
 }
@@ -257,6 +258,8 @@ function trackVideoPlayback(
     cachedMeta = extractVideoMeta();
   };
 
+  let hasCompletedInitialMetadataSync = false;
+
   const flush = (reason: string) => {
     if (accumulated < 1) {
       return;
@@ -278,6 +281,7 @@ function trackVideoPlayback(
       upFace: meta.upFace,
       tags: meta.tags,
       watchedSeconds: accumulated,
+      currentTime: video.currentTime,
       duration: Number.isFinite(video.duration) ? video.duration : 0,
       timestamp: Date.now()
     };
@@ -303,13 +307,6 @@ function trackVideoPlayback(
 
     const meta: VideoMeta = cachedMeta;
 
-    // 检查头像URL是否获取成功，如果没有则重新获取
-    if (!meta.upFace) {
-      console.log("[Tracker] UP face not found, retrying...");
-      setTimeout(initializeWhenReady, 500);
-      return;
-    }
-
     const initEvent: WatchProgress = {
       bvid,
       title: meta.title,
@@ -318,6 +315,7 @@ function trackVideoPlayback(
       upFace: meta.upFace,
       tags: meta.tags,
       watchedSeconds: 0,
+      currentTime: video.currentTime,
       duration: Number.isFinite(video.duration) ? video.duration : 0,
       timestamp: Date.now()
     };
@@ -334,10 +332,15 @@ function trackVideoPlayback(
     if (meta.tags && meta.tags.length > 0) {
       sendProcessVideoTags(initEvent);
     }
+    hasCompletedInitialMetadataSync = true;
   };
 
   // 开始初始化流程
-  initializeWhenReady();
+  setTimeout(() => {
+    if (!hasCompletedInitialMetadataSync) {
+      initializeWhenReady();
+    }
+  }, 10000);
 
   // 监听URL变化，当URL中的bvid改变时重新初始化
   let lastBvid = bvid;
@@ -362,6 +365,7 @@ function trackVideoPlayback(
       setTimeout(() => {
         console.log("[Tracker] Page should have loaded new content, reinitializing...");
         refreshMeta();
+        hasCompletedInitialMetadataSync = false;
         initializeWhenReady();
       }, 3000); // 等待3秒
     }
