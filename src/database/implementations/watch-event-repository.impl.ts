@@ -173,4 +173,11 @@ export class WatchEventRepository implements IWatchEventRepository {
       completeWatchCount
     };
   }
+
+  /**
+   * 获取所有观看事件
+   */
+  async getAllWatchEvents(): Promise<WatchEvent[]> {
+    return DBUtils.getAll<WatchEvent>(STORE_NAMES.WATCH_EVENTS);
+  }
 }

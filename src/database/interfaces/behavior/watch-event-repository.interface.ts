@@ -132,4 +132,18 @@ export interface IWatchEventRepository {
    * - 不返回详细记录
    */
   getWatchSummary(timeRange: TimeRange, platform: Platform): Promise<BehaviorSummary>;
+
+  /**
+   * 获取所有观看事件
+   *
+   * @returns Promise<WatchEvent[]> - 所有观看事件
+   *
+   * 职责：
+   * - 查询所有观看事件
+   * - 不分页
+   *
+   * 能力边界：
+   * - 不包含统计数据
+   */
+  getAllWatchEvents(): Promise<WatchEvent[]>;
 }

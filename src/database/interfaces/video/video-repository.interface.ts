@@ -205,4 +205,18 @@ export interface IVideoRepository {
    * - 不触发相关统计更新
    */
   updateVideoTags(videoId: string, platform: Platform, tags: string[]): Promise<void>;
+
+  /**
+   * 获取所有视频
+   *
+   * @returns Promise<Video[]> - 所有视频
+   *
+   * 职责：
+   * - 查询所有视频
+   * - 不分页
+   *
+   * 能力边界：
+   * - 不包含统计数据
+   */
+  getAllVideos(): Promise<Video[]>;
 }

@@ -44,6 +44,11 @@ export { CollectionItemRepository } from './collection-item-repository.impl.js';
 
 // Analytics 实现
 export { InterestScoreRepository } from './interest-score-repository.impl.js';
+export { InterestHistoryRepository } from './interest-history-repository.impl.js';
+export { InterestNodeRepository } from './interest-node-repository.impl.js';
+export { InterestCalculator } from './interest-calculator.impl.js';
+export { InterestGraphBuilder } from './interest-graph-builder.impl.js';
+export { InterestTrendAnalyzer } from './interest-trend-analyzer.impl.js';
 
 // Note 实现
 export { VideoNoteRepository } from './video-note-repository.impl.js';

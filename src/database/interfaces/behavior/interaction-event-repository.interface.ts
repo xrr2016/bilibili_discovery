@@ -171,4 +171,18 @@ export interface IInteractionEventRepository {
     platform: Platform,
     timeRange?: TimeRange
   ): Promise<number>;
+
+  /**
+   * 获取所有互动事件
+   *
+   * @returns Promise<InteractionEvent[]> - 所有互动事件
+   *
+   * 职责：
+   * - 查询所有互动事件
+   * - 不分页
+   *
+   * 能力边界：
+   * - 不包含统计数据
+   */
+  getAllInteractionEvents(): Promise<InteractionEvent[]>;
 }

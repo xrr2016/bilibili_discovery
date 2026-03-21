@@ -215,4 +215,17 @@ export interface IInterestNodeRepository {
    * - 不检查循环引用
    */
   moveNode(nodeId: string, newParentId?: string): Promise<void>;
+
+  /**
+   * 清空所有兴趣节点
+   *
+   * @returns Promise<void>
+   *
+   * 职责：
+   * - 删除所有兴趣节点记录
+   *
+   * 能力边界：
+   * - 不删除标签
+   */
+  clearAllInterestNodes(): Promise<void>;
 }

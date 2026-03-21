@@ -196,4 +196,11 @@ export class VideoRepository implements IVideoRepository {
 
     await this.upsertVideo(updated);
   }
+
+  /**
+   * 获取所有视频
+   */
+  async getAllVideos(): Promise<Video[]> {
+    return DBUtils.getAll<Video>(STORE_NAMES.VIDEOS);
+  }
 }

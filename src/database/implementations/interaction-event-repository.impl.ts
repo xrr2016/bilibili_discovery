@@ -227,4 +227,11 @@ export class InteractionEventRepository implements IInteractionEventRepository {
 
     return filtered.length;
   }
+
+  /**
+   * 获取所有互动事件
+   */
+  async getAllInteractionEvents(): Promise<InteractionEvent[]> {
+    return DBUtils.getAll<InteractionEvent>(STORE_NAMES.INTERACTION_EVENTS);
+  }
 }
