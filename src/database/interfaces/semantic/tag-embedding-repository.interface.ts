@@ -3,7 +3,7 @@
  * 定义标签向量相关的数据库操作接口
  */
 
-import { TagEmbedding } from '../../types/semantic';
+import { TagEmbedding } from '../../types/semantic.js';
 
 /**
  * TagEmbedding 数据库接口

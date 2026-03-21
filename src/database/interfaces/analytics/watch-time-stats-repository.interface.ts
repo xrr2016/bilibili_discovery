@@ -3,7 +3,7 @@
  * 定义观看时间统计相关的数据库操作接口
  */
 
-import { WatchTimeStats, WatchTimeDistribution } from '../../types/analytics';
+import { WatchTimeStats, WatchTimeDistribution } from '../../types/analytics.js';
 
 /**
  * WatchTimeStats 数据库接口

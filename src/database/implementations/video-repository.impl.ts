@@ -3,10 +3,10 @@
  * 实现视频相关的数据库操作
  */
 
-import { IVideoRepository } from '../interfaces/video/video-repository.interface';
-import { Video } from '../types/video';
-import { Platform, PaginationParams, PaginationResult, TimeRange } from '../types/base';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { IVideoRepository } from '../interfaces/video/video-repository.interface.js';
+import { Video } from '../types/video.js';
+import { Platform, PaginationParams, PaginationResult, TimeRange } from '../types/base.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * VideoRepository 实现类

@@ -1,4 +1,7 @@
-import { CategoryRepository, CreatorRepository, InterestScoreRepository, TagRepository, VideoRepository } from "./implementations/index.js";
+import { CategoryRepository } from "./implementations/category-repository.impl.js";
+import { CreatorRepository } from "./implementations/creator-repository.impl.js";
+import { InterestScoreRepository } from "./implementations/interest-score-repository.impl.js";
+import { TagRepository } from "./implementations/tag-repository.impl.js";
 import { getAppState, setAppState, clearAppStateByPrefix } from "./app-state.js";
 import { DBUtils, STORE_NAMES } from "./indexeddb/index.js";
 import { Platform, TagSource } from "./types/base.js";
@@ -9,8 +12,6 @@ const creatorRepository = new CreatorRepository();
 const tagRepository = new TagRepository();
 const categoryRepository = new CategoryRepository();
 const interestRepository = new InterestScoreRepository();
-const videoRepository = new VideoRepository();
-
 const BILIBILI = Platform.BILIBILI;
 
 export interface UP {

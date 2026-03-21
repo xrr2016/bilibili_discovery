@@ -3,7 +3,7 @@
  * 定义兴趣分析和用户行为分析相关的数据模型
  */
 
-import { Timestamp, ID } from './base';
+import { Timestamp, ID } from './base.js';
 
 /**
  * 兴趣分数（InterestScore）

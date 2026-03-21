@@ -3,10 +3,10 @@
  * 实现标签相关的数据库操作
  */
 
-import { ITagRepository } from '../interfaces/semantic/tag-repository.interface';
-import { Tag, TagStats } from '../types/semantic';
-import { TagSource, PaginationParams, PaginationResult } from '../types/base';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { ITagRepository } from '../interfaces/semantic/tag-repository.interface.js';
+import { Tag, TagStats } from '../types/semantic.js';
+import { TagSource, PaginationParams, PaginationResult } from '../types/base.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * TagRepository 实现类

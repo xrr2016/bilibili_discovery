@@ -3,8 +3,8 @@
  * 定义创作者排名相关的数据库操作接口
  */
 
-import { CreatorRank } from '../../types/analytics';
-import { Platform, PaginationParams, PaginationResult } from '../../types/base';
+import { CreatorRank } from '../../types/analytics.js';
+import { Platform, PaginationParams, PaginationResult } from '../../types/base.js';
 
 /**
  * CreatorRank 数据库接口

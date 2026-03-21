@@ -3,7 +3,7 @@
  * 定义标签分区相关的数据库操作接口
  */
 
-import { Category } from '../../types/semantic';
+import { Category } from '../../types/semantic.js';
 
 /**
  * Category 数据库接口

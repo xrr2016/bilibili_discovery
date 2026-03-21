@@ -3,10 +3,10 @@
  * 实现知识条目相关的数据库操作
  */
 
-import { IKnowledgeEntryRepository } from '../interfaces/note/knowledge-entry-repository.interface';
-import { KnowledgeEntry } from '../types/note';
-import { PaginationParams, PaginationResult } from '../types/base';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { IKnowledgeEntryRepository } from '../interfaces/note/knowledge-entry-repository.interface.js';
+import { KnowledgeEntry } from '../types/note.js';
+import { PaginationParams, PaginationResult } from '../types/base.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * KnowledgeEntryRepository 实现类

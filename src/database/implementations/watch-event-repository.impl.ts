@@ -3,10 +3,10 @@
  * 实现观看事件相关的数据库操作
  */
 
-import { IWatchEventRepository } from '../interfaces/behavior/watch-event-repository.interface';
-import { WatchEvent, BehaviorSummary } from '../types/behavior';
-import { Platform, PaginationParams, PaginationResult, TimeRange } from '../types/base';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { IWatchEventRepository } from '../interfaces/behavior/watch-event-repository.interface.js';
+import { WatchEvent, BehaviorSummary } from '../types/behavior.js';
+import { Platform, PaginationParams, PaginationResult, TimeRange } from '../types/base.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * WatchEventRepository 实现类

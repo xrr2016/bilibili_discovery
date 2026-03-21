@@ -3,7 +3,7 @@
  * 定义笔记分段相关的数据库操作接口
  */
 
-import { NoteSegment } from '../../types/note';
+import { NoteSegment } from '../../types/note.js';
 
 /**
  * NoteSegment 数据库接口

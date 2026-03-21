@@ -3,7 +3,7 @@
  * 定义视频收藏相关的数据模型
  */
 
-import { Platform, Timestamp, ID } from './base';
+import { Platform, Timestamp, ID } from './base.js';
 
 /**
  * 收藏夹（Collection）

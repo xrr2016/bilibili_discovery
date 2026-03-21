@@ -3,7 +3,7 @@
  * 定义标签别名映射相关的数据库操作接口
  */
 
-import { TagAlias } from '../../types/semantic';
+import { TagAlias } from '../../types/semantic.js';
 
 /**
  * TagAlias 数据库接口

@@ -3,10 +3,10 @@
  * 实现收藏夹相关的数据库操作
  */
 
-import { ICollectionRepository } from '../interfaces/collection/collection-repository.interface';
-import { Collection, CollectionStats } from '../types/collection';
-import { Platform, PaginationParams, PaginationResult } from '../types/base';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { ICollectionRepository } from '../interfaces/collection/collection-repository.interface.js';
+import { Collection, CollectionStats } from '../types/collection.js';
+import { Platform, PaginationParams, PaginationResult } from '../types/base.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * CollectionRepository 实现类

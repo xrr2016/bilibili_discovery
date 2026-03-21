@@ -3,7 +3,7 @@
  * 定义视频笔记和知识管理相关的数据模型
  */
 
-import { Platform, Timestamp, ID, NoteType } from './base';
+import { Platform, Timestamp, ID, NoteType } from './base.js';
 
 /**
  * 视频笔记（VideoNote）

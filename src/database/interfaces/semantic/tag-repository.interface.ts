@@ -3,8 +3,8 @@
  * 定义标签相关的数据库操作接口
  */
 
-import { Tag, TagStats } from '../../types/semantic';
-import { PaginationParams, PaginationResult } from '../../types/base';
+import { Tag, TagStats } from '../../types/semantic.js';
+import { PaginationParams, PaginationResult } from '../../types/base.js';
 
 /**
  * Tag 数据库接口

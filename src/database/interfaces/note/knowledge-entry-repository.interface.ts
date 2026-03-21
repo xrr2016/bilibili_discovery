@@ -3,8 +3,8 @@
  * 定义知识条目相关的数据库操作接口
  */
 
-import { KnowledgeEntry } from '../../types/note';
-import { PaginationParams, PaginationResult } from '../../types/base';
+import { KnowledgeEntry } from '../../types/note.js';
+import { PaginationParams, PaginationResult } from '../../types/base.js';
 
 /**
  * KnowledgeEntry 数据库接口

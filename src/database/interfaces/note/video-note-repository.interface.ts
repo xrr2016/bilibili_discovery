@@ -3,8 +3,8 @@
  * 定义视频笔记相关的数据库操作接口
  */
 
-import { VideoNote } from '../../types/note';
-import { Platform, PaginationParams, PaginationResult } from '../../types/base';
+import { VideoNote } from '../../types/note.js';
+import { Platform, PaginationParams, PaginationResult } from '../../types/base.js';
 
 /**
  * VideoNote 数据库接口

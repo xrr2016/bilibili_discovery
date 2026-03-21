@@ -3,8 +3,8 @@
  * 定义兴趣历史记录相关的数据库操作接口
  */
 
-import { InterestHistory } from '../../types/analytics';
-import { TimeRange } from '../../types/base';
+import { InterestHistory } from '../../types/analytics.js';
+import { TimeRange } from '../../types/base.js';
 
 /**
  * InterestHistory 数据库接口

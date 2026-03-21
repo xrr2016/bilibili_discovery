@@ -3,8 +3,8 @@
  * 定义搜索事件相关的数据库操作接口
  */
 
-import { SearchEvent } from '../../types/behavior';
-import { Platform, PaginationParams, PaginationResult, TimeRange } from '../../types/base';
+import { SearchEvent } from '../../types/behavior.js';
+import { Platform, PaginationParams, PaginationResult, TimeRange } from '../../types/base.js';
 
 /**
  * SearchEvent 数据库接口

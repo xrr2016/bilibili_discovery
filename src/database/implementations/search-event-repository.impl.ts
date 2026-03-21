@@ -3,10 +3,10 @@
  * 实现搜索事件相关的数据库操作
  */
 
-import { ISearchEventRepository } from '../interfaces/behavior/search-event-repository.interface';
-import { SearchEvent } from '../types/behavior';
-import { Platform, PaginationParams, PaginationResult, TimeRange } from '../types/base';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { ISearchEventRepository } from '../interfaces/behavior/search-event-repository.interface.js';
+import { SearchEvent } from '../types/behavior.js';
+import { Platform, PaginationParams, PaginationResult, TimeRange } from '../types/base.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * SearchEventRepository 实现类

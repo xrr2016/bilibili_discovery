@@ -3,8 +3,8 @@
  * 定义互动事件相关的数据库操作接口
  */
 
-import { InteractionEvent } from '../../types/behavior';
-import { Platform, PaginationParams, PaginationResult, TimeRange } from '../../types/base';
+import { InteractionEvent } from '../../types/behavior.js';
+import { Platform, PaginationParams, PaginationResult, TimeRange } from '../../types/base.js';
 
 /**
  * InteractionEvent 数据库接口

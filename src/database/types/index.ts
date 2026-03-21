@@ -29,7 +29,7 @@ export type {
   Video,
   VideoStats,
   VideoHotness
-} from './video';
+} from './video.js';
 
 // Behavior 类型
 export type {
@@ -37,7 +37,7 @@ export type {
   InteractionEvent,
   SearchEvent,
   BehaviorSummary
-} from './behavior';
+} from './behavior.js';
 
 // Semantic 类型
 export type {
@@ -46,7 +46,7 @@ export type {
   TagEmbedding,
   Category,
   TagStats
-} from './semantic';
+} from './semantic.js';
 
 // Note 类型
 export type {
@@ -54,14 +54,14 @@ export type {
   NoteSegment,
   NoteRelation,
   KnowledgeEntry
-} from './note';
+} from './note.js';
 
 // Collection 类型
 export type {
   Collection,
   CollectionItem,
   CollectionStats
-} from './collection';
+} from './collection.js';
 
 // Analytics 类型
 export type {
@@ -72,4 +72,4 @@ export type {
   WatchTimeStats,
   WatchTimeDistribution,
   UserInterestProfile
-} from './analytics';
+} from './analytics.js';

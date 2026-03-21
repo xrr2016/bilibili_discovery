@@ -3,7 +3,7 @@
  * 定义用户行为相关的数据模型，包括观看、互动、搜索等行为
  */
 
-import { Platform, Timestamp, ID, VideoSource, InteractionType } from './base';
+import { Platform, Timestamp, ID, VideoSource, InteractionType } from './base.js';
 
 /**
  * 观看事件

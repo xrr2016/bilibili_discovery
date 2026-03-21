@@ -3,9 +3,9 @@
  * 实现标签分区相关的数据库操作
  */
 
-import { ICategoryRepository } from '../interfaces/semantic/category-repository.interface';
-import { Category } from '../types/semantic';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { ICategoryRepository } from '../interfaces/semantic/category-repository.interface.js';
+import { Category } from '../types/semantic.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * CategoryRepository 实现类

@@ -3,7 +3,7 @@
  * 定义用户兴趣权重相关的数据库操作接口
  */
 
-import { InterestScore } from '../../types/analytics';
+import { InterestScore } from '../../types/analytics.js';
 
 /**
  * InterestScore 数据库接口

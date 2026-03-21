@@ -3,7 +3,7 @@
  * 定义兴趣星球节点相关的数据库操作接口
  */
 
-import { InterestNode } from '../../types/analytics';
+import { InterestNode } from '../../types/analytics.js';
 
 /**
  * InterestNode 数据库接口

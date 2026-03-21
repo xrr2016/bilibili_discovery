@@ -3,10 +3,10 @@
  * 实现视频笔记相关的数据库操作
  */
 
-import { IVideoNoteRepository } from '../interfaces/note/video-note-repository.interface';
-import { VideoNote } from '../types/note';
-import { Platform, PaginationParams, PaginationResult } from '../types/base';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { IVideoNoteRepository } from '../interfaces/note/video-note-repository.interface.js';
+import { VideoNote } from '../types/note.js';
+import { Platform, PaginationParams, PaginationResult } from '../types/base.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * VideoNoteRepository 实现类

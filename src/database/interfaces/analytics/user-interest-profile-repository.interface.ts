@@ -3,7 +3,7 @@
  * 定义用户兴趣画像相关的数据库操作接口
  */
 
-import { UserInterestProfile } from '../../types/analytics';
+import { UserInterestProfile } from '../../types/analytics.js';
 
 /**
  * UserInterestProfile 数据库接口

@@ -3,7 +3,7 @@
  * 定义笔记关联关系相关的数据库操作接口
  */
 
-import { NoteRelation } from '../../types/note';
+import { NoteRelation } from '../../types/note.js';
 
 /**
  * NoteRelation 数据库接口

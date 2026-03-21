@@ -3,9 +3,9 @@
  * 实现笔记分段相关的数据库操作
  */
 
-import { INoteSegmentRepository } from '../interfaces/note/note-segment-repository.interface';
-import { NoteSegment } from '../types/note';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { INoteSegmentRepository } from '../interfaces/note/note-segment-repository.interface.js';
+import { NoteSegment } from '../types/note.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * NoteSegmentRepository 实现类

@@ -3,8 +3,8 @@
  * 定义观看事件相关的数据库操作接口
  */
 
-import { WatchEvent, BehaviorSummary } from '../../types/behavior';
-import { Platform, PaginationParams, PaginationResult, TimeRange } from '../../types/base';
+import { WatchEvent, BehaviorSummary } from '../../types/behavior.js';
+import { Platform, PaginationParams, PaginationResult, TimeRange } from '../../types/base.js';
 
 /**
  * WatchEvent 数据库接口

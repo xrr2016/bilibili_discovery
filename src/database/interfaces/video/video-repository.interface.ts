@@ -3,8 +3,8 @@
  * 定义视频相关的数据库操作接口
  */
 
-import { Video } from '../../types/video';
-import { Platform, PaginationParams, PaginationResult, TimeRange } from '../../types/base';
+import { Video } from '../../types/video.js';
+import { Platform, PaginationParams, PaginationResult, TimeRange } from '../../types/base.js';
 
 /**
  * Video 数据库接口

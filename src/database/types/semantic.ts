@@ -3,7 +3,7 @@
  * 定义标签和语义相关的数据模型
  */
 
-import { Timestamp, ID, TagSource } from './base';
+import { Timestamp, ID, TagSource } from './base.js';
 
 /**
  * 标签（Tag）

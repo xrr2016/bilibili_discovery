@@ -3,7 +3,7 @@
  * 定义视频相关的数据模型
  */
 
-import { Platform, Timestamp, ID } from './base';
+import { Platform, Timestamp, ID } from './base.js';
 
 /**
  * 视频基础信息

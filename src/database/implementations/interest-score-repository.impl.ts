@@ -3,9 +3,9 @@
  * 实现用户兴趣权重相关的数据库操作
  */
 
-import { IInterestScoreRepository } from '../interfaces/analytics/interest-score-repository.interface';
-import { InterestScore } from '../types/analytics';
-import { DBUtils, STORE_NAMES } from '../indexeddb';
+import { IInterestScoreRepository } from '../interfaces/analytics/interest-score-repository.interface.js';
+import { InterestScore } from '../types/analytics.js';
+import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
 /**
  * InterestScoreRepository 实现类

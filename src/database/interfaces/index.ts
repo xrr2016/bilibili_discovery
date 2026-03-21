@@ -4,22 +4,22 @@
  */
 
 // Creator 接口
-export * from './creator';
+export * from './creator/index.js';
 
 // Video 接口
-export * from './video';
+export * from './video/index.js';
 
 // Behavior 接口
-export * from './behavior';
+export * from './behavior/index.js';
 
 // Semantic 接口
-export * from './semantic';
+export * from './semantic/index.js';
 
 // Note 接口
-export * from './note';
+export * from './note/index.js';
 
 // Collection 接口
-export * from './collection';
+export * from './collection/index.js';
 
 // Analytics 接口
-export * from './analytics';
+export * from './analytics/index.js';

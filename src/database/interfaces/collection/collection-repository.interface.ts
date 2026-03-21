@@ -3,8 +3,8 @@
  * 定义收藏夹相关的数据库操作接口
  */
 
-import { Collection, CollectionStats } from '../../types/collection';
-import { Platform, PaginationParams, PaginationResult } from '../../types/base';
+import { Collection, CollectionStats } from '../../types/collection.js';
+import { Platform, PaginationParams, PaginationResult } from '../../types/base.js';
 
 /**
  * Collection 数据库接口
