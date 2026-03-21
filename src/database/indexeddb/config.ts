@@ -6,7 +6,7 @@
 /**
  * 数据库名称
  */
-export const DB_NAME = 'BilibiliDiscoveryDB';
+export const DB_NAME = 'DiscoveryDB';
 
 /**
  * 数据库版本

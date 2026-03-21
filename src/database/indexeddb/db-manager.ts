@@ -71,6 +71,15 @@ export class DBManager {
    * - 创建所有索引
    */
   private createObjectStores(db: IDBDatabase, upgradeTransaction?: IDBTransaction): void {
+    const currentStoreNames = new Set(Object.values(STORE_NAMES));
+
+    // 不再兼容任何旧结构，升级时直接清理不属于当前 schema 的 store。
+    Array.from(db.objectStoreNames).forEach((storeName) => {
+      if (!currentStoreNames.has(storeName as (typeof STORE_NAMES)[keyof typeof STORE_NAMES])) {
+        db.deleteObjectStore(storeName);
+      }
+    });
+
     // 遍历所有存储名称
     Object.values(STORE_NAMES).forEach(storeName => {
       let store: IDBObjectStore;

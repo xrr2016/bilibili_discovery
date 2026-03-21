@@ -1,43 +1,72 @@
-import { readFileSync, writeFileSync, mkdirSync, cpSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const root = process.cwd();
-const srcExtension = resolve(root, "src");
-const distExtension = resolve(root, "dist", "extension");
+const srcRoot = resolve(root, "src");
+const compiledRoot = resolve(root, "dist", "src");
+const extensionRoot = resolve(root, "dist", "extension");
 
-mkdirSync(distExtension, { recursive: true });
-
-cpSync(join(srcExtension, "ui"), join(distExtension, "ui"), { recursive: true });
-
-// Copy icons directory if it exists
-const iconsSrc = join(srcExtension, "icons");
-const iconsDist = join(distExtension, "icons");
-try {
-  cpSync(iconsSrc, iconsDist, { recursive: true });
-} catch (err) {
-  // Icons directory doesn't exist, skip
+function resetExtensionDir() {
+  rmSync(extensionRoot, { recursive: true, force: true });
+  mkdirSync(extensionRoot, { recursive: true });
 }
 
-const manifestPath = join(srcExtension, "manifest.tson");
-const manifestJson = JSON.parse(readFileSync(manifestPath, "utf-8"));
+function copyStaticAssets() {
+  cpSync(join(srcRoot, "ui"), join(extensionRoot, "ui"), { recursive: true });
+  cpSync(join(srcRoot, "icons"), join(extensionRoot, "icons"), { recursive: true });
+}
 
-manifestJson.background.service_worker = "background/service-worker.js";
-manifestJson.content_scripts = manifestJson.content_scripts.map((script) => ({
-  ...script,
-  js: script.js.map((item) => item.replace(/\.ts$/, ".js"))
-}));
+function copyCompiledCode() {
+  const runtimeDirs = ["api", "background", "content", "database", "engine", "ui"];
+  for (const dir of runtimeDirs) {
+    cpSync(join(compiledRoot, dir), join(extensionRoot, dir), { recursive: true });
+  }
+}
 
-writeFileSync(join(distExtension, "manifest.json"), JSON.stringify(manifestJson, null, 2));
+function buildManifest() {
+  const manifestPath = join(srcRoot, "manifest.tson");
+  const manifestJson = JSON.parse(readFileSync(manifestPath, "utf-8"));
 
-const popupHtmlPath = join(distExtension, "ui", "popup", "popup.html");
-const optionsHtmlPath = join(distExtension, "ui", "options", "options.html");
-const watchStatsHtmlPath = join(distExtension, "ui", "watch-stats", "watch-stats.html");
+  manifestJson.background.service_worker = "background/service-worker.js";
+  manifestJson.content_scripts = manifestJson.content_scripts.map((script) => ({
+    ...script,
+    js: script.js.map((item) => item.replace(/\.ts$/, ".js"))
+  }));
 
-const popupHtml = readFileSync(popupHtmlPath, "utf-8").replace(/\.ts"/g, ".js\"");
-writeFileSync(popupHtmlPath, popupHtml);
+  writeFileSync(join(extensionRoot, "manifest.json"), JSON.stringify(manifestJson, null, 2));
+}
 
-const optionsHtml = readFileSync(optionsHtmlPath, "utf-8").replace(/\.ts"/g, ".js\"");
-writeFileSync(optionsHtmlPath, optionsHtml);
+function patchHtmlEntryScripts() {
+  const htmlFiles = [
+    join(extensionRoot, "ui", "popup", "popup.html"),
+    join(extensionRoot, "ui", "options", "options.html"),
+    join(extensionRoot, "ui", "stats", "stats.html"),
+    join(extensionRoot, "ui", "watch-stats", "watch-stats.html")
+  ];
 
-const watchStatsHtml = readFileSync(watchStatsHtmlPath, "utf-8").replace(/\.ts"/g, ".js\"");
-writeFileSync(watchStatsHtmlPath, watchStatsHtml);
+  for (const file of htmlFiles) {
+    const next = readFileSync(file, "utf-8").replace(/\.ts"/g, ".js\"");
+    writeFileSync(file, next);
+  }
+}
+
+function removeTypeScriptArtifacts(dir) {
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      removeTypeScriptArtifacts(fullPath);
+      continue;
+    }
+    if (fullPath.endsWith(".ts")) {
+      unlinkSync(fullPath);
+    }
+  }
+}
+
+resetExtensionDir();
+copyStaticAssets();
+copyCompiledCode();
+buildManifest();
+patchHtmlEntryScripts();
+removeTypeScriptArtifacts(extensionRoot);
