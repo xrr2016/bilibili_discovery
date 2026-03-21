@@ -140,7 +140,7 @@ export function mergeTags(tagStats: string[], llmTags: string[]): string[] {
   return merged;
 }
 
-function limitTags(tags: string[], max: number = 5): string[] {
+function limitTags(tags: string[], max: number = 3): string[] {
   return tags.slice(0, Math.max(0, max));
 }
 
@@ -199,7 +199,7 @@ export async function classifyUP(
     upProfile && existingTags.length === 0
       ? await classifyWithLLMFn(upProfile, sampled, existingTags)
       : [];
-  const tags = limitTags(mergeTags(tagStats, llmTags), 5);
+  const tags = limitTags(mergeTags(tagStats, llmTags), 3);
 
   let confidence = 0.3;
   if (tagStats.length > 0 && llmTags.length > 0) {

@@ -44,6 +44,7 @@ const activeCollectionTabs = new Map<number, number>();
 const createdCollectionTabs = new Set<number>();
 
 const MAX_CONCURRENT_TABS = 3;
+const MAX_CLASSIFY_TAGS = 3;
 
 function sendPageProgress(title: string, detail: string): void {
   if (typeof chrome === "undefined" || !chrome.runtime) return;
@@ -307,7 +308,7 @@ async function defaultClassifyWithPageData(
   const existing = existingTags.length > 0 ? existingTags.join("、") : "无";
   const prompt = [
     "You are a content classifier.",
-    "Return a JSON array of 3 to 5 short Chinese tags.",
+    "Return a JSON array of 1 to 3 short Chinese tags.",
     "Prefer existing tags when appropriate and avoid near-duplicate synonyms.",
     `UP: ${pageData.name}`,
     `Bio: ${pageData.sign}`,
@@ -330,7 +331,7 @@ async function defaultClassifyWithPageData(
   }
 
   console.log("[Background] LLM raw response for UP", mid, ":", content);
-  const tags = parseTagsFromContent(content);
+  const tags = parseTagsFromContent(content).slice(0, MAX_CLASSIFY_TAGS);
   console.log("[Background] Parsed tags for UP", mid, ":", tags);
   return tags;
 }
@@ -414,7 +415,7 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
     const tagNames = await classifyUPWithPageData(mid, pageData, [], options);
     console.log("[Background] LLM classified tags for UP", mid, ":", tagNames);
 
-    const normalizedTagNames = [...new Set(tagNames.map((tag) => tag.trim()).filter(Boolean))];
+    const normalizedTagNames = [...new Set(tagNames.map((tag) => tag.trim()).filter(Boolean))].slice(0, MAX_CLASSIFY_TAGS);
     if (normalizedTagNames.length === 0) {
       collectedPageData.delete(mid);
       isClassifying = false;
