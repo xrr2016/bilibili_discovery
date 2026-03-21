@@ -100,7 +100,7 @@ export async function classifyWithLLM(
   const existing = existingTags.length > 0 ? existingTags.join("、") : "无";
   const prompt = [
     "You are a content classifier.",
-    "Return a JSON array of 3 to 5 short Chinese tags.",
+    "Return a JSON array of 1 to 3 short Chinese tags.",
     "Prefer existing tags when appropriate and avoid near-duplicate synonyms.",
     `UP: ${upProfile.name}`,
     `Bio: ${upProfile.sign}`,

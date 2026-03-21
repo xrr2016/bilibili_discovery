@@ -1,6 +1,6 @@
 /**
  * Background service worker initialization.
- * 支持同时在最多五个标签页中进行数据抓取
+ * 支持同时在最多三个标签页中进行数据抓取
  */
 
 import {
