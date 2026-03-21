@@ -24,14 +24,26 @@ export async function getAutoTagsForUp(
   const tagLibraryMap = new Map(Object.values(tagLibrary).map((tag) => [tag.id, tag]));
 
   return autoTags
-    .filter((tag: UPTagCount) => {
-      const tagInfo = tagLibraryMap.get(tag.tag);
-      const isEditable = tag.editable || (tagInfo && tagInfo.editable);
-      return !manualTagSet.has(tag.tag) && !isEditable;
-    })
     .map((tag) => {
       const tagInfo = tagLibraryMap.get(tag.tag);
-      return { tag: tagInfo ? tagInfo.name : tag.tag, count: tag.count };
+      return {
+        tag: tagInfo ? tagInfo.name : tag.tag,
+        count: tag.count,
+        editable: tag.editable || (tagInfo && tagInfo.editable)
+      };
+    })
+    .filter((tag: { tag: string; count: number; editable?: boolean }) => {
+      const isEditable = Boolean(tag.editable);
+      return !manualTagSet.has(tag.tag) && !isEditable;
+    })
+    .sort((a, b) => {
+      if (b.count !== a.count) {
+        return b.count - a.count;
+      }
+      return a.tag.localeCompare(b.tag, "zh-CN");
+    })
+    .map((tag) => {
+      return { tag: tag.tag, count: tag.count };
     })
     .slice(0, 5);
 }

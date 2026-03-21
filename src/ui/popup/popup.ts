@@ -3,6 +3,16 @@ import { armProgressTimeout, bindProgressListener, hideProgress, showProgress, u
 import { hasChromeRuntime, navigateCurrentTab, openExtensionPage, sendMessage } from "./popup-runtime.js";
 import type { InterestRow } from "./popup-types.js";
 
+type ClassifyProgress = {
+  active?: boolean;
+  stopping?: boolean;
+  current?: number;
+  total?: number;
+  title?: string;
+  detail?: string;
+  text?: string;
+};
+
 export function sortInterests(profile: InterestProfile): InterestRow[] {
   return Object.values(profile)
     .map((item) => ({ tag: item.tag, score: item.score, ratio: 0 }))
@@ -41,12 +51,17 @@ function setText(id: string, value: string): void {
 }
 
 async function hydrateProgress(): Promise<void> {
-  const progress = await sendMessage<{ active?: boolean; current?: number; total?: number; text?: string }>(
-    "get_classify_progress"
-  );
+  const progress = await sendMessage<ClassifyProgress>("get_classify_progress");
   if (progress?.active) {
     showProgress();
-    updateProgress(progress.current ?? 0, progress.total ?? 0, progress.text ?? "准备中...");
+    updateProgress({
+      current: progress.current ?? 0,
+      total: progress.total ?? 0,
+      title: progress.title,
+      detail: progress.detail,
+      text: progress.text,
+      stopping: progress.stopping
+    });
   }
 }
 
@@ -93,13 +108,36 @@ async function handleAutoClassify(): Promise<void> {
   }
 
   try {
+    const progress = await sendMessage<ClassifyProgress>("get_classify_progress");
+    if (progress?.active) {
+      updateProgress({
+        current: progress.current ?? 0,
+        total: progress.total ?? 0,
+        title: "正在停止分类",
+        detail: "等待当前任务收尾并关闭采集标签页",
+        stopping: true
+      });
+      await sendMessage("stop_auto_classification");
+      armProgressTimeout();
+      return;
+    }
+
     showProgress();
-    updateProgress(0, 0, "准备中...");
+    updateProgress({
+      current: 0,
+      total: 0,
+      title: "自动分类",
+      detail: "准备中...",
+      text: "准备中..."
+    });
     bindProgressListener(() => {
-      alert("分类完成！");
+      hideProgress();
       void loadStatus();
     });
-    await sendMessage("start_auto_classification");
+    const response = await sendMessage<{ success?: boolean }>("start_auto_classification");
+    if (response?.success === false) {
+      hideProgress();
+    }
     armProgressTimeout();
   } catch (error) {
     console.error("[Popup] Auto classify error", error);

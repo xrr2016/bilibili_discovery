@@ -76,6 +76,9 @@ button {
   gap: 10px;
   transition: all 0.3s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 button:hover {
@@ -89,6 +92,61 @@ button:active {
 
 button i {
   font-size: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-content,
+.btn-count {
+  position: relative;
+  z-index: 1;
+}
+
+.btn-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+#classify-button-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#classify-button-detail {
+  font-size: 11px;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.btn-count {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.btn-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: rgba(255, 255, 255, 0.18);
+  z-index: 0;
+  transition: width 0.25s ease;
+}
+
+#btn-auto-classify.is-running {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+#btn-auto-classify.is-stopping .btn-progress-fill {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .btn-primary {
@@ -229,40 +287,3 @@ button i {
   transition: width 0.3s ease;
 }
 
-.progress-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  color: #495057;
-}
-
-#progress-text {
-  font-weight: 500;
-}
-
-#progress-count {
-  font-weight: 600;
-  color: #667eea;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 24px;
-  background: #e9ecef;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #fb7299 0%, #e85d8a 100%);
-  transition: width 0.3s ease;
-  border-radius: 12px;
-}

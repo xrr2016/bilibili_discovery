@@ -33,6 +33,16 @@ interface ClientOptions {
   settings?: LlmSettings;
 }
 
+export class LlmRequestError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "LlmRequestError";
+    this.status = status;
+  }
+}
+
 export function parseTagsFromContent(content: string): string[] {
   const trimmed = content.trim();
   if (!trimmed) return [];
@@ -94,7 +104,7 @@ export async function chatComplete(
 
   if (!settings.apiKey) {
     console.warn("[LLM] Missing apiKey");
-    return null;
+    throw new LlmRequestError("Missing apiKey");
   }
 
   const url = `${settings.apiBaseUrl.replace(/\/$/, "")}/v1/chat/completions`;
@@ -111,15 +121,18 @@ export async function chatComplete(
     });
 
     if (!response.ok) {
-      console.error("[LLM] Request failed", response.status);
-      return null;
+      console.error("[LLM] Request failed", response);
+      throw new LlmRequestError(`Request failed with status ${response.status}`, response.status);
     }
 
     const data = (await response.json()) as ChatCompletionResponse;
     const content = data.choices?.[0]?.message?.content;
     return typeof content === "string" ? content : null;
   } catch (error) {
+    if (error instanceof LlmRequestError) {
+      throw error;
+    }
     console.error("[LLM] Request error", error);
-    return null;
+    throw new LlmRequestError("Request error");
   }
 }

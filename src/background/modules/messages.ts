@@ -13,7 +13,7 @@ import {
 } from "../../database/implementations/index.js";
 import type { BackgroundOptions, MessageLike, WatchProgressPayload } from "./common-types.js";
 import { classifyUpTask } from "./classify-api.js";
-import { handleUPPageCollected, getPageClassifyProgress, startAutoClassification } from "./classify-page.js";
+import { handleUPPageCollected, getPageClassifyProgress, startAutoClassification, stopAutoClassification } from "./classify-page.js";
 import { updateUpListTask } from "./up-list.js";
 import { proxyApiRequest } from "./proxy.js";
 import { updateWatchStats, initializeVideoInfo, processUPInfo, processVideoTags } from "./watch-stats.js";
@@ -203,9 +203,21 @@ export async function handleMessage(
       await classifyUpTask(options);
     } else {
       console.log("[Background] Using page scraping method for auto classification");
-      await startAutoClassification(options);
+      const started = await startAutoClassification(options);
+      return { success: started };
     }
-    return null;
+    return { success: true };
+  }
+
+  if (message.type === "stop_auto_classification") {
+    const settings = (await getValueFn("settings")) as { classifyMethod?: "api" | "page" } | null;
+    const classifyMethod = settings?.classifyMethod ?? "api";
+
+    if (classifyMethod === "page") {
+      const stopped = await stopAutoClassification(options);
+      return { success: stopped };
+    }
+    return { success: false };
   }
 
   if (message.type === "up_page_collected") {

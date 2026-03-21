@@ -1,4 +1,4 @@
-import { chatComplete, parseTagsFromContent } from "../../engine/llm-client.js";
+import { chatComplete, parseTagsFromContent, LlmRequestError } from "../../engine/llm-client.js";
 import { 
   getValue, 
   setValue, 
@@ -10,7 +10,13 @@ import {
 import type { BackgroundOptions, MessageLike } from "./common-types.js";
 
 declare const chrome: {
-  runtime?: { sendMessage: (message: unknown) => void };
+  runtime?: {
+    sendMessage: (message: unknown) => void;
+    getURL?: (path: string) => string;
+  };
+  notifications?: {
+    create: (options: { type: string; iconUrl: string; title: string; message: string }) => void;
+  };
   tabs?: {
     update: (tabId: number | undefined, updateProperties: { url: string }) => void;
     remove?: (tabId: number | number[]) => Promise<void>;
@@ -27,21 +33,32 @@ const classificationQueue: number[] = [];
 const pendingClassificationQueue: number[] = [];
 let isClassifying = false;
 let pageClassifyActive = false;
+let pageClassifyStopping = false;
 let pageClassifyTotal = 0;
 let pageClassifyProcessed = 0;
-let pageClassifyText = "准备中...";
+let pageClassifyTitle = "自动分类";
+let pageClassifyDetail = "准备中...";
+const upNameMap = new Map<number, string>();
 
 const activeCollectionTabs = new Map<number, number>();
 const createdCollectionTabs = new Set<number>();
 
 const MAX_CONCURRENT_TABS = 3;
 
-function sendPageProgress(text: string): void {
+function sendPageProgress(title: string, detail: string): void {
   if (typeof chrome === "undefined" || !chrome.runtime) return;
-  pageClassifyText = text;
+  pageClassifyTitle = title;
+  pageClassifyDetail = detail;
   chrome.runtime.sendMessage({
     type: "classify_progress",
-    payload: { current: pageClassifyProcessed, total: pageClassifyTotal, text }
+    payload: {
+      active: pageClassifyActive,
+      stopping: pageClassifyStopping,
+      current: pageClassifyProcessed,
+      total: pageClassifyTotal,
+      title,
+      detail
+    }
   });
 }
 
@@ -52,16 +69,58 @@ function sendPageComplete(): void {
 
 export function getPageClassifyProgress(): {
   active: boolean;
+  stopping: boolean;
   current: number;
   total: number;
-  text: string;
+  title: string;
+  detail: string;
 } {
   return {
     active: pageClassifyActive,
+    stopping: pageClassifyStopping,
     current: pageClassifyProcessed,
     total: pageClassifyTotal,
-    text: pageClassifyText
+    title: pageClassifyTitle,
+    detail: pageClassifyDetail
   };
+}
+
+function resetPageClassifyState(): void {
+  classificationQueue.length = 0;
+  pendingClassificationQueue.length = 0;
+  collectedPageData.clear();
+  activeCollectionTabs.clear();
+  createdCollectionTabs.clear();
+  upNameMap.clear();
+  pageClassifyActive = false;
+  pageClassifyStopping = false;
+  pageClassifyTotal = 0;
+  pageClassifyProcessed = 0;
+  pageClassifyTitle = "自动分类";
+  pageClassifyDetail = "准备中...";
+}
+
+async function finishPageClassification(options: BackgroundOptions = {}, detail: string = "分类完成"): Promise<void> {
+  await closeAllCollectionTabs(options);
+  const shouldNotify = pageClassifyActive;
+  resetPageClassifyState();
+  if (shouldNotify) {
+    sendPageComplete();
+  }
+  console.log("[Background] Page classify finished:", detail);
+}
+
+function notifyClassificationFailure(options: BackgroundOptions, title: string, message: string): void {
+  const notifications = options.notifications ?? (typeof chrome !== "undefined" ? chrome.notifications : undefined);
+  if (!notifications) {
+    return;
+  }
+  notifications.create({
+    type: "basic",
+    iconUrl: chrome.runtime?.getURL?.("icons/icon128.png") || "",
+    title,
+    message
+  });
 }
 
 function wait(ms: number): Promise<void> {
@@ -158,7 +217,7 @@ export function handleCollectionTabRemoved(tabId: number): void {
   classificationQueue.push(removedMid);
   console.log("[Background] Collection tab closed, re-queue UP:", removedMid);
   if (pageClassifyActive) {
-    sendPageProgress(`标签页关闭，重新排队: ${removedMid}`);
+    sendPageProgress("自动分类", "采集标签页关闭，已重新排队");
   }
 }
 
@@ -201,7 +260,7 @@ export async function handleUPPageCollected(
     collectedPageData.delete(payload.mid);
     if (pageClassifyActive) {
       pageClassifyProcessed += 1;
-      sendPageProgress(`无效UP跳过: ${payload.mid}`);
+      sendPageProgress(payload.name || "无效UP", "页面数据为空，已跳过");
     }
     if (tabId) {
       await openNextAvailableUPPage(tabId, options);
@@ -276,20 +335,38 @@ async function defaultClassifyWithPageData(
   return tags;
 }
 
+async function abortForLlmError(mid: number, pageData: any, error: LlmRequestError, options: BackgroundOptions = {}): Promise<void> {
+  const statusSuffix = typeof error.status === "number" ? `（HTTP ${error.status}）` : "";
+  const upName = pageData?.name || upNameMap.get(mid) || `UP ${mid}`;
+  console.error("[Background] Fatal LLM error, stop auto classification:", {
+    mid,
+    upName,
+    status: error.status,
+    message: error.message
+  });
+  pageClassifyStopping = true;
+  sendPageProgress("LLM 调用失败", `${upName}${statusSuffix}，自动分类已终止`);
+  notifyClassificationFailure(options, "自动分类已终止", `LLM 请求失败${statusSuffix}，请检查 API Key 或模型配置。`);
+  await finishPageClassification(options, "LLM 调用失败");
+}
+
 async function processNextClassification(options: BackgroundOptions = {}): Promise<void> {
   if (isClassifying) {
     console.log("[Background] Already classifying, skipping...");
     return;
   }
 
+  if (!pageClassifyActive || pageClassifyStopping) {
+    if (classificationQueue.length === 0 && pendingClassificationQueue.length === 0 && activeCollectionTabs.size === 0) {
+      await finishPageClassification(options, pageClassifyStopping ? "已停止" : "分类完成");
+    }
+    return;
+  }
+
   if (pendingClassificationQueue.length === 0) {
     if (classificationQueue.length === 0 && activeCollectionTabs.size === 0) {
       console.log("[Background] Classification queue is empty, all done!");
-      await closeAllCollectionTabs(options);
-      if (pageClassifyActive) {
-        pageClassifyActive = false;
-        sendPageComplete();
-      }
+      await finishPageClassification(options);
     }
     return;
   }
@@ -327,7 +404,7 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
       isClassifying = false;
       if (pageClassifyActive) {
         pageClassifyProcessed += 1;
-        sendPageProgress(`跳过已分类: ${mid}`);
+        sendPageProgress(pageData.name || upNameMap.get(mid) || "已分类UP", "已存在可编辑标签，跳过");
       }
       await processNextClassification(options);
       return;
@@ -336,21 +413,36 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
     // 获取LLM分类的标签名称
     const tagNames = await classifyUPWithPageData(mid, pageData, [], options);
     console.log("[Background] LLM classified tags for UP", mid, ":", tagNames);
-    
-    // 将标签名称添加到标签库，获取标签ID
-    const addedTags = await addTagsToLibrary(tagNames);
+
+    const normalizedTagNames = [...new Set(tagNames.map((tag) => tag.trim()).filter(Boolean))];
+    if (normalizedTagNames.length === 0) {
+      collectedPageData.delete(mid);
+      isClassifying = false;
+      if (pageClassifyActive) {
+        pageClassifyProcessed += 1;
+        sendPageProgress(pageData.name || upNameMap.get(mid) || "分类结果为空", "没有生成有效标签，未写入");
+      }
+      await processNextClassification(options);
+      return;
+    }
+
+    // 将标签名称添加到标签库，获取标签ID。自动分类产物按可编辑用户标签存储。
+    const addedTags = await addTagsToLibrary(normalizedTagNames, true);
     const tagIds = addedTags.map(tag => tag.id);
-    
+
     // 保存UP的手动标签
     await setUPManualTags(mid, tagIds);
-    
-    console.log("[Background] ✓ Successfully classified UP", mid, "with tags:", tagNames, "tagIds:", tagIds);
+
+    console.log("[Background] ✓ Successfully classified UP", mid, "with tags:", normalizedTagNames, "tagIds:", tagIds);
     const remaining =
       classificationQueue.length + pendingClassificationQueue.length + activeCollectionTabs.size;
     console.log("[Background] Progress:", remaining, "UPs remaining (including in-flight)");
     if (pageClassifyActive) {
       pageClassifyProcessed += 1;
-      sendPageProgress(`已分类: ${mid}`);
+      sendPageProgress(
+        pageData.name || upNameMap.get(mid) || "自动分类",
+        "分类完成，继续处理下一位UP"
+      );
     }
 
     collectedPageData.delete(mid);
@@ -360,18 +452,51 @@ async function processNextClassification(options: BackgroundOptions = {}): Promi
     isClassifying = false;
     await processNextClassification(options);
   } catch (error) {
+    if (error instanceof LlmRequestError) {
+      collectedPageData.delete(mid);
+      isClassifying = false;
+      await abortForLlmError(mid, pageData, error, options);
+      return;
+    }
+
     console.error("[Background] ✗ Classification error for UP", mid, ":", error);
     collectedPageData.delete(mid);
     isClassifying = false;
     if (pageClassifyActive) {
       pageClassifyProcessed += 1;
-      sendPageProgress(`分类失败: ${mid}`);
+      sendPageProgress(pageData?.name || upNameMap.get(mid) || "自动分类", "分类失败，已跳过");
     }
   }
 }
 
-export async function startAutoClassification(options: BackgroundOptions = {}): Promise<void> {
+export async function stopAutoClassification(options: BackgroundOptions = {}): Promise<boolean> {
+  if (!pageClassifyActive) {
+    return false;
+  }
+
+  pageClassifyStopping = true;
+  classificationQueue.length = 0;
+  pendingClassificationQueue.length = 0;
+  collectedPageData.clear();
+  sendPageProgress("正在停止分类", "关闭采集标签页并停止后续任务");
+
+  await closeAllCollectionTabs(options);
+  activeCollectionTabs.clear();
+
+  if (!isClassifying) {
+    await finishPageClassification(options, "已停止");
+  }
+
+  return true;
+}
+
+export async function startAutoClassification(options: BackgroundOptions = {}): Promise<boolean> {
   console.log("[Background] ===== Starting auto classification =====");
+
+  if (pageClassifyActive) {
+    console.log("[Background] Auto classification already running");
+    return true;
+  }
 
   // 获取已关注的UP列表
   const followedUPs = await getFollowedUPList();
@@ -381,21 +506,16 @@ export async function startAutoClassification(options: BackgroundOptions = {}): 
 
   if (followedUPs.length === 0) {
     console.log("[Background] ✗ No followed UPs to classify. Please follow some UPs first.");
-    return;
+    return false;
   }
 
-  classificationQueue.length = 0;
-  pendingClassificationQueue.length = 0;
-  collectedPageData.clear();
-  activeCollectionTabs.clear();
-  createdCollectionTabs.clear();
+  resetPageClassifyState();
   pageClassifyActive = true;
-  pageClassifyTotal = 0;
-  pageClassifyProcessed = 0;
 
   // 筛选出没有手动标签的已关注UP
   const upsWithoutTags = [];
   for (const up of followedUPs) {
+    upNameMap.set(up.mid, up.name);
     const existingTagIds = await getUPManualTags(up.mid);
     if (existingTagIds.length === 0) {
       upsWithoutTags.push(up);
@@ -410,7 +530,7 @@ export async function startAutoClassification(options: BackgroundOptions = {}): 
     classificationQueue.push(up.mid);
   }
   pageClassifyTotal = classificationQueue.length;
-  sendPageProgress("准备中...");
+  sendPageProgress("自动分类", `待分类 ${pageClassifyTotal} 位UP`);
 
   console.log("[Background] ✓ Classification queue created with", classificationQueue.length, "UPs");
   console.log("[Background] First 5 UPs in queue:", classificationQueue.slice(0, 5));
@@ -419,7 +539,8 @@ export async function startAutoClassification(options: BackgroundOptions = {}): 
     const tabs = options.tabs ?? (typeof chrome !== "undefined" ? chrome.tabs : undefined);
     if (!tabs || !tabs.create) {
       console.log("[Background] ✗ Tabs API not available for creating new tabs");
-      return;
+      await finishPageClassification(options, "浏览器标签页能力不可用");
+      return false;
     }
 
     const toOpen = Math.min(MAX_CONCURRENT_TABS, classificationQueue.length);
@@ -429,6 +550,7 @@ export async function startAutoClassification(options: BackgroundOptions = {}): 
       const nextMid = classificationQueue.shift();
       if (!nextMid) break;
       await waitRandom();
+      sendPageProgress(upNameMap.get(nextMid) || "自动分类", `正在打开页面采集内容 · ${pageClassifyProcessed}/${pageClassifyTotal}`);
       const created = await tabs.create({ url: toUpUrl(nextMid), active: false });
       if (created?.id) {
         activeCollectionTabs.set(nextMid, created.id);
@@ -436,5 +558,9 @@ export async function startAutoClassification(options: BackgroundOptions = {}): 
         console.log("[Background] Created tab", created.id, "for UP:", nextMid);
       }
     }
+    return true;
   }
+
+  await finishPageClassification(options, "没有需要分类的UP");
+  return false;
 }

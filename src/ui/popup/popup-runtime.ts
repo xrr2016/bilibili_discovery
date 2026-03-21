@@ -18,12 +18,12 @@ export function hasChromeRuntime(): boolean {
   return typeof chrome !== "undefined";
 }
 
-export function sendMessage<T>(type: string): Promise<T | null> {
+export function sendMessage<T>(type: string, payload?: unknown): Promise<T | null> {
   if (!hasChromeRuntime()) {
     return Promise.resolve(null);
   }
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type }, (response) => {
+    chrome.runtime.sendMessage({ type, payload }, (response) => {
       resolve((response ?? null) as T | null);
     });
   });

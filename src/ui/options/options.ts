@@ -1,4 +1,3 @@
-import { loadDevEnv } from "./dev-env.js";
 import { DEFAULT_SETTINGS, loadSettings, normalizeSettings, saveSettings } from "./settings.js";
 
 declare const chrome: { runtime: { getURL: (path: string) => string } };
@@ -18,7 +17,7 @@ function setLinkTarget(id: string, path: string): void {
   }
 }
 
-function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>, devEnv: { uid?: string; sk?: string }): void {
+function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>): void {
   const cacheHoursEl = document.getElementById("cache-hours") as HTMLInputElement | null;
   const userIdEl = document.getElementById("user-id") as HTMLInputElement | null;
   const classifyMethodEl = document.getElementById("classify-method") as HTMLSelectElement | null;
@@ -34,9 +33,6 @@ function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>, devEnv: { 
   if (apiModelEl) apiModelEl.value = settings.apiModel;
   if (apiKeyEl) apiKeyEl.value = settings.apiKey;
   if (biliCookieEl) biliCookieEl.value = settings.biliCookie;
-
-  if (devEnv.uid && userIdEl) userIdEl.value = devEnv.uid;
-  if (devEnv.sk && apiKeyEl) apiKeyEl.value = devEnv.sk;
 }
 
 function readForm() {
@@ -90,8 +86,8 @@ export async function initOptions(): Promise<void> {
     return;
   }
 
-  const [settings, devEnv] = await Promise.all([loadSettings(), loadDevEnv()]);
-  fillForm(settings, devEnv);
+  const settings = await loadSettings();
+  fillForm(settings);
   setLinkTarget("open-stats", "ui/stats/stats.html");
   setLinkTarget("open-api-test", "ui/api-test/api-test.html");
   bindCookieHelp();

@@ -31,6 +31,15 @@ const BILIBILI = Platform.BILIBILI;
 let allCreatorsCache: DBCreator[] | null = null;
 let tagLibraryCache: TagLibrary | null = null;
 
+function sortCreatorTagWeights(tagWeights: DBCreatorTagWeight[]): DBCreatorTagWeight[] {
+  return [...tagWeights].sort((a, b) => {
+    if (b.count !== a.count) {
+      return b.count - a.count;
+    }
+    return a.createdAt - b.createdAt;
+  });
+}
+
 function invalidateCreatorCache(): void {
   allCreatorsCache = null;
 }
@@ -249,9 +258,10 @@ export async function getUPTagWeights(mid: number): Promise<UPTagWeights | null>
   if (!creator) {
     return null;
   }
+  const sortedTagWeights = sortCreatorTagWeights(creator.tagWeights);
   return {
     mid,
-    tags: creator.tagWeights.map((tagWeight) => ({
+    tags: sortedTagWeights.map((tagWeight) => ({
       tag_id: tagWeight.tagId,
       weight: tagWeight.count,
       editable: tagWeight.source === TagSource.USER
@@ -295,7 +305,7 @@ export async function getUPTagCounts(): Promise<UPTagCache> {
     creators.map((creator) => [
       creator.creatorId,
       {
-        tags: creator.tagWeights.map((tagWeight) => ({
+        tags: sortCreatorTagWeights(creator.tagWeights).map((tagWeight) => ({
           tag: tagWeight.tagId,
           count: tagWeight.count,
           editable: tagWeight.source === TagSource.USER
