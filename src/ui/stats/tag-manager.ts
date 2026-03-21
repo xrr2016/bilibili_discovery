@@ -6,7 +6,7 @@ import {
   setValue,
   type Tag,
   type UPTagCount
-} from "../../storage/storage.js";
+} from "../../database/bilibili-data.js";
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, getInputValue, normalizeTag } from "./helpers.js";
 import type { StatsState } from "./types.js";

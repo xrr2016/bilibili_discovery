@@ -5,7 +5,7 @@ import {
   updateUPFollowStatus,
   loadUPList,
   type UP 
-} from "../../storage/storage.js";
+} from "../../database/bilibili-data.js";
 import type { BackgroundOptions } from "./common-types.js";
 
 declare const chrome: {

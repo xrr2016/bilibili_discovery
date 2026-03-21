@@ -1,4 +1,4 @@
-import { getValue, loadUPList } from "../../storage/storage.js";
+import { getValue, loadUPList } from "../../database/bilibili-data.js";
 import { armProgressTimeout, bindProgressListener, hideProgress, showProgress, updateProgress } from "./popup-progress.js";
 import { hasChromeRuntime, navigateCurrentTab, openExtensionPage, sendMessage } from "./popup-runtime.js";
 import type { ClassifyCache, InterestProfile, InterestRow } from "./popup-types.js";

@@ -1,4 +1,4 @@
-import { setValue } from "../../storage/storage.js";
+import { setValue } from "../../database/bilibili-data.js";
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, findCategory, getInputValue } from "./helpers.js";
 import type { Category, StatsState } from "./types.js";

@@ -17,7 +17,7 @@ import {
   type UserInterest,
   type Video,
   type UPTagWeights
-} from "../storage/storage.js";
+} from "../database/bilibili-data.js";
 
 export interface WatchEvent {
   tags: string[];

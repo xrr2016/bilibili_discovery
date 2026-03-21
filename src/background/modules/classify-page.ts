@@ -6,7 +6,7 @@ import {
   getUPManualTags,
   setUPManualTags,
   addTagsToLibrary
-} from "../../storage/storage.js";
+} from "../../database/bilibili-data.js";
 import type { BackgroundOptions, MessageLike } from "./common-types.js";
 
 declare const chrome: {

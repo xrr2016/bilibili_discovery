@@ -52,7 +52,8 @@ export class DBManager {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        this.createObjectStores(db);
+        const transaction = request.transaction;
+        this.createObjectStores(db, transaction ?? undefined);
       };
     });
 
@@ -69,25 +70,31 @@ export class DBManager {
    * - 创建所有对象存储
    * - 创建所有索引
    */
-  private createObjectStores(db: IDBDatabase): void {
+  private createObjectStores(db: IDBDatabase, upgradeTransaction?: IDBTransaction): void {
     // 遍历所有存储名称
     Object.values(STORE_NAMES).forEach(storeName => {
+      let store: IDBObjectStore;
       // 如果存储不存在则创建
       if (!db.objectStoreNames.contains(storeName)) {
-        const store = db.createObjectStore(storeName, {
+        store = db.createObjectStore(storeName, {
           keyPath: KEY_PATHS[storeName],
           autoIncrement: false
         });
-
-        // 创建索引（如果定义了索引）
-        const indexes = INDEX_DEFINITIONS[storeName as keyof typeof INDEX_DEFINITIONS];
-        if (indexes) {
-          indexes.forEach((index: { name: string; keyPath: string; options: IDBIndexParameters }) => {
-            if (!store.indexNames.contains(index.name)) {
-              store.createIndex(index.name, index.keyPath, index.options);
-            }
-          });
+      } else {
+        if (!upgradeTransaction) {
+          return;
         }
+        store = upgradeTransaction.objectStore(storeName);
+      }
+
+      // 创建索引（如果定义了索引）
+      const indexes = INDEX_DEFINITIONS[storeName as keyof typeof INDEX_DEFINITIONS];
+      if (indexes) {
+        indexes.forEach((index: { name: string; keyPath: string; options: IDBIndexParameters }) => {
+          if (!store.indexNames.contains(index.name)) {
+            store.createIndex(index.name, index.keyPath, index.options);
+          }
+        });
       }
     });
   }

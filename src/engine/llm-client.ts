@@ -2,7 +2,7 @@
  * OpenAI-compatible LLM client (for DeepSeek or similar providers).
  */
 
-import { getValue } from "../storage/storage.js";
+import { getValue } from "../database/bilibili-data.js";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";

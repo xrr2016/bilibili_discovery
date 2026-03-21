@@ -1,4 +1,4 @@
-import { getAllUPManualTags, getTagLibrary, getUPTagCounts, getValue, type UPTagCache } from "../../storage/storage.js";
+import { getAllUPManualTags, getTagLibrary, getUPTagCounts, getValue, type UPTagCache } from "../../database/bilibili-data.js";
 import { bindPageActions } from "./page-actions.js";
 import { addCategory, renderCategories } from "./category-manager.js";
 import { clearFilters, renderFilterTags, setupDragAndDrop } from "./filter-manager.js";
