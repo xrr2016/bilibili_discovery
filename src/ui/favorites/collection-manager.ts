@@ -1,6 +1,8 @@
 import type { Collection } from "../../database/types/collection.js";
 import type { FavoritesState, ChromeMessageResponse } from "./types.js";
 import { updateFilterOptions } from "./filter-manager.js";
+import { getCollectionVideosPaginated, getAllCollectionVideosPaginated } from "../../database/implementations/collection-data-access.impl.js";
+import { Platform } from "../../database/types/base.js";
 
 type RefreshFn = () => void;
 
@@ -59,7 +61,7 @@ export function renderCollectionTabs(state: FavoritesState, onSwitch: (collectio
 
   // 根据当前类型过滤收藏夹
   const filteredCollections = state.collections.filter(
-    collection => collection.type === state.currentCollectionType || 
+    collection => collection.type === state.currentCollectionType ||
                   (collection.type === undefined && state.currentCollectionType === 'user')
   );
 
@@ -165,66 +167,48 @@ export async function loadCollectionData(state: FavoritesState): Promise<void> {
   try {
     // 如果选择的是"全部"，加载所有收藏夹的视频
     if (state.currentCollectionId === 'all') {
-      const allVideosResponse = await chrome.runtime.sendMessage({
-        type: 'get_all_collection_videos_paginated',
-        payload: { 
-          collectionType: state.currentCollectionType,
-          page: state.currentPage,
-          pageSize: state.pageSize,
+      const result = await getAllCollectionVideosPaginated(
+        { page: state.currentPage, pageSize: state.pageSize },
+        {
           keyword: state.filters.keyword,
           tagId: state.filters.tagId,
           creatorId: state.filters.creatorId,
           includeTags: state.filters.includeTags,
           excludeTags: state.filters.excludeTags
-        }
-      }) as unknown as { success: boolean; videos?: import("../../database/implementations/collection-data-access.impl.js").AggregatedCollectionVideo[]; total?: number; error?: string };
+        },
+        Platform.BILIBILI,
+        state.currentCollectionType
+      );
 
-      console.log('[Favorites] All videos response:', allVideosResponse);
+      console.log('[Favorites] All videos result:', result);
 
-      if (!allVideosResponse?.success) {
-        console.warn('[Favorites] Failed to load all collection videos:', allVideosResponse?.error);
-        state.aggregatedVideos = [];
-        state.filteredVideos = [];
-        state.total = 0;
-        return;
-      }
-
-      state.aggregatedVideos = allVideosResponse.videos || [];
+      state.aggregatedVideos = result.videos || [];
       state.filteredVideos = [...state.aggregatedVideos];
-      state.total = allVideosResponse.total || 0;
+      state.total = result.total || 0;
 
       console.log('[Favorites] Loaded all videos:', state.aggregatedVideos.length, 'total:', state.total);
       console.log('[Favorites] Aggregated videos:', state.aggregatedVideos);
       return;
     }
 
-    const videosResponse = await chrome.runtime.sendMessage({
-      type: 'get_collection_videos_paginated',
-      payload: {
-        collectionId: state.currentCollectionId,
-        page: state.currentPage,
-        pageSize: state.pageSize,
+    const result = await getCollectionVideosPaginated(
+      state.currentCollectionId,
+      { page: state.currentPage, pageSize: state.pageSize },
+      {
         keyword: state.filters.keyword,
         tagId: state.filters.tagId,
         creatorId: state.filters.creatorId,
         includeTags: state.filters.includeTags,
         excludeTags: state.filters.excludeTags
-      }
-    }) as unknown as { success: boolean; videos?: import("../../database/implementations/collection-data-access.impl.js").AggregatedCollectionVideo[]; total?: number; error?: string };
+      },
+      Platform.BILIBILI
+    );
 
-    console.log('[Favorites] Videos response:', videosResponse);
+    console.log('[Favorites] Videos result:', result);
 
-    if (!videosResponse?.success) {
-      console.warn('[Favorites] Failed to load collection videos:', videosResponse?.error);
-      state.aggregatedVideos = [];
-      state.filteredVideos = [];
-      state.total = 0;
-      return;
-    }
-
-    state.aggregatedVideos = videosResponse.videos || [];
+    state.aggregatedVideos = result.videos || [];
     state.filteredVideos = [...state.aggregatedVideos];
-    state.total = videosResponse.total || 0;
+    state.total = result.total || 0;
 
     console.log('[Favorites] Loaded videos:', state.aggregatedVideos.length, 'total:', state.total);
     console.log('[Favorites] Aggregated videos:', state.aggregatedVideos);

@@ -77,8 +77,7 @@ export type {
 // Collection 类型
 export type {
   Collection,
-  CollectionItem,
-  CollectionStats
+  CollectionItem
 } from './collection.js';
 
 // Analytics 类型

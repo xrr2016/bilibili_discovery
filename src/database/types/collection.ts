@@ -70,6 +70,30 @@ export interface Collection {
    * subscription: 订阅的合集（别人创建的）
    */
   type?: CollectionType;
+  /**
+   * 视频数量
+   * 缓存的收藏夹内视频数量，用于快速获取统计信息
+   * 需要在添加/删除收藏项时自动维护
+   */
+  videoCount?: number;
+  /**
+   * 总观看时长（秒）
+   * 缓存的收藏夹内所有视频的总观看时长
+   * 需要在添加/删除收藏项时自动维护
+   */
+  totalWatchTime?: number;
+  /**
+   * 总观看次数
+   * 缓存的收藏夹内所有视频的总观看次数
+   * 需要在添加/删除收藏项时自动维护
+   */
+  totalWatchCount?: number;
+  /**
+   * 最后添加时间
+   * 缓存的收藏夹内最后添加视频的时间
+   * 需要在添加收藏项时自动维护
+   */
+  lastAddedAt?: number;
 }
 
 /**
@@ -102,34 +126,4 @@ export interface CollectionItem {
    * 用于自定义排序
    */
   order?: number;
-}
-
-/**
- * 收藏夹统计信息
- */
-export interface CollectionStats {
-  /**
-   * 收藏夹ID
-   */
-  collectionId: ID;
-  /**
-   * 视频数量
-   */
-  videoCount: number;
-  /**
-   * 总观看时长（秒）
-   */
-  totalWatchTime: number;
-  /**
-   * 总观看次数
-   */
-  totalWatchCount: number;
-  /**
-   * 最后添加时间
-   */
-  lastAddedAt: Timestamp;
-  /**
-   * 最后更新时间
-   */
-  lastUpdate: Timestamp;
 }

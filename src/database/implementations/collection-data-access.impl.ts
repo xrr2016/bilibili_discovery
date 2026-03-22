@@ -372,11 +372,8 @@ export async function getCollectionVideosPaginated(
 ): Promise<{ videos: AggregatedCollectionVideo[]; total: number }> {
   console.log('[CollectionDataAccess] Getting paginated collection videos for:', collectionId, 'with filter:', filter);
 
-  // 获取收藏项
-  const itemsResult = await collectionItemRepository.getCollectionVideos(collectionId, {
-    page: 0,
-    pageSize: 10000
-  });
+  // 获取收藏项 - 使用传入的分页参数
+  const itemsResult = await collectionItemRepository.getCollectionVideos(collectionId, pagination);
 
   if (itemsResult.items.length === 0) {
     return { videos: [], total: 0 };
@@ -478,12 +475,49 @@ export async function getAllCollectionVideosPaginated(
     return { videos: [], total: 0 };
   }
 
-  // 获取所有收藏项
+  // 计算总数量 - 使用收藏夹的videoCount字段
+  const total = collections.reduce((sum, collection) => sum + (collection.videoCount || 0), 0);
+
+  // 计算需要获取的数据范围
+  const start = pagination.page * pagination.pageSize;
+  const end = start + pagination.pageSize;
+
+  // 如果起始位置超出总数量，返回空结果
+  if (start >= total) {
+    return { videos: [], total };
+  }
+
+  // 计算需要从哪些收藏夹中获取数据
+  let currentStart = 0;
+  const collectionsToFetch: { collection: Collection; page: number; pageSize: number }[] = [];
+
+  for (const collection of collections) {
+    const count = collection.videoCount || 0;
+    const currentEnd = currentStart + count;
+
+    // 如果当前收藏夹的数据范围与需要获取的数据范围有交集，则添加到待获取列表
+    if (currentEnd > start && currentStart < end) {
+      const collectionStart = Math.max(0, start - currentStart);
+      const collectionEnd = Math.min(count, end - currentStart);
+      const collectionPage = Math.floor(collectionStart / 100); // 假设每页100条
+      const collectionPageSize = Math.min(100, collectionEnd - collectionStart);
+
+      collectionsToFetch.push({
+        collection,
+        page: collectionPage,
+        pageSize: collectionPageSize
+      });
+    }
+
+    currentStart = currentEnd;
+  }
+
+  // 从指定的收藏夹中获取数据
   const allItems = await Promise.all(
-    collections.map(async (collection: Collection) => {
+    collectionsToFetch.map(async ({ collection, page, pageSize }) => {
       const itemsResult = await collectionItemRepository.getCollectionVideos(collection.collectionId, {
-        page: 0,
-        pageSize: 10000
+        page,
+        pageSize
       });
       return itemsResult.items;
     })
@@ -492,7 +526,7 @@ export async function getAllCollectionVideosPaginated(
   const items = allItems.flat();
 
   if (items.length === 0) {
-    return { videos: [], total: 0 };
+    return { videos: [], total };
   }
 
   // 获取视频详情
@@ -556,11 +590,12 @@ export async function getAllCollectionVideosPaginated(
   // 排序
   filteredVideos.sort((a, b) => b.addedAt - a.addedAt);
 
-  // 分页
-  const total = filteredVideos.length;
-  const start = pagination.page * pagination.pageSize;
-  const end = start + pagination.pageSize;
-  const paginatedVideos = filteredVideos.slice(start, end);
+  // 由于我们已经按照分页范围获取了数据，所以这里不需要再次分页
+  // 但是由于我们是从多个收藏夹中获取的数据，并且每个收藏夹的数据是按照 addedAt 排序的
+  // 所以我们需要再次排序以确保全局顺序正确
+  // 由于我们可能获取了比需要更多的数据（因为每个收藏夹的数据是按页获取的），
+  // 所以我们需要在这里进行最终的截取
+  const paginatedVideos = filteredVideos.slice(0, pagination.pageSize);
 
   return { videos: paginatedVideos, total };
 }

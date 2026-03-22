@@ -4,7 +4,7 @@
  */
 
 import { ICollectionRepository } from '../interfaces/collection/collection-repository.interface.js';
-import { Collection, CollectionStats } from '../types/collection.js';
+import { Collection } from '../types/collection.js';
 import { Platform, PaginationParams, PaginationResult } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 
@@ -102,9 +102,86 @@ export class CollectionRepository implements ICollectionRepository {
   /**
    * 获取收藏夹统计信息
    */
-  async getCollectionStats(collectionId: string): Promise<CollectionStats | null> {
+  async getCollectionStats(collectionId: string): Promise<Collection | null> {
     // TODO: 实现统计计算逻辑
     return null;
+  }
+
+  /**
+   * 增加收藏夹的视频数量
+   */
+  async incrementVideoCount(collectionId: string, count: number = 1): Promise<void> {
+    try {
+      const collection = await this.getCollection(collectionId);
+      if (!collection) {
+        console.warn(`[CollectionRepository] Collection not found: ${collectionId}`);
+        return;
+      }
+
+      await this.updateCollection(collectionId, {
+        videoCount: (collection.videoCount || 0) + count
+      });
+    } catch (error) {
+      console.error('[CollectionRepository] Error incrementing video count:', error);
+    }
+  }
+
+  /**
+   * 减少收藏夹的视频数量
+   */
+  async decrementVideoCount(collectionId: string, count: number = 1): Promise<void> {
+    try {
+      const collection = await this.getCollection(collectionId);
+      if (!collection) {
+        console.warn(`[CollectionRepository] Collection not found: ${collectionId}`);
+        return;
+      }
+
+      const newCount = Math.max(0, (collection.videoCount || 0) - count);
+      await this.updateCollection(collectionId, {
+        videoCount: newCount
+      });
+    } catch (error) {
+      console.error('[CollectionRepository] Error decrementing video count:', error);
+    }
+  }
+
+  /**
+   * 重置收藏夹的统计信息
+   */
+  async resetCollectionStats(collectionId: string): Promise<void> {
+    try {
+      await this.updateCollection(collectionId, {
+        videoCount: 0,
+        totalWatchTime: 0,
+        totalWatchCount: 0,
+        lastAddedAt: undefined
+      });
+    } catch (error) {
+      console.error('[CollectionRepository] Error resetting collection stats:', error);
+    }
+  }
+
+  /**
+   * 更新收藏夹的最后添加时间
+   */
+  async updateLastAddedAt(collectionId: string, addedAt: number): Promise<void> {
+    try {
+      const collection = await this.getCollection(collectionId);
+      if (!collection) {
+        console.warn(`[CollectionRepository] Collection not found: ${collectionId}`);
+        return;
+      }
+
+      // 只有当新的添加时间比现有的时间更晚时才更新
+      if (!collection.lastAddedAt || addedAt > collection.lastAddedAt) {
+        await this.updateCollection(collectionId, {
+          lastAddedAt: addedAt
+        });
+      }
+    } catch (error) {
+      console.error('[CollectionRepository] Error updating last added time:', error);
+    }
   }
 
   /**

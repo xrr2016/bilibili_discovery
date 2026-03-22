@@ -41,9 +41,6 @@ export class CollectionItemRepository implements ICollectionItemRepository {
       throw error;
     }
 
-    // 更新收藏夹的lastUpdate时间
-    await this.updateCollectionLastUpdate(collectionId);
-
     return itemId;
   }
 
@@ -69,7 +66,6 @@ export class CollectionItemRepository implements ICollectionItemRepository {
     });
 
     await DBUtils.addBatch(STORE_NAMES.COLLECTION_ITEMS, items);
-    await this.updateCollectionLastUpdate(collectionId);
 
     return itemIds;
   }
@@ -87,7 +83,6 @@ export class CollectionItemRepository implements ICollectionItemRepository {
     const toDelete = items.find(item => item.videoId === videoId);
     if (toDelete) {
       await DBUtils.delete(STORE_NAMES.COLLECTION_ITEMS, toDelete.itemId);
-      await this.updateCollectionLastUpdate(collectionId);
     }
   }
 
@@ -107,7 +102,6 @@ export class CollectionItemRepository implements ICollectionItemRepository {
 
     if (toDelete.length > 0) {
       await DBUtils.deleteBatch(STORE_NAMES.COLLECTION_ITEMS, toDelete);
-      await this.updateCollectionLastUpdate(collectionId);
     }
   }
 
@@ -186,7 +180,6 @@ export class CollectionItemRepository implements ICollectionItemRepository {
     };
 
     await DBUtils.put(STORE_NAMES.COLLECTION_ITEMS, updated);
-    await this.updateCollectionLastUpdate(existing.collectionId);
   }
 
   /**
@@ -221,7 +214,6 @@ export class CollectionItemRepository implements ICollectionItemRepository {
     const itemIds = items.map(item => item.itemId);
     if (itemIds.length > 0) {
       await DBUtils.deleteBatch(STORE_NAMES.COLLECTION_ITEMS, itemIds);
-      await this.updateCollectionLastUpdate(collectionId);
     }
   }
 
@@ -244,7 +236,6 @@ export class CollectionItemRepository implements ICollectionItemRepository {
     }));
 
     await DBUtils.putBatch(STORE_NAMES.COLLECTION_ITEMS, updatedItems);
-    await this.updateCollectionLastUpdate(collectionId);
   }
 
   /**
@@ -281,11 +272,4 @@ export class CollectionItemRepository implements ICollectionItemRepository {
     };
   }
 
-  /**
-   * 更新收藏夹的lastUpdate时间
-   */
-  private async updateCollectionLastUpdate(collectionId: string): Promise<void> {
-    // TODO: 需要注入 CollectionRepository 来更新收藏夹
-    // 这里暂时留空，实际实现需要依赖注入或服务定位
-  }
 }

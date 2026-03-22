@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试工具 - Bilibili Discovery</title>
+  </head>
+  <body>
+    <h1>测试工具</h1>
+
+    <h2>图片压缩</h2>
+    <div>
+      <label>
+        平台：
+        <select id="platform">
+          <option value="bilibili">Bilibili</option>
+          <option value="youtube">YouTube</option>
+        </select>
+      </label>
+      <button id="start-compress-btn">开始压缩</button>
+      <button id="stop-compress-btn" disabled>停止</button>
+    </div>
+    <div>
+      <span>进度：</span>
+      <span id="compress-status">等待开始...</span>
+      <span id="compress-percent">0%</span>
+    </div>
+    <div>
+      <span>已处理：</span>
+      <span id="processed-count">0</span>
+      <span>总数：</span>
+      <span id="total-count">0</span>
+    </div>
+    <div>
+      <span id="compress-message"></span>
+    </div>
+
+    <h2>数据维护</h2>
+    <div>
+      <button id="update-stats-btn">更新收藏夹统计</button>
+    </div>
+    <div>
+      <span id="stats-message"></span>
+    </div>
+
+    <script type="module" src="./test-tools.ts"></script>
+  </body>
+</html>

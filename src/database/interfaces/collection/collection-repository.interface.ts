@@ -3,7 +3,7 @@
  * 定义收藏夹相关的数据库操作接口
  */
 
-import { Collection, CollectionStats } from '../../types/collection.js';
+import { Collection } from '../../types/collection.js';
 import { Platform, PaginationParams, PaginationResult } from '../../types/base.js';
 
 /**
@@ -139,7 +139,42 @@ export interface ICollectionRepository {
    * - 仅返回统计数据
    * - 不包含收藏夹基本信息
    */
-  getCollectionStats(collectionId: string): Promise<CollectionStats | null>;
+  getCollectionStats(collectionId: string): Promise<Collection | null>;
+
+  /**
+   * 增加收藏夹的视频数量
+   *
+   * @param collectionId - 收藏夹ID
+   * @param count - 增加的数量，默认为1
+   * @returns Promise<void>
+   */
+  incrementVideoCount(collectionId: string, count?: number): Promise<void>;
+
+  /**
+   * 减少收藏夹的视频数量
+   *
+   * @param collectionId - 收藏夹ID
+   * @param count - 减少的数量，默认为1
+   * @returns Promise<void>
+   */
+  decrementVideoCount(collectionId: string, count?: number): Promise<void>;
+
+  /**
+   * 重置收藏夹的统计信息
+   *
+   * @param collectionId - 收藏夹ID
+   * @returns Promise<void>
+   */
+  resetCollectionStats(collectionId: string): Promise<void>;
+
+  /**
+   * 更新收藏夹的最后添加时间
+   *
+   * @param collectionId - 收藏夹ID
+   * @param addedAt - 添加时间
+   * @returns Promise<void>
+   */
+  updateLastAddedAt(collectionId: string, addedAt: number): Promise<void>;
 
   /**
    * 检查收藏夹名称是否已存在
