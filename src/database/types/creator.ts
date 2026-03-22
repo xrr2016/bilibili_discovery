@@ -58,6 +58,11 @@ export interface Creator {
    */
   avatar: string;
   /**
+   * 头像URL
+   * 存储原始头像URL，用于后续下载
+   */
+  avatarUrl: string;
+  /**
    * 是否已注销
    */
   isLogout: number;

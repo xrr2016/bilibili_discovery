@@ -450,6 +450,7 @@ export async function handleMessage(
             platform: Platform.BILIBILI,
             name: videoDetail.owner.name,
             avatar: "",
+            avatarUrl: "",
             description: "",
             isFollowing: 0,
             createdAt: Date.now(),

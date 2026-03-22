@@ -1,14 +1,10 @@
-import type { Category, FilterState, StatsState } from "./types.js";
+import type { Category, FilterState, StatsState, UPCacheData } from "./types.js";
 
 export function setText(id: string, value: string): void {
   const el = document.getElementById(id);
   if (el) {
     el.textContent = value;
   }
-}
-
-export function countVideoTotals(counts: Record<string, number>): number {
-  return Object.values(counts).reduce((total, value) => total + (value ?? 0), 0);
 }
 
 export function countUpTags(upTags: Record<string, string[]>): number {
@@ -41,8 +37,9 @@ export function updateToggleLabel(showFollowedOnly: boolean): void {
   }
 }
 
-export function createInitialState(): StatsState {
+export function createInitialState(platform: string = "bilibili"): StatsState {
   return {
+    platform: platform as any,
     allTagCounts: {},
     filteredTags: [],
     currentCustomTags: [],
@@ -57,11 +54,16 @@ export function createInitialState(): StatsState {
     },
     currentUpList: [],
     currentUpTags: {},
-    upTagCache: {},
-    upManualTagsMap: {},
-    upAutoTags: {},
     tagLibrary: {},
-    upDataCache: {}
+    upCache: {},
+    categoryCache: {},
+    tagIdToName: {},
+    stats: {
+      totalCreators: 0,
+      followedCount: 0,
+      unfollowedCount: 0,
+      totalTags: 0
+    }
   };
 }
 
@@ -78,4 +80,17 @@ export function resetFilters(filters: FilterState): void {
   filters.excludeTags = [];
   filters.includeCategories = [];
   filters.excludeCategories = [];
+}
+
+export function creatorToCacheData(creator: any): UPCacheData {
+  return {
+    creatorId: creator.creatorId,
+    name: creator.name,
+    avatar: creator.avatar || '', // avatar字段用于存储真正的头像图片数据（如base64）
+    avatarUrl: creator.avatarUrl || '', // avatarUrl字段用于存储头像URL
+    description: creator.description,
+    followTime: creator.followTime,
+    isFollowing: creator.isFollowing === 1,
+    tags: []
+  };
 }

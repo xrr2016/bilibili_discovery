@@ -174,6 +174,7 @@ async function toDBCreator(up: UP, existingAvatar?: string): Promise<DBCreator> 
     platform: BILIBILI,
     name: up.name,
     avatar: await resolveAvatarValue(up, existingAvatar),
+    avatarUrl: up.face || "",
     isLogout: 0,
     description: up.sign,
     createdAt: Date.now(),

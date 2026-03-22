@@ -58,6 +58,7 @@ export function toDBCreator(mid: number, name: string): DBCreator {
     platform: BILIBILI,
     name,
     avatar: "",
+    avatarUrl: "",
     description: "",
     isFollowing: 0,
     createdAt: Date.now(),

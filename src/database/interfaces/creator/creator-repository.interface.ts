@@ -233,4 +233,102 @@ export interface ICreatorRepository {
    * - 不影响已有关联数据
    */
   markCreatorAsLogout(creatorId: string, platform: Platform): Promise<void>;
+
+  /**
+   * 按条件查询创作者
+   *
+   * @param platform - 平台类型
+   * @param options - 查询选项
+   * @returns Promise<Creator[]> - 创作者列表
+   *
+   * 职责：
+   * - 支持按关注状态过滤
+   * - 支持按标签过滤（包含/排除）
+   * - 支持按分类过滤（包含/排除）
+   * - 支持按名称搜索
+   * - 支持分页
+   *
+   * 能力边界：
+   * - 不包含统计数据
+   * - 最多返回1000条记录
+   */
+  searchCreatorsByFilter(
+    platform: Platform,
+    options: {
+      isFollowing?: boolean;
+      includeTags?: string[];
+      excludeTags?: string[];
+      includeCategories?: string[];
+      excludeCategories?: string[];
+      keyword?: string;
+      page?: number;
+      pageSize?: number;
+    }
+  ): Promise<Creator[]>;
+
+  /**
+   * 获取已关注创作者数量
+   *
+   * @param platform - 平台类型
+   * @returns Promise<number> - 已关注数量
+   */
+  getFollowedCount(platform: Platform): Promise<number>;
+
+  /**
+   * 获取未关注创作者数量
+   *
+   * @param platform - 平台类型
+   * @returns Promise<number> - 未关注数量
+   */
+  getUnfollowedCount(platform: Platform): Promise<number>;
+
+  /**
+   * 获取标签使用次数统计
+   *
+   * @param platform - 平台类型
+   * @returns Promise<Map<string, number>> - 标签ID到使用次数的映射
+   *
+   * 职责：
+   * - 统计每个用户标签的使用次数
+   * - 仅统计source为'user'的标签
+   *
+   * 能力边界：
+   * - 不包含系统标签的统计
+   * - 不返回标签名称，只返回ID
+   */
+  getTagUsageCounts(platform: Platform): Promise<Map<string, number>>;
+
+  /**
+   * 获取创作者头像URL
+   *
+   * @param creatorId - 创作者ID
+   * @param platform - 平台类型
+   * @returns Promise<string> - 头像URL，不存在则返回空字符串
+   *
+   * 职责：
+   * - 如果avatarUrl为空，尝试通过API获取
+   * - 更新数据库中的avatarUrl
+   * - 返回头像URL
+   *
+   * 能力边界：
+   * - 不下载头像图片数据
+   * - 不处理非bilibili平台
+   */
+  getAvatarUrl(creatorId: string, platform: Platform): Promise<string>;
+
+  /**
+   * 更新创作者头像URL
+   *
+   * @param creatorId - 创作者ID
+   * @param platform - 平台类型
+   * @param avatarUrl - 头像URL
+   * @returns Promise<void>
+   *
+   * 职责：
+   * - 更新创作者的头像URL
+   *
+   * 能力边界：
+   * - 不下载头像图片数据
+   */
+  updateAvatarUrl(creatorId: string, platform: Platform, avatarUrl: string): Promise<void>;
 }

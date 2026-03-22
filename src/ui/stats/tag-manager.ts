@@ -1,63 +1,27 @@
-import {
-  addTagToLibrary,
-  addTagToUPManualTags,
-  removeTagFromUPManualTags,
-  setValue,
-  type AppTag as Tag,
-  type UPTagCount
-} from "../../database/implementations/index.js";
+import { CreatorRepository } from "../../database/implementations/creator-repository.impl.js";
+import { TagRepository } from "../../database/implementations/tag-repository.impl.js";
+import { TagSource } from "../../database/types/base.js";
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
 import { colorFromTag, getInputValue, normalizeTag } from "./helpers.js";
 import type { StatsState } from "./types.js";
 
-type RenderFn = () => void;
+// 初始化 repository 实例
+const creatorRepo = new CreatorRepository();
+const tagRepo = new TagRepository();
 
-export async function getAutoTagsForUp(
-  state: StatsState,
-  mid: number,
-  manualTags: string[]
-): Promise<{ tag: string; count: number }[]> {
-  const autoTags = state.upTagCache[String(mid)]?.tags ?? [];
-  const manualTagSet = new Set(manualTags);
-  // 使用缓存的 tagLibrary，避免重复查询数据库
-  const tagLibraryMap = new Map(Object.values(state.tagLibrary).map((tag) => [tag.id, tag]));
-
-  return autoTags
-    .map((tag) => {
-      const tagInfo = tagLibraryMap.get(tag.tag);
-      return {
-        tag: tagInfo ? tagInfo.name : tag.tag,
-        count: tag.count,
-        editable: tag.editable || (tagInfo && tagInfo.editable)
-      };
-    })
-    .filter((tag: { tag: string; count: number; editable?: boolean }) => {
-      const isEditable = Boolean(tag.editable);
-      return !manualTagSet.has(tag.tag) && !isEditable;
-    })
-    .sort((a, b) => {
-      if (b.count !== a.count) {
-        return b.count - a.count;
-      }
-      return a.tag.localeCompare(b.tag, "zh-CN");
-    })
-    .map((tag) => {
-      return { tag: tag.tag, count: tag.count };
-    })
-    .slice(0, 5);
-}
+type RenderFn = () => void | Promise<void>;
 
 function resolveDetach(): boolean {
   return Boolean(getDragContext() && !getDragContext()?.dropped);
 }
 
 export function renderTagPill(
-  tag: string,
+  tagId: string,
   options?: {
     count?: number;
     onDetached?: () => void;
     isAuto?: boolean;
-    mid?: number;
+    creatorId?: string;
     state?: StatsState;
     rerender?: RenderFn;
   }
@@ -66,16 +30,21 @@ export function renderTagPill(
     count,
     onDetached,
     isAuto = false,
-    mid,
+    creatorId,
     state,
     rerender
   } = options ?? {};
 
+  // 从状态中获取标签名称（仅用于UI显示）
+  const tagName = state?.tagIdToName[tagId] || tagId;
+
   const pill = document.createElement("span");
   pill.className = isAuto ? "tag-pill tag-pill-auto" : "tag-pill";
-  pill.textContent = count !== undefined ? `${tag} (${count})` : tag;
-  pill.style.backgroundColor = colorFromTag(tag);
+  pill.textContent = count !== undefined ? `${tagName} (${count})` : tagName;
+  pill.style.backgroundColor = colorFromTag(tagName);
   pill.draggable = true;
+  pill.dataset.tagId = tagId;
+  pill.dataset.tagName = tagName;
 
   if (isAuto) {
     pill.style.cursor = "grab";
@@ -86,21 +55,23 @@ export function renderTagPill(
   }
 
   pill.addEventListener("click", () => {
-    const keyword = encodeURIComponent(tag);
+    const keyword = encodeURIComponent(tagName);
     window.open(`https://search.bilibili.com/all?keyword=${keyword}`, "_blank", "noreferrer");
   });
 
   pill.addEventListener("dragstart", (e) => {
     if (e.dataTransfer) {
-      e.dataTransfer.setData("application/x-bili-tag", tag);
+      // 传输标签 ID 和名称
+      const dragData = JSON.stringify({ tagId, tagName });
+      e.dataTransfer.setData("application/x-bili-tag", dragData);
       e.dataTransfer.effectAllowed = isAuto ? "copy" : "move";
     }
-    createDragGhost(e, tag);
+    createDragGhost(e, tagName);
     if (isAuto) {
-      setDragContext({ tag, dropped: false });
+      setDragContext({ tagId, tagName, dropped: false });
       pill.style.cursor = "grabbing";
     } else {
-      setDragContext({ tag, originUpMid: mid, dropped: false });
+      setDragContext({ tagId, tagName, originUpMid: creatorId, dropped: false });
     }
   });
 
@@ -110,9 +81,9 @@ export function renderTagPill(
       setDragContext(null);
       pill.style.cursor = "grab";
     } else {
-      if (mid !== undefined && state && rerender) {
-        if (getDragContext()?.originUpMid === mid && !getDragContext()?.dropped) {
-          void removeTagFromUp(state, mid, tag, rerender);
+      if (creatorId !== undefined && state && rerender) {
+        if (getDragContext()?.originUpMid === creatorId && !getDragContext()?.dropped) {
+          void removeTagFromUp(state, creatorId, tagName, rerender);
         }
       } else if (onDetached && resolveDetach()) {
         onDetached();
@@ -128,90 +99,145 @@ export function renderAutoTagPill(tag: string, count: number): HTMLSpanElement {
   return renderTagPill(tag, { count, isAuto: true });
 }
 
-
-function resolveTagByName(state: StatsState, tag: string): { id: string; name: string; editable?: boolean } | undefined {
-  return Object.values(state.tagLibrary).find((entry) => entry.name === tag);
-}
-
 export async function addTagToUp(
   state: StatsState,
-  mid: number,
-  tag: string,
-  onChanged: RenderFn
+  creatorId: string,
+  tagName: string,
+  onChanged?: RenderFn
 ): Promise<void> {
-  const nextTag = normalizeTag(tag);
+  const nextTag = normalizeTag(tagName);
   if (!nextTag) {
     return;
   }
 
-  const key = String(mid);
-  const existing = state.upManualTagsMap[key] ?? [];
-  if (existing.includes(nextTag)) {
+  // 查找或创建标签ID
+  let tagId = Object.entries(state.tagIdToName).find(([_, name]) => name === nextTag)?.[0];
+  if (!tagId) {
+    tagId = await tagRepo.createTag({
+      name: nextTag,
+      source: TagSource.USER,
+      createdAt: Date.now()
+    });
+    // 更新标签库和映射
+    state.tagLibrary[tagId] = {
+      tagId,
+      name: nextTag,
+      source: "user"
+    };
+    state.tagIdToName[tagId] = nextTag;
+  }
+
+  // 检查标签是否已存在于UP主
+  const existingTags = state.currentUpTags[creatorId] || [];
+  if (existingTags.includes(tagId)) {
     return;
   }
 
-  const tagObj = await addTagToLibrary(nextTag);
-  const next = [...existing, nextTag];
-  state.upManualTagsMap = { ...state.upManualTagsMap, [key]: next };
-  state.currentUpTags[key] = [...new Set([...(state.upAutoTags[key] || []), ...next])];
-  
-  // 更新缓存
-  if (state.upDataCache[mid]) {
-    state.upDataCache[mid].manualTags = next;
+  // 添加标签到UP主
+  await creatorRepo.updateTagWeights(creatorId, state.platform, [{
+    tagId,
+    source: "user" as any,
+    count: 0,
+    createdAt: Date.now()
+  }]);
+
+  // 更新缓存（存储标签ID）
+  const upData = state.upCache[creatorId];
+  if (upData) {
+    upData.tags = [...upData.tags, tagId];
   }
-  
-  await addTagToUPManualTags(mid, tagObj.id);
-  onChanged();
+  state.currentUpTags[creatorId] = [...new Set([...existingTags, tagId])];
+
+  // 更新标签计数
+  state.allTagCounts[tagId] = (state.allTagCounts[tagId] || 0) + 1;
+
+  if (onChanged) {
+    onChanged();
+  }
 }
 
 export async function removeTagFromUp(
   state: StatsState,
-  mid: number,
-  tag: string,
+  creatorId: string,
+  tagId: string,
   onChanged: RenderFn
 ): Promise<void> {
-  const key = String(mid);
-  const existing = state.upManualTagsMap[key] ?? [];
-  if (!existing.includes(tag)) {
+  // 检查标签是否存在于UP主
+  const existingTags = state.currentUpTags[creatorId] || [];
+  if (!existingTags.includes(tagId)) {
     return;
   }
 
-  const next = existing.filter((item) => item !== tag);
-  state.upManualTagsMap = { ...state.upManualTagsMap, [key]: next };
-  state.currentUpTags[key] = [...new Set([...(state.upAutoTags[key] || []), ...next])];
-
-  // 更新缓存
-  if (state.upDataCache[mid]) {
-    state.upDataCache[mid].manualTags = next;
+  // 获取创作者当前的标签权重
+  const creator = await creatorRepo.getCreator(creatorId, state.platform);
+  if (!creator) {
+    return;
   }
 
-  const tagObj = resolveTagByName(state, tag);
-  if (tagObj) {
-    await removeTagFromUPManualTags(mid, tagObj.id);
-  }
+  // 移除指定的标签
+  const updatedTagWeights = creator.tagWeights.filter(tw => tw.tagId !== tagId);
+  await creatorRepo.updateTagWeights(creatorId, state.platform, updatedTagWeights);
 
-  onChanged();
+  // 更新缓存（存储标签ID）
+  const upData = state.upCache[creatorId];
+  if (upData) {
+    upData.tags = upData.tags.filter(t => t !== tagId);
+  }
+  state.currentUpTags[creatorId] = existingTags.filter(t => t !== tagId);
+
+  // 更新标签计数
+  state.allTagCounts[tagId] = Math.max(0, (state.allTagCounts[tagId] || 0) - 1);
+
+  if (onChanged) {
+    onChanged();
+  }
 }
 
-export async function addCustomTag(state: StatsState, tag: string, onChanged: RenderFn): Promise<void> {
-  const next = normalizeTag(tag);
+export async function addCustomTag(state: StatsState, tagName: string, onChanged: RenderFn): Promise<void> {
+  const next = normalizeTag(tagName);
   if (!next || state.currentCustomTags.includes(next)) {
     return;
   }
+
+  // 创建标签
+  const tagId = await tagRepo.createTag({
+    name: next,
+    source: TagSource.USER,
+    createdAt: Date.now()
+  });
+
+  // 更新标签库和映射
+  state.tagLibrary[tagId] = {
+    tagId,
+    name: next,
+    source: "user"
+  };
+  state.tagIdToName[tagId] = next;
+
   state.currentCustomTags = [...state.currentCustomTags, next];
-  await setValue("customTags", state.currentCustomTags);
-  onChanged();
+  await onChanged();
 }
 
-export function renderTagList(state: StatsState): void {
+export async function renderTagList(state: StatsState): Promise<void> {
   const container = document.getElementById("tag-list");
   if (!container) {
     return;
   }
 
   container.innerHTML = "";
-  const tags = Object.values(state.currentUpTags).flat();
-  if (tags.length === 0 && state.currentCustomTags.length === 0) {
+
+  // 使用内存中的标签计数，不从数据库查询
+  const tagCounts = new Map<string, number>(Object.entries(state.allTagCounts));
+
+  // 添加自定义标签（使用次数为0）
+  for (const tagName of state.currentCustomTags) {
+    const tagId = Object.entries(state.tagIdToName).find(([_, name]) => name === tagName)?.[0];
+    if (tagId && !tagCounts.has(tagId)) {
+      tagCounts.set(tagId, 0);
+    }
+  }
+
+  if (tagCounts.size === 0) {
     const item = document.createElement("div");
     item.className = "list-item";
     item.textContent = "暂无分类词条";
@@ -219,27 +245,27 @@ export function renderTagList(state: StatsState): void {
     return;
   }
 
-  state.allTagCounts = {};
-  for (const tag of tags) {
-    state.allTagCounts[tag] = (state.allTagCounts[tag] ?? 0) + 1;
-  }
-  for (const tag of state.currentCustomTags) {
-    if (!state.allTagCounts[tag]) {
-      state.allTagCounts[tag] = 0;
-    }
-  }
+  // 更新状态
+  state.allTagCounts = Object.fromEntries(tagCounts);
 
+  // 搜索过滤（使用标签名称进行搜索）
   const searchTerm = getInputValue("tag-search").toLowerCase();
-  state.filteredTags = Object.keys(state.allTagCounts).filter((tag) => tag.toLowerCase().includes(searchTerm));
+  state.filteredTags = Array.from(tagCounts.keys()).filter((tagId) => {
+    const tagName = state.tagIdToName[tagId] || tagId;
+    return tagName.toLowerCase().includes(searchTerm);
+  });
+
+  // 排序
   const rows = state.filteredTags
-    .map((tag) => [tag, state.allTagCounts[tag]] as const)
+    .map((tagId) => [tagId, tagCounts.get(tagId)!] as const)
     .sort((a, b) => b[1] - a[1]);
 
-  for (const [tag, count] of rows) {
+  // 渲染
+  for (const [tagId, count] of rows) {
     const item = document.createElement("div");
     item.className = "list-item";
     const label = document.createElement("span");
-    label.appendChild(renderTagPill(tag, { count }));
+    label.appendChild(renderTagPill(tagId, { count, state }));
     const value = document.createElement("span");
     value.textContent = String(count);
     item.appendChild(label);

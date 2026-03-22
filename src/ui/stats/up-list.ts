@@ -1,50 +1,122 @@
-import type { StatsState } from "./types.js";
-import type { UP } from "../../database/implementations/index.js";
+import type { StatsState, UPCacheData } from "./types.js";
+import { CreatorRepository } from "../../database/implementations/creator-repository.impl.js";
+import { TagRepository } from "../../database/implementations/tag-repository.impl.js";
+
 import { createDragGhost, getDragContext, removeDragGhost, setDragContext } from "./drag.js";
-import { colorFromTag, findCategory, getInputValue, updateToggleLabel } from "./helpers.js";
-import { addTagToUp, getAutoTagsForUp, removeTagFromUp, renderAutoTagPill, renderTagPill } from "./tag-manager.js";
-import { VirtualList } from "./virtual-list.js";
+import { colorFromTag, findCategory, getInputValue, updateToggleLabel, creatorToCacheData } from "./helpers.js";
+import { addTagToUp, removeTagFromUp, renderAutoTagPill, renderTagPill } from "./tag-manager.js";
 
 type RenderFn = () => void;
 
-let virtualListInstance: VirtualList<UP> | null = null;
-
-function matchesFilters(state: StatsState, up: UP): boolean {
-  const tags = state.currentUpTags[String(up.mid)] ?? [];
-  const searchTerm = getInputValue("up-search").toLowerCase();
-
-  const hasAllIncludeTags =
-    state.filters.includeTags.length === 0 || state.filters.includeTags.every((tag) => tags.includes(tag));
-  const hasNoExcludeTags =
-    state.filters.excludeTags.length === 0 || !state.filters.excludeTags.some((tag) => tags.includes(tag));
-  const hasIncludeCategory =
-    state.filters.includeCategories.length === 0 ||
-    state.filters.includeCategories.some((categoryId) => {
-      const category = findCategory(state.categories, categoryId);
-      return Boolean(category && category.tags.some((tag) => tags.includes(tag)));
-    });
-  const hasNoExcludeCategory =
-    state.filters.excludeCategories.length === 0 ||
-    !state.filters.excludeCategories.some((categoryId) => {
-      const category = findCategory(state.categories, categoryId);
-      return Boolean(category && category.tags.some((tag) => tags.includes(tag)));
-    });
-  const matchesSearch = !searchTerm || up.name.toLowerCase().includes(searchTerm);
-
-  return hasAllIncludeTags && hasNoExcludeTags && hasIncludeCategory && hasNoExcludeCategory && matchesSearch;
+// 分页状态
+interface PaginationState {
+  currentPage: number;
+  pageSize: number;
+  totalPages: number;
+  totalItems: number;
 }
 
-function filterUpList(state: StatsState): UP[] {
-  const filteredByFollow = state.currentUpList.filter((up) => {
-    if (state.showFollowedOnly) {
-      return up.is_followed !== false;
-    }
-    return up.is_followed === false;
+let paginationState: PaginationState = {
+  currentPage: 0,
+  pageSize: 50,
+  totalPages: 0,
+  totalItems: 0
+};
+
+// 初始化 repository 实例
+const creatorRepo = new CreatorRepository();
+const tagRepo = new TagRepository();
+
+/**
+ * 从数据库层获取过滤后的UP列表（带分页）
+ */
+async function fetchFilteredUpList(state: StatsState, page: number = 0): Promise<{
+  items: UPCacheData[];
+  total: number;
+  totalPages: number;
+}> {
+  // 过滤器中存储的已经是标签 ID，无需转换
+  const includeTagIds = state.filters.includeTags;
+  const excludeTagIds = state.filters.excludeTags;
+
+  console.log('[fetchFilteredUpList] 查询参数:', {
+    platform: state.platform,
+    isFollowing: state.showFollowedOnly,
+    includeTags: includeTagIds,
+    excludeTags: excludeTagIds,
+    includeCategories: state.filters.includeCategories,
+    excludeCategories: state.filters.excludeCategories,
+    keyword: getInputValue("up-search"),
+    page,
+    pageSize: paginationState.pageSize
   });
-  return filteredByFollow.filter((up) => matchesFilters(state, up));
+
+  // 先获取总数
+  const allCreators = await creatorRepo.searchCreatorsByFilter(state.platform, {
+    isFollowing: state.showFollowedOnly,
+    includeTags: includeTagIds,
+    excludeTags: excludeTagIds,
+    includeCategories: state.filters.includeCategories,
+    excludeCategories: state.filters.excludeCategories,
+    keyword: getInputValue("up-search"),
+    page: 0,
+    pageSize: 100000  // 获取所有匹配项以计算总数
+  });
+
+  const total = allCreators.length;
+  const totalPages = Math.ceil(total / paginationState.pageSize);
+
+  console.log('[fetchFilteredUpList] 总数:', total, '总页数:', totalPages);
+
+  // 获取当前页的数据
+  const creators = await creatorRepo.searchCreatorsByFilter(state.platform, {
+    isFollowing: state.showFollowedOnly,
+    includeTags: includeTagIds,
+    excludeTags: excludeTagIds,
+    includeCategories: state.filters.includeCategories,
+    excludeCategories: state.filters.excludeCategories,
+    keyword: getInputValue("up-search"),
+    page,
+    pageSize: paginationState.pageSize
+  });
+
+  console.log('[fetchFilteredUpList] 当前页获取到的UP数量:', creators.length);
+  if (creators.length > 0) {
+    console.log('[fetchFilteredUpList] 第一个UP:', creators[0]);
+  }
+
+  // 转换为UPCacheData格式
+  const items = creators.map(creator => {
+    const userTags = creator.tagWeights
+      .filter(tw => tw.source === 'user')
+      .map(tw => tw.tagId);
+
+    return {
+      ...creatorToCacheData(creator),
+      tags: userTags
+    };
+  });
+
+  return { items, total, totalPages };
 }
 
-function setupUpTagDropZone(tagsEl: HTMLElement, mid: number, state: StatsState, rerender: RenderFn): void {
+/**
+ * 获取已关注UP的数量
+ * 直接从数据库层获取统计数据
+ */
+export async function getFollowedCount(state: StatsState): Promise<number> {
+  return await creatorRepo.getFollowedCount(state.platform);
+}
+
+/**
+ * 获取未关注UP的数量
+ * 直接从数据库层获取统计数据
+ */
+export async function getUnfollowedCount(state: StatsState): Promise<number> {
+  return await creatorRepo.getUnfollowedCount(state.platform);
+}
+
+function setupUpTagDropZone(tagsEl: HTMLElement, creatorId: string, state: StatsState, rerender: RenderFn): void {
   tagsEl.addEventListener("dragover", (e) => {
     e.preventDefault();
     tagsEl.classList.add("drag-over");
@@ -55,50 +127,67 @@ function setupUpTagDropZone(tagsEl: HTMLElement, mid: number, state: StatsState,
   tagsEl.addEventListener("drop", (e) => {
     e.preventDefault();
     tagsEl.classList.remove("drag-over");
-    const tag = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
-    if (!tag) {
+    const tagData = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
+    if (!tagData) {
       return;
     }
+
+    // 解析标签数据（可能是JSON字符串或纯文本）
+    let tagName = tagData;
+    try {
+      const parsed = JSON.parse(tagData);
+      if (parsed.tagName) {
+        tagName = parsed.tagName;
+      }
+    } catch {
+      // 如果解析失败，直接使用原始数据作为标签名
+    }
+
     const currentDrag = getDragContext();
     if (currentDrag) {
       currentDrag.dropped = true;
     }
-    void addTagToUp(state, mid, tag, rerender);
+    void addTagToUp(state, creatorId, tagName, rerender);
   });
 }
 
-function renderUpTagPill(tag: string, mid: number, state: StatsState, rerender: RenderFn): HTMLSpanElement {
-  return renderTagPill(tag, { mid, state, rerender });
+function renderUpTagPill(tagId: string, creatorId: string, state: StatsState, rerender: RenderFn): HTMLSpanElement {
+  return renderTagPill(tagId, { creatorId, state, rerender });
 }
 
-async function buildTagContainer(state: StatsState, mid: number, rerender: RenderFn): Promise<HTMLElement> {
+async function buildTagContainer(state: StatsState, creatorId: string, rerender: RenderFn): Promise<HTMLElement> {
   const tags = document.createElement("div");
   tags.className = "up-tags";
-  setupUpTagDropZone(tags, mid, state, rerender);
+  setupUpTagDropZone(tags, creatorId, state, rerender);
 
-  const manualTagList = state.upManualTagsMap[String(mid)] ?? [];
-  const autoTagList = await getAutoTagsForUp(state, mid, manualTagList);
-  if (manualTagList.length === 0 && autoTagList.length === 0) {
+  // 首先尝试从缓存获取
+  let upData = state.upCache[creatorId];
+
+  // 如果缓存中没有，从数据库获取
+  if (!upData) {
+    const creator = await creatorRepo.getCreator(creatorId, state.platform);
+    if (creator) {
+      const userTags = creator.tagWeights
+        .filter(tw => tw.source === 'user')
+        .map(tw => tw.tagId);
+
+      upData = {
+        ...creatorToCacheData(creator),
+        tags: userTags
+      };
+      // 更新缓存
+      state.upCache[creatorId] = upData;
+      state.currentUpTags[creatorId] = userTags;
+    }
+  }
+
+  if (!upData || upData.tags.length === 0) {
     tags.textContent = "暂无分类";
     return tags;
   }
 
-  for (const tag of manualTagList) {
-    tags.appendChild(renderUpTagPill(tag, mid, state, rerender));
-  }
-  if (manualTagList.length > 0 && autoTagList.length > 0) {
-    const separator = document.createElement("span");
-    separator.className = "tag-separator";
-    separator.textContent = "|";
-    separator.style.margin = "0 12px";
-    separator.style.opacity = "0.5";
-    separator.style.fontSize = "16px";
-    separator.style.height = "20px";
-    separator.style.display = "inline-block";
-    tags.appendChild(separator);
-  }
-  for (const autoTag of autoTagList) {
-    tags.appendChild(renderAutoTagPill(autoTag.tag, autoTag.count));
+  for (const tagId of upData.tags) {
+    tags.appendChild(renderUpTagPill(tagId, creatorId, state, rerender));
   }
   return tags;
 }
@@ -114,7 +203,23 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
     return;
   }
 
-  if (state.currentUpList.length === 0) {
+  // 从数据库获取过滤后的UP列表
+  const result = await fetchFilteredUpList(state, paginationState.currentPage);
+
+  console.log('[renderUpList] 获取到的列表长度:', result.items.length);
+
+  // 更新分页状态
+  paginationState.totalItems = result.total;
+  paginationState.totalPages = result.totalPages;
+
+  // 更新缓存
+  result.items.forEach(up => {
+    state.upCache[up.creatorId] = up;
+    state.currentUpTags[up.creatorId] = up.tags;
+  });
+
+  if (result.items.length === 0) {
+    console.log('[renderUpList] 列表为空，显示"暂无关注UP"');
     container.innerHTML = "";
     const item = document.createElement("div");
     item.className = "list-item";
@@ -123,78 +228,159 @@ export async function renderUpList(state: StatsState, rerender: RenderFn): Promi
     return;
   }
 
-  const list = filterUpList(state);
-  
-  // 如果虚拟列表实例不存在，创建一个新的
-  if (!virtualListInstance) {
-    virtualListInstance = new VirtualList<UP>({
-      container,
-      itemHeight: 80, // 估计的 UP 项高度
-      estimatedItemHeight: 80,
-      renderItem: (up, index) => {
-        const item = document.createElement("div");
-        item.className = "up-item";
-        item.dataset.mid = String(up.mid);
+  // 清空容器
+  container.innerHTML = "";
 
-        const avatarLink = document.createElement("a");
-        avatarLink.href = `https://space.bilibili.com/${up.mid}`;
-        avatarLink.target = "_blank";
-        avatarLink.rel = "noreferrer";
+  // 渲染UP列表
+  const fragment = document.createDocumentFragment();
+  for (const up of result.items) {
+    const item = document.createElement("div");
+    item.className = "up-item";
+    item.dataset.creatorId = up.creatorId;
 
-        const avatar = document.createElement("img");
-        avatar.className = "up-avatar";
-        avatar.src = up.face || "";
-        avatar.alt = up.name;
-        avatarLink.appendChild(avatar);
+    const avatarLink = document.createElement("a");
+    avatarLink.href = `https://space.bilibili.com/${up.creatorId}`;
+    avatarLink.target = "_blank";
+    avatarLink.rel = "noreferrer";
 
-        const info = document.createElement("div");
-        info.className = "up-info";
+    const avatar = document.createElement("img");
+    avatar.className = "up-avatar";
+    avatar.alt = up.name;
 
-        const name = document.createElement("a");
-        name.className = "up-name";
-        name.href = `https://space.bilibili.com/${up.mid}`;
-        name.target = "_blank";
-        name.rel = "noreferrer";
-        name.textContent = up.name;
-
-        info.appendChild(name);
-        // 使用缓存的数据
-        const cachedData = state.upDataCache[up.mid];
-        if (cachedData) {
-          const tagsContainer = document.createElement("div");
-          tagsContainer.className = "up-tags";
-          setupUpTagDropZone(tagsContainer, up.mid, state, rerender);
-          
-          if (cachedData.manualTags.length === 0 && cachedData.autoTags.length === 0) {
-            tagsContainer.textContent = "暂无分类";
-          } else {
-            for (const tag of cachedData.manualTags) {
-              tagsContainer.appendChild(renderUpTagPill(tag, up.mid, state, rerender));
-            }
-            if (cachedData.manualTags.length > 0 && cachedData.autoTags.length > 0) {
-              const separator = document.createElement("span");
-              separator.className = "tag-separator";
-              separator.textContent = "|";
-              separator.style.margin = "0 12px";
-              separator.style.opacity = "0.5";
-              separator.style.fontSize = "16px";
-              separator.style.height = "20px";
-              separator.style.display = "inline-block";
-              tagsContainer.appendChild(separator);
-            }
-            for (const autoTag of cachedData.autoTags) {
-              tagsContainer.appendChild(renderAutoTagPill(autoTag.tag, autoTag.count));
-            }
+    // 优先使用avatar字段的图片数据（如base64），如果为空则使用avatarUrl
+    if (up.avatar) {
+      avatar.src = up.avatar;
+    } else if (up.avatarUrl) {
+      avatar.src = up.avatarUrl;
+    } else {
+      // 异步获取头像URL
+      void (async () => {
+        try {
+          const avatarUrl = await creatorRepo.getAvatarUrl(up.creatorId, state.platform);
+          if (avatarUrl) {
+            avatar.src = avatarUrl;
           }
-          info.appendChild(tagsContainer);
+        } catch (error) {
+          console.error(`[up-list] Failed to fetch avatar URL for UP: ${up.name}`, error);
         }
-        item.appendChild(avatarLink);
-        item.appendChild(info);
-        return item;
+      })();
+    }
+
+    avatarLink.appendChild(avatar);
+
+    // 头像加载失败处理
+    avatar.onerror = async () => {
+      console.warn(`[up-list] Failed to load avatar for UP: ${up.name}`);
+      // 尝试通过API获取头像URL
+      try {
+        const avatarUrl = await creatorRepo.getAvatarUrl(up.creatorId, state.platform);
+        if (avatarUrl) {
+          avatar.src = avatarUrl;
+        }
+      } catch (error) {
+        console.error(`[up-list] Failed to fetch avatar URL for UP: ${up.name}`, error);
       }
-    });
+    };
+
+    const info = document.createElement("div");
+    info.className = "up-info";
+
+    const name = document.createElement("a");
+    name.className = "up-name";
+    name.href = `https://space.bilibili.com/${up.creatorId}`;
+    name.target = "_blank";
+    name.rel = "noreferrer";
+    name.textContent = up.name;
+
+    info.appendChild(name);
+
+    // 按需获取UP的标签数据
+    const tagsContainer = document.createElement("div");
+    tagsContainer.className = "up-tags";
+    setupUpTagDropZone(tagsContainer, up.creatorId, state, rerender);
+
+    // 异步加载标签数据
+    void (async () => {
+      const upData = state.upCache[up.creatorId];
+      // 清空容器内容，而不是直接设置textContent，以保留事件监听器
+      tagsContainer.innerHTML = "";
+      if (!upData || upData.tags.length === 0) {
+        const emptyText = document.createElement("span");
+        emptyText.textContent = "暂无分类";
+        tagsContainer.appendChild(emptyText);
+      } else {
+        for (const tagId of upData.tags) {
+          tagsContainer.appendChild(renderUpTagPill(tagId, up.creatorId, state, rerender));
+        }
+      }
+    })();
+
+    info.appendChild(tagsContainer);
+    item.appendChild(avatarLink);
+    item.appendChild(info);
+    fragment.appendChild(item);
   }
-  
-  // 更新虚拟列表的数据
-  virtualListInstance.setItems(list);
+
+  container.appendChild(fragment);
+
+  // 渲染分页控件
+  renderPagination(container, result.total, paginationState.currentPage, paginationState.totalPages, rerender);
+}
+
+/**
+ * 渲染分页控件
+ */
+function renderPagination(
+  container: HTMLElement,
+  total: number,
+  currentPage: number,
+  totalPages: number,
+  rerender: RenderFn
+): void {
+  // 移除旧的分页控件
+  const oldPagination = container.querySelector('.pagination');
+  if (oldPagination) {
+    oldPagination.remove();
+  }
+
+  if (totalPages <= 1) {
+    return;
+  }
+
+  const pagination = document.createElement('div');
+  pagination.className = 'pagination';
+
+  // 上一页按钮
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'pagination-btn';
+  prevBtn.textContent = '上一页';
+  prevBtn.disabled = currentPage === 0;
+  prevBtn.onclick = () => {
+    if (currentPage > 0) {
+      paginationState.currentPage = currentPage - 1;
+      rerender();
+    }
+  };
+  pagination.appendChild(prevBtn);
+
+  // 页码信息
+  const pageInfo = document.createElement('span');
+  pageInfo.className = 'pagination-info';
+  pageInfo.textContent = `${currentPage + 1} / ${totalPages}`;
+  pagination.appendChild(pageInfo);
+
+  // 下一页按钮
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'pagination-btn';
+  nextBtn.textContent = '下一页';
+  nextBtn.disabled = currentPage >= totalPages - 1;
+  nextBtn.onclick = () => {
+    if (currentPage < totalPages - 1) {
+      paginationState.currentPage = currentPage + 1;
+      rerender();
+    }
+  };
+  pagination.appendChild(nextBtn);
+
+  container.appendChild(pagination);
 }

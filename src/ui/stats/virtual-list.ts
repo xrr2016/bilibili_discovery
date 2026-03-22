@@ -119,11 +119,27 @@ export class VirtualList<T> {
           const height = entry.contentRect.height;
           const oldPosition = this.state.itemPositions.get(index);
           if (oldPosition && Math.abs(height - oldPosition.height) > 1) {
+            // 更新当前元素的位置
             this.state.itemPositions.set(index, {
               ...oldPosition,
               height,
               bottom: oldPosition.top + height
             });
+
+            // 重新计算后续元素的位置
+            let currentTop = oldPosition.top + height;
+            for (let i = index + 1; i < this.state.items.length; i++) {
+              const position = this.state.itemPositions.get(i);
+              if (position) {
+                this.state.itemPositions.set(i, {
+                  ...position,
+                  top: currentTop,
+                  bottom: currentTop + position.height
+                });
+                currentTop += position.height;
+              }
+            }
+
             needsUpdate = true;
           }
         }
@@ -172,13 +188,28 @@ export class VirtualList<T> {
       }
     }
     this.state.totalHeight = totalHeight;
+
+    console.log('[VirtualList.updateTotalHeight] 总高度:', {
+      itemCount: items.length,
+      totalHeight,
+      estimatedItemHeight
+    });
   }
 
   private updateVisibleRange(): void {
     const { items, itemPositions, scrollTop, viewportHeight, buffer, isRendering } = this.state;
     const { estimatedItemHeight } = this.options;
 
+    console.log('[VirtualList.updateVisibleRange] 开始更新可见范围', {
+      itemCount: items.length,
+      scrollTop,
+      viewportHeight,
+      buffer,
+      isRendering
+    });
+
     if (items.length === 0 || isRendering) {
+      console.log('[VirtualList.updateVisibleRange] 跳过更新：items.length === 0 || isRendering');
       return;
     }
 
@@ -223,6 +254,12 @@ export class VirtualList<T> {
     const { items, itemPositions } = this.state;
     const { estimatedItemHeight } = this.options;
 
+    console.log('[VirtualList.ensureItemPositions] 开始确保位置', {
+      itemCount: items.length,
+      existingPositions: itemPositions.size,
+      estimatedItemHeight
+    });
+
     let currentTop = 0;
     for (let i = 0; i < items.length; i++) {
       const existing = itemPositions.get(i);
@@ -238,11 +275,22 @@ export class VirtualList<T> {
         currentTop += height;
       }
     }
+
+    console.log('[VirtualList.ensureItemPositions] 位置计算完成', {
+      totalHeight: currentTop
+    });
   }
 
   private render(): void {
     const { items, startIndex, endIndex, itemPositions } = this.state;
     const { renderItem } = this.options;
+
+    console.log('[VirtualList.render] 开始渲染', {
+      totalItems: items.length,
+      startIndex,
+      endIndex,
+      visibleCount: endIndex - startIndex + 1
+    });
 
     // 计算前后占位高度
     const startPosition = itemPositions.get(startIndex);
@@ -256,11 +304,19 @@ export class VirtualList<T> {
     this.spacerBefore.style.height = `${beforeHeight}px`;
     this.spacerAfter.style.height = `${afterHeight}px`;
 
-    // 复用可见项
+    // 复用可见项并更新位置
     const newRenderedItems = new Map<number, HTMLElement>();
     for (let i = startIndex; i <= endIndex; i++) {
       if (this.renderedItems.has(i)) {
-        newRenderedItems.set(i, this.renderedItems.get(i)!);
+        const itemEl = this.renderedItems.get(i)!;
+
+        // 更新位置
+        const position = itemPositions.get(i);
+        if (position) {
+          itemEl.style.top = `${position.top}px`;
+        }
+
+        newRenderedItems.set(i, itemEl);
         this.renderedItems.delete(i);
       }
     }
@@ -278,15 +334,38 @@ export class VirtualList<T> {
       if (!this.renderedItems.has(i)) {
         const itemEl = renderItem(items[i], i);
         itemEl.dataset.index = String(i);
+
+        // 设置绝对定位
+        const position = itemPositions.get(i);
+        if (position) {
+          itemEl.style.position = 'absolute';
+          itemEl.style.top = `${position.top}px`;
+          itemEl.style.left = '0';
+          itemEl.style.right = '0';
+          itemEl.style.width = '100%';
+        }
+
         this.itemResizeObserver.observe(itemEl);
         fragment.appendChild(itemEl);
         this.renderedItems.set(i, itemEl);
       }
     }
     this.contentContainer.appendChild(fragment);
+
+    console.log('[VirtualList.render] 渲染完成', {
+      renderedCount: this.renderedItems.size,
+      beforeHeight,
+      afterHeight,
+      totalHeight: this.state.totalHeight
+    });
   }
 
   public setItems(items: T[]): void {
+    console.log('[VirtualList.setItems] 设置新数据', {
+      itemCount: items.length,
+      containerHeight: this.options.container.clientHeight
+    });
+
     this.state.items = items;
     this.state.itemPositions.clear();
     this.state.scrollTop = 0;

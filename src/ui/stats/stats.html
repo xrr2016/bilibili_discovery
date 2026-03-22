@@ -12,7 +12,12 @@
           <div class="cards">
             <div class="card">
               <span class="label">关注UP数量</span>
-              <span id="stat-up-count" class="value">-</span>
+              <div class="stats-grid">
+                <span class="stat-label">已关注</span>
+                <span id="stat-followed-count" class="value">-</span>
+                <span class="stat-label">未关注</span>
+                <span id="stat-unfollowed-count" class="value">-</span>
+              </div>
             </div>
             <div class="card">
               <span class="label">UP分类词条数</span>
@@ -69,6 +74,6 @@
         </div>
       </div>
     </div>
-    <script type="module" src="./stats.js"></script>
+    <script type="module" src="./stats.ts"></script>
   </body>
 </html>

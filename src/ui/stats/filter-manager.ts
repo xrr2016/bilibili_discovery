@@ -4,11 +4,13 @@ import type { StatsState } from "./types.js";
 
 type RefreshFn = () => void;
 
-function createFilterTag(tag: string, type: "include" | "exclude", state: StatsState, refresh: RefreshFn): HTMLElement {
+function createFilterTag(tagId: string, type: "include" | "exclude", state: StatsState, refresh: RefreshFn): HTMLElement {
+  const tagName = state.tagIdToName[tagId] || tagId;
   const tagEl = document.createElement("div");
   tagEl.className = "filter-tag";
-  tagEl.textContent = tag;
-  tagEl.style.backgroundColor = colorFromTag(tag);
+  tagEl.textContent = tagName;
+  tagEl.style.backgroundColor = colorFromTag(tagName);
+  tagEl.dataset.tagId = tagId;
 
   const removeBtn = document.createElement("span");
   removeBtn.className = "remove-tag";
@@ -19,9 +21,9 @@ function createFilterTag(tag: string, type: "include" | "exclude", state: StatsS
     
     // 更新状态
     if (type === "include") {
-      state.filters.includeTags = removeFromList(state.filters.includeTags, tag);
+      state.filters.includeTags = removeFromList(state.filters.includeTags, tagId);
     } else {
-      state.filters.excludeTags = removeFromList(state.filters.excludeTags, tag);
+      state.filters.excludeTags = removeFromList(state.filters.excludeTags, tagId);
     }
     
     // 只刷新 UP 列表，不重新渲染筛选标签
@@ -106,18 +108,18 @@ function applyCategoryFilter(state: StatsState, categoryId: string, type: "inclu
   state.filters.includeCategories = removeFromList(state.filters.includeCategories, categoryId);
 }
 
-function applyTagFilter(state: StatsState, tag: string, type: "include" | "exclude"): void {
+function applyTagFilter(state: StatsState, tagId: string, type: "include" | "exclude"): void {
   if (type === "include") {
-    state.filters.excludeTags = removeFromList(state.filters.excludeTags, tag);
-    if (!state.filters.includeTags.includes(tag)) {
-      state.filters.includeTags.push(tag);
+    state.filters.excludeTags = removeFromList(state.filters.excludeTags, tagId);
+    if (!state.filters.includeTags.includes(tagId)) {
+      state.filters.includeTags.push(tagId);
     }
     return;
   }
 
-  state.filters.includeTags = removeFromList(state.filters.includeTags, tag);
-  if (!state.filters.excludeTags.includes(tag)) {
-    state.filters.excludeTags.push(tag);
+  state.filters.includeTags = removeFromList(state.filters.includeTags, tagId);
+  if (!state.filters.excludeTags.includes(tagId)) {
+    state.filters.excludeTags.push(tagId);
   }
 }
 
@@ -160,9 +162,24 @@ export function setupDragAndDrop(state: StatsState, refresh: RefreshFn): void {
         return;
       }
 
-      const tag = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
-      if (!tag) {
+      const tagData = e.dataTransfer?.getData("application/x-bili-tag") ?? e.dataTransfer?.getData("text/plain");
+      if (!tagData) {
         return;
+      }
+
+      // 解析标签 ID 和名称
+      let tagId: string;
+      try {
+        const parsed = JSON.parse(tagData);
+        if (parsed.tagId) {
+          tagId = parsed.tagId;
+        } else {
+          // 兼容旧格式（仅标签名称）
+          tagId = Object.entries(state.tagIdToName).find(([_, name]) => name === tagData)?.[0] || tagData;
+        }
+      } catch {
+        // 如果不是 JSON 格式，尝试作为标签名称处理
+        tagId = Object.entries(state.tagIdToName).find(([_, name]) => name === tagData)?.[0] || tagData;
       }
 
       const currentDrag = getDragContext();
@@ -170,7 +187,7 @@ export function setupDragAndDrop(state: StatsState, refresh: RefreshFn): void {
         currentDrag.dropped = true;
       }
 
-      applyTagFilter(state, tag, zone.type);
+      applyTagFilter(state, tagId, zone.type);
       renderFilterTags(state, refresh);
       refresh();
     });

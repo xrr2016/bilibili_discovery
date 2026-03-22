@@ -29,6 +29,7 @@ export type {
 
 // Creator 实现
 export { CreatorRepository } from './creator-repository.impl.js';
+export * from './creator-data-access.impl.js';
 
 // Video 实现
 export { VideoRepository } from './video-repository.impl.js';
