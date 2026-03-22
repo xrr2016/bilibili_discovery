@@ -105,8 +105,7 @@ export class FavoriteSyncService {
     return videos
       .map(video => ({
         ...video,
-        addedAt: itemMap.get(video.videoId)?.addedAt,
-        picture: video.coverUrl
+        addedAt: itemMap.get(video.videoId)?.addedAt
       }))
       .filter(video => this.matchesSearchParams(video, params));
   }

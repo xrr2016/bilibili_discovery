@@ -102,8 +102,6 @@ export interface FavoriteSearchParams {
 export type FavoriteVideoDetail = DBVideo & {
   /** 添加到收藏夹的时间 */
   addedAt?: number;
-  /** 封面图（兼容字段） */
-  picture?: string;
 };
 
 /**

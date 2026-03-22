@@ -40,7 +40,6 @@ export interface AggregatedCollectionVideo {
   tags: string[];
   createdAt: number;
   coverUrl?: string;
-  picture?: string;
 }
 
 /**
@@ -128,8 +127,7 @@ export async function getCollectionVideos(
         publishTime: video.publishTime,
         tags: video.tags,
         createdAt: video.createdAt,
-        coverUrl: video.coverUrl,
-        picture: video.picture
+        coverUrl: video.coverUrl
       };
     })
     .filter((v): v is AggregatedCollectionVideo => v !== null)
@@ -240,8 +238,7 @@ export async function getAllCollectionVideos(
         publishTime: video.publishTime,
         tags: video.tags,
         createdAt: video.createdAt,
-        coverUrl: video.coverUrl,
-        picture: video.picture
+        coverUrl: video.coverUrl
       };
     })
     .filter((v): v is AggregatedCollectionVideo => v !== null);

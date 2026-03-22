@@ -359,7 +359,8 @@ function trackVideoPlayback(
       }
       lastTime = video.currentTime;
       const now = Date.now();
-      if (accumulated >= 5 || now - lastSentAt >= 15000) {
+      // 每7秒发送一次进度更新，或者累积观看时间达到5秒时发送
+      if (accumulated >= 5 && now - lastSentAt >= 7000) {
         flush("tick");
       }
     }
