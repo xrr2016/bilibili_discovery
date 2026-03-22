@@ -26,6 +26,13 @@ export class TagRepository implements ITagRepository {
   }
 
   /**
+   * 使用指定ID创建标签
+   */
+  async createTagWithId(tag: Tag): Promise<void> {
+    await DBUtils.add(STORE_NAMES.TAGS, tag);
+  }
+
+  /**
    * 批量创建标签
    */
   async createTags(tags: Omit<Tag, 'tagId'>[]): Promise<string[]> {

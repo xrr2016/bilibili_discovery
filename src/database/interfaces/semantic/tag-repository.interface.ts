@@ -29,6 +29,22 @@ export interface ITagRepository {
   createTag(tag: Omit<Tag, 'tagId'>): Promise<string>;
 
   /**
+   * 使用指定ID创建标签
+   *
+   * @param tag - 标签信息（包含tagId）
+   * @returns Promise<void>
+   *
+   * 职责：
+   * - 使用指定的tagId创建新标签
+   * - 验证必填字段
+   *
+   * 能力边界：
+   * - 不验证标签名称唯一性
+   * - 不处理标签关联
+   */
+  createTagWithId(tag: Tag): Promise<void>;
+
+  /**
    * 批量创建标签
    * 
    * @param tags - 标签信息列表
