@@ -90,6 +90,7 @@ export async function initOptions(): Promise<void> {
   fillForm(settings);
   setLinkTarget("open-stats", "ui/stats/stats.html");
   setLinkTarget("open-api-test", "ui/api-test/api-test.html");
+  setLinkTarget("open-image-compress", "ui/image-compress/image-compress.html");
   bindCookieHelp();
   bindSave();
 }

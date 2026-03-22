@@ -129,14 +129,21 @@ function bindInputs(): void {
 
   clearFilterBtn?.addEventListener('click', async () => {
     clearFilters(state);
+    await loadCollectionData(state);
     await rerenderPage();
   });
 
   prevPage?.addEventListener('click', async () => {
-    await changePage(state, -1, rerenderPage);
+    await changePage(state, -1, async () => {
+      await loadCollectionData(state);
+      await rerenderPage();
+    });
   });
   nextPage?.addEventListener('click', async () => {
-    await changePage(state, 1, rerenderPage);
+    await changePage(state, 1, async () => {
+      await loadCollectionData(state);
+      await rerenderPage();
+    });
   });
 }
 
@@ -147,6 +154,7 @@ async function handleSearch(): Promise<void> {
   try {
     setLoading(true, elements);
     await applyFilters(state);
+    await loadCollectionData(state);
     await rerenderPage();
   } catch (error) {
     console.error('[Favorites] Error searching videos:', error);

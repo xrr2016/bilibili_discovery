@@ -120,59 +120,35 @@ export async function applyFilters(state: FavoritesState): Promise<void> {
     excludeTags: state.filters.excludeTags
   };
 
-  // 本地过滤视频
-  state.filteredVideos = state.aggregatedVideos.filter(video => {
-    // 关键词过滤
-    if (searchKeyword && !video.title.toLowerCase().includes(searchKeyword.toLowerCase())) {
-      return false;
-    }
-
-    // UP主过滤
-    if (creatorName) {
-      const creatorIdMatch = video.creatorId.toLowerCase().includes(creatorName.toLowerCase());
-      const creatorNameMatch = video.creatorName?.toLowerCase().includes(creatorName.toLowerCase()) || false;
-      if (!creatorIdMatch && !creatorNameMatch) {
-        return false;
-      }
-    }
-
-    // 包含标签过滤
-    if (state.filters.includeTags.length > 0) {
-      const hasAllIncludeTags = state.filters.includeTags.every(tag => 
-        video.tags && video.tags.includes(tag)
-      );
-      if (!hasAllIncludeTags) {
-        return false;
-      }
-    }
-
-    // 排除标签过滤
-    if (state.filters.excludeTags.length > 0) {
-      const hasExcludeTag = state.filters.excludeTags.some(tag => 
-        video.tags && video.tags.includes(tag)
-      );
-      if (hasExcludeTag) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
+  // 筛选逻辑已移至后端，通过loadCollectionData实现
+  // 重置页码
   state.currentPage = 0;
 }
 
 export async function updateFilterOptions(state: FavoritesState): Promise<void> {
-  // 收集所有标签
-  const allTags = new Set<string>();
-  state.aggregatedVideos.forEach(video => {
-    if (video.tags) {
-      video.tags.forEach(tag => allTags.add(tag));
-    }
-  });
+  // 从后端获取所有标签
+  let tagsResponse;
 
-  // 渲染标签列表
-  await renderTagList(state, Array.from(allTags));
+  if (state.currentCollectionId === 'all') {
+    tagsResponse = await chrome.runtime.sendMessage({
+      type: 'get_all_collection_tags',
+      payload: { collectionType: state.currentCollectionType }
+    }) as unknown as { success: boolean; tags?: string[]; error?: string };
+  } else {
+    tagsResponse = await chrome.runtime.sendMessage({
+      type: 'get_collection_tags',
+      payload: { collectionId: state.currentCollectionId }
+    }) as unknown as { success: boolean; tags?: string[]; error?: string };
+  }
+
+  if (tagsResponse?.success && tagsResponse.tags) {
+    // 渲染标签列表
+    await renderTagList(state, tagsResponse.tags);
+  } else {
+    console.warn('[FilterManager] Failed to load tags:', tagsResponse?.error);
+    // 渲染空标签列表
+    await renderTagList(state, []);
+  }
 }
 
 async function renderTagList(state: FavoritesState, tags: string[]): Promise<void> {

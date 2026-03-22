@@ -19,6 +19,7 @@ export interface FavoritesState {
   isLoading: boolean;
   shouldStopSync: boolean;
   filters: VideoFilters;
+  total: number; // 总记录数，用于分页
 }
 
 export interface VideoFilters {

@@ -123,16 +123,6 @@ body {
   box-shadow: 0 0 0 3px rgba(127, 137, 173, 0.15);
 }
 
-.form-input::placeholder {
-  color: #a0aec0;
-}
-
-.input-suffix {
-  flex-shrink: 0;
-  font-size: 14px;
-  color: #718096;
-}
-
 .form-hint {
   margin: 8px 0 0 112px;
   font-size: 12px;
@@ -140,19 +130,68 @@ body {
   line-height: 1.5;
 }
 
-.footer {
-  padding: 20px 24px;
-  background: #f7fafc;
-  border-top: 1px solid #e2e8f0;
+.progress-container {
+  margin-bottom: 20px;
 }
 
-.btn-primary {
-  width: 100%;
+.progress-bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8a93b6 0%, #8d6f9e 100%);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #718096;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 16px;
+  background: #f7fafc;
+  border-radius: 8px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #718096;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.button-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.btn-primary,
+.btn-secondary {
   padding: 12px 24px;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(135deg, #8a93b6 0%, #8d6f9e 100%);
-  color: white;
   cursor: pointer;
   font-size: 15px;
   font-weight: 600;
@@ -161,25 +200,56 @@ body {
   justify-content: center;
   gap: 8px;
   transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #8a93b6 0%, #8d6f9e 100%);
+  color: white;
   box-shadow: 0 4px 12px rgba(138, 147, 182, 0.3);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(138, 147, 182, 0.4);
 }
 
-.btn-primary:active {
+.btn-primary:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.btn-primary svg {
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #cbd5e0;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary svg,
+.btn-secondary svg {
   width: 18px;
   height: 18px;
 }
 
+.footer {
+  padding: 20px 24px;
+  background: #f7fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
 .status {
-  margin: 12px 0 0 0;
+  margin: 0;
   font-size: 13px;
   text-align: center;
   color: #4a5568;
@@ -191,28 +261,4 @@ body {
 
 .status.error {
   color: #f56565;
-}
-
-.link-button {
-  flex: 1;
-  padding: 10px 14px;
-  border: 2px solid #7f89ad;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #7f89ad;
-  text-decoration: none;
-  text-align: center;
-  transition: all 0.3s ease;
-  background: #f7fafc;
-}
-
-.link-button:hover {
-  background: #7f89ad;
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(127, 137, 173, 0.3);
-}
-
-.link-button:active {
-  transform: translateY(0);
 }

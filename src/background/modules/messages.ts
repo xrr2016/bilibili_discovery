@@ -46,7 +46,7 @@ import { createInterestManager } from "./interest-manager.js";
 import { syncFavoriteVideos, searchFavoriteVideos } from "./favorite-sync/index.js";
 import { CollectionRepository } from "../../database/implementations/collection-repository.impl.js";
 import { Platform, TagSource } from "../../database/types/base.js";
-import { getCollectionVideos, getAllCollectionVideos } from "../../database/implementations/collection-data-access.impl.js";
+import { getCollectionVideos, getAllCollectionVideos, getCollectionVideosPaginated, getAllCollectionVideosPaginated, getCollectionTags, getAllCollectionTags } from "../../database/implementations/collection-data-access.impl.js";
 import { VideoRepository, CreatorRepository, TagRepository, CollectionItemRepository } from "../../database/implementations/index.js";
 
 declare const chrome: {
@@ -632,6 +632,40 @@ export async function handleMessage(
     }
   }
 
+  if (message.type === "get_collection_videos_paginated") {
+    const payload = message.payload as { 
+      collectionId: string; 
+      page: number; 
+      pageSize: number;
+      keyword?: string;
+      tagId?: string;
+      creatorId?: string;
+      includeTags?: string[];
+      excludeTags?: string[];
+    };
+    console.log("[Background] Getting paginated collection videos for:", payload.collectionId);
+
+    try {
+      const result = await getCollectionVideosPaginated(
+        payload.collectionId,
+        { page: payload.page, pageSize: payload.pageSize },
+        {
+          keyword: payload.keyword,
+          tagId: payload.tagId,
+          creatorId: payload.creatorId,
+          includeTags: payload.includeTags,
+          excludeTags: payload.excludeTags
+        },
+        Platform.BILIBILI
+      );
+      console.log("[Background] Paginated collection videos result:", result);
+      return { success: true, videos: result.videos, total: result.total };
+    } catch (error) {
+      console.error("[Background] Error getting paginated collection videos:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
   if (message.type === "get_all_collection_videos") {
     console.log("[Background] Getting all collection videos");
     const payload = message.payload as { collectionType?: 'user' | 'subscription' };
@@ -642,6 +676,68 @@ export async function handleMessage(
       return { success: true, videos };
     } catch (error) {
       console.error("[Background] Error getting all collection videos:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  if (message.type === "get_all_collection_videos_paginated") {
+    console.log("[Background] Getting all paginated collection videos");
+    const payload = message.payload as { 
+      page: number; 
+      pageSize: number;
+      collectionType?: 'user' | 'subscription';
+      keyword?: string;
+      tagId?: string;
+      creatorId?: string;
+      includeTags?: string[];
+      excludeTags?: string[];
+    };
+
+    try {
+      const result = await getAllCollectionVideosPaginated(
+        { page: payload.page, pageSize: payload.pageSize },
+        {
+          keyword: payload.keyword,
+          tagId: payload.tagId,
+          creatorId: payload.creatorId,
+          includeTags: payload.includeTags,
+          excludeTags: payload.excludeTags
+        },
+        Platform.BILIBILI,
+        payload.collectionType
+      );
+      console.log("[Background] All paginated collection videos result:", result);
+      return { success: true, videos: result.videos, total: result.total };
+    } catch (error) {
+      console.error("[Background] Error getting all paginated collection videos:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  if (message.type === "get_collection_tags") {
+    const payload = message.payload as { collectionId: string };
+    console.log("[Background] Getting collection tags for:", payload.collectionId);
+
+    try {
+      const tags = await getCollectionTags(payload.collectionId, Platform.BILIBILI);
+      console.log("[Background] Collection tags result:", tags);
+      return { success: true, tags: Array.from(tags) };
+    } catch (error) {
+      console.error("[Background] Error getting collection tags:", error);
+      return { success: false, error: String(error) };
+    }
+  }
+
+  if (message.type === "get_all_collection_tags") {
+    console.log("[Background] Getting all collection tags");
+    const payload = message.payload as { collectionType?: 'user' | 'subscription' };
+
+    try {
+      const tags = await getAllCollectionTags(Platform.BILIBILI, payload.collectionType);
+      console.log("[Background] All collection tags result:", tags);
+      return { success: true, tags: Array.from(tags) };
+    } catch (error) {
+      console.error("[Background] Error getting all collection tags:", error);
       return { success: false, error: String(error) };
     }
   }

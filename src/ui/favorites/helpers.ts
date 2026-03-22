@@ -59,7 +59,8 @@ export function createInitialState(): FavoritesState {
       creatorId: '',
       includeTags: [],
       excludeTags: []
-    }
+    },
+    total: 0
   };
 }
 
@@ -78,7 +79,7 @@ export function showError(message: string, elements: Record<string, HTMLElement 
 }
 
 export function updatePagination(state: FavoritesState, elements: Record<string, HTMLElement | null>): void {
-  const total = state.filteredVideos.length;
+  const total = state.total;
   const totalPages = Math.ceil(total / state.pageSize);
 
   if (totalPages <= 1) {

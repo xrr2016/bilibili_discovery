@@ -156,6 +156,7 @@ export async function loadCollectionData(state: FavoritesState): Promise<void> {
     console.warn('[Favorites] No current collection ID');
     state.aggregatedVideos = [];
     state.filteredVideos = [];
+    state.total = 0;
     return;
   }
 
@@ -165,9 +166,18 @@ export async function loadCollectionData(state: FavoritesState): Promise<void> {
     // 如果选择的是"全部"，加载所有收藏夹的视频
     if (state.currentCollectionId === 'all') {
       const allVideosResponse = await chrome.runtime.sendMessage({
-        type: 'get_all_collection_videos',
-        payload: { collectionType: state.currentCollectionType }
-      }) as unknown as { success: boolean; videos?: import("../../database/implementations/collection-data-access.impl.js").AggregatedCollectionVideo[]; error?: string };
+        type: 'get_all_collection_videos_paginated',
+        payload: { 
+          collectionType: state.currentCollectionType,
+          page: state.currentPage,
+          pageSize: state.pageSize,
+          keyword: state.filters.keyword,
+          tagId: state.filters.tagId,
+          creatorId: state.filters.creatorId,
+          includeTags: state.filters.includeTags,
+          excludeTags: state.filters.excludeTags
+        }
+      }) as unknown as { success: boolean; videos?: import("../../database/implementations/collection-data-access.impl.js").AggregatedCollectionVideo[]; total?: number; error?: string };
 
       console.log('[Favorites] All videos response:', allVideosResponse);
 
@@ -175,23 +185,32 @@ export async function loadCollectionData(state: FavoritesState): Promise<void> {
         console.warn('[Favorites] Failed to load all collection videos:', allVideosResponse?.error);
         state.aggregatedVideos = [];
         state.filteredVideos = [];
+        state.total = 0;
         return;
       }
 
       state.aggregatedVideos = allVideosResponse.videos || [];
       state.filteredVideos = [...state.aggregatedVideos];
+      state.total = allVideosResponse.total || 0;
 
-      console.log('[Favorites] Loaded all videos:', state.aggregatedVideos.length);
+      console.log('[Favorites] Loaded all videos:', state.aggregatedVideos.length, 'total:', state.total);
       console.log('[Favorites] Aggregated videos:', state.aggregatedVideos);
       return;
     }
 
     const videosResponse = await chrome.runtime.sendMessage({
-      type: 'get_collection_videos',
+      type: 'get_collection_videos_paginated',
       payload: {
-        collectionId: state.currentCollectionId
+        collectionId: state.currentCollectionId,
+        page: state.currentPage,
+        pageSize: state.pageSize,
+        keyword: state.filters.keyword,
+        tagId: state.filters.tagId,
+        creatorId: state.filters.creatorId,
+        includeTags: state.filters.includeTags,
+        excludeTags: state.filters.excludeTags
       }
-    }) as unknown as { success: boolean; videos?: import("../../database/implementations/collection-data-access.impl.js").AggregatedCollectionVideo[]; error?: string };
+    }) as unknown as { success: boolean; videos?: import("../../database/implementations/collection-data-access.impl.js").AggregatedCollectionVideo[]; total?: number; error?: string };
 
     console.log('[Favorites] Videos response:', videosResponse);
 
@@ -199,17 +218,20 @@ export async function loadCollectionData(state: FavoritesState): Promise<void> {
       console.warn('[Favorites] Failed to load collection videos:', videosResponse?.error);
       state.aggregatedVideos = [];
       state.filteredVideos = [];
+      state.total = 0;
       return;
     }
 
     state.aggregatedVideos = videosResponse.videos || [];
     state.filteredVideos = [...state.aggregatedVideos];
+    state.total = videosResponse.total || 0;
 
-    console.log('[Favorites] Loaded videos:', state.aggregatedVideos.length);
+    console.log('[Favorites] Loaded videos:', state.aggregatedVideos.length, 'total:', state.total);
     console.log('[Favorites] Aggregated videos:', state.aggregatedVideos);
   } catch (error) {
     console.error('[Favorites] Error loading collection data:', error);
     state.aggregatedVideos = [];
     state.filteredVideos = [];
+    state.total = 0;
   }
 }

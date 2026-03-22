@@ -127,9 +127,8 @@ export async function renderVideos(
     elements.videoList.innerHTML = "";
   }
 
-  const start = state.currentPage * state.pageSize;
-  const end = start + state.pageSize;
-  const pageVideos = state.filteredVideos.slice(start, end);
+  // 使用aggregatedVideos，因为loadCollectionData已经返回了当前页的数据
+  const pageVideos = state.aggregatedVideos;
 
   if (pageVideos.length === 0) {
     elements.empty && (elements.empty.style.display = "block");
@@ -153,7 +152,7 @@ export async function changePage(
   refresh: RefreshFn
 ): Promise<void> {
   const totalPages = Math.ceil(
-    state.filteredVideos.length / state.pageSize
+    state.total / state.pageSize
   );
 
   const newPage = state.currentPage + delta;

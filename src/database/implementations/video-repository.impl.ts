@@ -7,6 +7,7 @@ import { IVideoRepository } from '../interfaces/video/video-repository.interface
 import { Video } from '../types/video.js';
 import { Platform, PaginationParams, PaginationResult, TimeRange } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
+import { compressToTarget, shouldCompress} from '../../utls/image-compression.js'
 
 /**
  * VideoRepository 实现类
@@ -202,19 +203,36 @@ export class VideoRepository implements IVideoRepository {
   /**
    * 更新视频封面缓存
    */
-  async updateVideoPicture(videoId: string, platform: Platform, picture: string): Promise<void> {
+  async updateVideoPicture(
+    videoId: string,
+    platform: Platform,
+    picture: string
+  ): Promise<void> {
     const video = await this.getVideo(videoId, platform);
     if (!video) {
       throw new Error(`Video not found: ${videoId}`);
     }
 
+    // 如果完全相同，跳过
     if (video.picture === picture) {
       return;
     }
 
+    let finalPicture = picture;
+
+    try {
+      // 判断是否需要压缩
+      if (await shouldCompress(picture)) {
+        finalPicture = await compressToTarget(picture);
+      }
+    } catch (e) {
+      console.warn("[VideoRepository] compress failed:", videoId, e);
+      // 出错时 fallback 原图
+    }
+
     await this.upsertVideo({
       ...video,
-      picture
+      picture: finalPicture
     });
   }
 
@@ -224,4 +242,43 @@ export class VideoRepository implements IVideoRepository {
   async getAllVideos(): Promise<Video[]> {
     return DBUtils.getAll<Video>(STORE_NAMES.VIDEOS);
   }
+
+  /**
+ * 扫描数据库并压缩已有图片
+ */
+  async compressAllVideoPictures(
+    platform: Platform,
+    onProgress?: (done: number, total: number) => void
+  ): Promise<void> {
+    const allVideos = await DBUtils.getAll<Video>(STORE_NAMES.VIDEOS);
+
+    let processed = 0;
+    const total = allVideos.length;
+
+    for (const video of allVideos) {
+      if (video.platform !== platform || video.isInvalid || !video.picture) {
+        processed++;
+        continue;
+      }
+
+      try {
+        if (await shouldCompress(video.picture)) {
+          const compressed = await compressToTarget(video.picture);
+
+          await DBUtils.put(STORE_NAMES.VIDEOS, {
+            ...video,
+            picture: compressed
+          });
+        }
+      } catch (e) {
+        console.warn("[VideoRepository] batch compress failed:", video.videoId, e);
+      }
+
+      processed++;
+
+      // 进度回调（可用于 UI）
+      onProgress?.(processed, total);
+    }
+  }
+
 }
