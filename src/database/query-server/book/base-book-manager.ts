@@ -11,8 +11,6 @@
 import { Book } from './book.js';
 import type { QueryCondition } from '../query/types.js';
 import type { BookQueryOptions } from './types.js';
-import { DataCache } from '../cache/data-cache.js';
-import { IndexCache } from '../cache/index-cache.js';
 import {generateId} from "../../implementations/id-generator.js"
 
 /**
@@ -70,58 +68,74 @@ export interface IQueryService<I> {
 }
 
 /**
- * 基础书管理器类
+ * Book配置接口
+ * 定义创建Book所需的配置
+ */
+export interface BookConfig<T, I> {
+  /** 数据仓库 */
+  repository: IDataRepository<T>;
+  /** 查询服务 */
+  queryService: IQueryService<I>;
+  /** 每页大小 */
+  pageSize?: number;
+}
+
+/**
+ * 基础书管理器类（单例工厂）
  * 作为Book工厂，负责创建和管理Book实例的生命周期
  *
  * 设计原则：
  * - BookManager只负责创建和管理Book实例
  * - Book自己负责获取数据和管理分页
  * - Book生命周期与页面生命周期一致
+ * - BookManager是单例，全局唯一
  */
-export class BaseBookManager<T, I> {
-  protected books: Map<number, Book<T>> = new Map();
-  protected dataCache: DataCache<T>;
-  protected indexCache: IndexCache<I>;
-  protected repository: IDataRepository<T>;
-  protected indexConverter: IIndexConverter<T, I>;
-  protected queryService: IQueryService<I>;
+export class BaseBookManager {
+  private static instance: BaseBookManager;
+  private books: Map<number, Book<any>> = new Map();
 
-  constructor(
-    dataCache: DataCache<T>,
-    indexCache: IndexCache<I>,
-    repository: IDataRepository<T>,
-    indexConverter: IIndexConverter<T, I>,
-    queryService: IQueryService<I>
-  ) {
-    this.dataCache = dataCache;
-    this.indexCache = indexCache;
-    this.repository = repository;
-    this.indexConverter = indexConverter;
-    this.queryService = queryService;
+  private constructor() {
+    // 私有构造函数，确保单例
+  }
+
+  /**
+   * 获取单例实例
+   */
+  static getInstance(): BaseBookManager {
+    if (!BaseBookManager.instance) {
+      BaseBookManager.instance = new BaseBookManager();
+    }
+    return BaseBookManager.instance;
   }
 
   /**
    * 创建一本书
    * 通过QueryService获取索引ID列表
+   * @param queryCondition - 查询条件
+   * @param config - Book配置
+   * @param options - 查询选项
+   * @returns 创建的Book实例
    */
-  async createBook(
+  async createBook<T, I>(
     queryCondition: QueryCondition,
+    config: BookConfig<T, I>,
     options: BookQueryOptions = {}
   ): Promise<Book<T>> {
-    const pageSize = options.pageSize || 20;
+    const { repository, queryService, pageSize: defaultPageSize } = config;
+    const pageSize = options.pageSize || defaultPageSize || 20;
 
     // 生成书ID
-    const bookId =  generateId();
+    const bookId = generateId();
 
     // 通过QueryService获取结果ID列表
-    const resultIds = await this.queryService.queryIds(queryCondition);
+    const resultIds = await queryService.queryIds(queryCondition);
 
     // 创建Book实例
     const book = new Book<T>(
       bookId,
       resultIds,
-      this.repository,
-      this.queryService,
+      repository,
+      queryService,
       pageSize
     );
 
@@ -133,42 +147,34 @@ export class BaseBookManager<T, I> {
 
   /**
    * 获取书
+   * @param bookId - 书的ID
+   * @returns Book实例或undefined
    */
-  getBook(bookId: number): Book<T> | undefined {
+  getBook<T>(bookId: number): Book<T> | undefined {
     return this.books.get(bookId);
   }
 
   /**
    * 删除书
+   * @param bookId - 书的ID
+   * @returns 是否删除成功
    */
   deleteBook(bookId: number): boolean {
     return this.books.delete(bookId);
   }
 
   /**
-   * 获取缓存统计信息
+   * 获取所有书的数量
+   * @returns 书的数量
    */
-  getCacheStats(): {
-    dataCacheSize: number;
-    indexCacheSize: number;
-  } {
-    return {
-      dataCacheSize: this.dataCache.size(),
-      indexCacheSize: this.indexCache.size()
-    };
+  getBookCount(): number {
+    return this.books.size;
   }
 
   /**
-   * 获取数据缓存实例
+   * 清空所有书
    */
-  getDataCache(): DataCache<T> {
-    return this.dataCache;
-  }
-
-  /**
-   * 获取索引缓存实例
-   */
-  getIndexCache(): IndexCache<I> {
-    return this.indexCache;
+  clearAllBooks(): void {
+    this.books.clear();
   }
 }

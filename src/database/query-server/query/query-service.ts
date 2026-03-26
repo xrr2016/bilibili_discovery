@@ -38,15 +38,20 @@ export class QueryService {
    * @returns 结果ID列表
    */
   async queryResultIds(queryCondition: QueryCondition): Promise<ID[]> {
-    // 确保索引缓存已加载
-    if (this.indexCache.size() === 0) {
-      await this.loadIndexCache();
+    try {
+      // 确保索引缓存已加载
+      if (this.indexCache.size() === 0) {
+        await this.loadIndexCache();
+      }
+
+      const allIndexes = this.indexCache.values();
+      const compositeCond = queryCondition as unknown as CompositeQueryCondition;
+
+      return this.compositeQueryService.queryIds(allIndexes, compositeCond);
+    } catch (error) {
+      console.error('[QueryService] queryResultIds error:', error);
+      throw error;
     }
-
-    const allIndexes = this.indexCache.values();
-    const compositeCond = queryCondition as unknown as CompositeQueryCondition;
-
-    return this.compositeQueryService.queryIds(allIndexes, compositeCond);
   }
 
   /**
@@ -75,17 +80,23 @@ export class QueryService {
    * 加载索引缓存
    */
   async loadIndexCache(): Promise<void> {
-    const allCreators = await this.repository.getAllCreators(Platform.BILIBILI);
-    const indexes: CreatorIndex[] = allCreators.map(creator => ({
-      creatorId: creator.creatorId,
-      name: creator.name,
-      tags: creator.tagWeights.map(tw => tw.tagId),
-      isFollowing: creator.isFollowing === 1
-    }));
-    // 将数组转换为Map
-    const entries = new Map<ID, CreatorIndex>();
-    indexes.forEach(index => entries.set(index.creatorId, index));
-    this.indexCache.setBatch(entries);
+    try {
+      const allCreators = await this.repository.getAllCreators(Platform.BILIBILI);
+      const indexes: CreatorIndex[] = allCreators.map(creator => ({
+        creatorId: creator.creatorId,
+        name: creator.name,
+        tags: creator.tagWeights.map(tw => tw.tagId),
+        isFollowing: creator.isFollowing === 1
+      }));
+      // 将数组转换为Map
+      const entries = new Map<ID, CreatorIndex>();
+      indexes.forEach(index => entries.set(index.creatorId, index));
+      this.indexCache.setBatch(entries);
+      console.log(`[QueryService] Index cache loaded: ${indexes.length} creators`);
+    } catch (error) {
+      console.error('[QueryService] Failed to load index cache:', error);
+      throw error;
+    }
   }
 
   /**

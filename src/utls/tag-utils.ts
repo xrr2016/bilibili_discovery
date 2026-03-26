@@ -8,8 +8,9 @@ export function colorFromTag(tag: string): string {
     hash = (hash * 31 + tag.charCodeAt(i)) % 360;
   }
   const hue = Math.abs(hash) % 360;
-  const sat = 70 + (Math.abs(hash * 7) % 21);
-  const light = 85 + (Math.abs(hash * 13) % 11);
+  // 莫兰蒂色系：低饱和度，高亮度
+  const sat = 40 + (Math.abs(hash * 7) % 15);
+  const light = 85 + (Math.abs(hash * 13) % 10);
   return `hsl(${hue} ${sat}% ${light}%)`;
 }
 

@@ -50,12 +50,16 @@ export { VideoQueryService } from './query-server/query/video-query-service.js';
 export { TagFilterEngine } from './query-server/query/tag-filter-engine.js';
 
 // 书管理层
-export { BaseBookManager } from './query-server/book/base-book-manager.js';
+import { BaseBookManager } from './query-server/book/base-book-manager.js';
+
+// 导出BaseBookManager单例实例
+export const bookManager = BaseBookManager.getInstance();
 export { Book } from './query-server/book/book.js';
 export type { 
   IDataRepository, 
   IIndexConverter, 
-  IQueryService
+  IQueryService,
+  BookConfig
 } from './query-server/book/base-book-manager.js';
 export type { 
   BookQueryOptions,

@@ -26,7 +26,10 @@ async function getImageSize(src: string): Promise<{ width: number; height: numbe
   console.log("[ImageUtils] Getting image size...");
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // 只有当src是URL时才设置crossOrigin，DataURL不需要
+    if (!src.startsWith('data:')) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => {
       console.log(`[ImageUtils] Image loaded for size check, size: ${img.width}x${img.height}`);
       resolve({ width: img.width, height: img.height });
@@ -52,7 +55,10 @@ export async function compressImage(src: string, purpose: ImagePurpose): Promise
 
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // 只有当src是URL时才设置crossOrigin，DataURL不需要
+    if (!src.startsWith('data:')) {
+      img.crossOrigin = "anonymous";
+    }
     console.log("[ImageUtils] Loading image...");
 
     img.onload = () => {

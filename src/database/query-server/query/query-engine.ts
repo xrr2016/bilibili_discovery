@@ -15,10 +15,23 @@ export function filterByName(indexes: CreatorIndex[], keyword: string): CreatorI
     return indexes;
   }
 
+  console.log('[filterByName] Filtering with keyword:', keyword, 'from', indexes.length, 'indexes');
+  console.log('[filterByName] Sample names:', indexes.slice(0, 5).map(i => i.name));
+
   const lowerKeyword = keyword.toLowerCase().trim();
-  return indexes.filter(index =>
-    index.name.toLowerCase().includes(lowerKeyword)
-  );
+  console.log('[filterByName] Lower keyword:', lowerKeyword);
+
+  const result = indexes.filter(index => {
+    const lowerName = index.name.toLowerCase();
+    const matches = lowerName.includes(lowerKeyword);
+    if (indexes.indexOf(index) < 3) {
+      console.log('[filterByName] Checking name:', index.name, 'lower:', lowerName, 'matches:', matches);
+    }
+    return matches;
+  });
+
+  console.log('[filterByName] Filtered to', result.length, 'indexes');
+  return result;
 }
 
 /**

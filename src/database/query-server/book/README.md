@@ -85,22 +85,68 @@ interface BookPage<T> {
 - **作为Book工厂，负责创建Book实例**
 - 管理Book实例的生命周期（与页面生命周期一致）
 - 提供Book的注册和删除功能
+- **采用单例模式，全局唯一**
+
+**设计原则：**
+- BookManager是单例，通过getInstance()获取实例
+- 创建Book时需要传入repository和queryService配置
+- 支持泛型，可以创建任意类型的Book实例
+- 不持有特定的repository和queryService，由每个Book自己持有
 
 **核心方法：**
 ```typescript
 class BookManager {
+  // 获取单例实例
+  static getInstance(): BookManager;
+
   // 创建Book实例（工厂方法）
-  async createBook<T>(
+  async createBook<T, I>(
     queryCondition: QueryCondition,
+    config: BookConfig<T, I>,
     options: BookQueryOptions
   ): Promise<Book<T>>;
 
   // 获取Book实例
-  getBook<T>(bookId: string): Book<T> | undefined;
+  getBook<T>(bookId: number): Book<T> | undefined;
 
   // 删除Book实例
-  deleteBook(bookId: string): boolean;
+  deleteBook(bookId: number): boolean;
+
+  // 获取所有书的数量
+  getBookCount(): number;
+
+  // 清空所有书
+  clearAllBooks(): void;
 }
+```
+
+**BookConfig接口：**
+```typescript
+interface BookConfig<T, I> {
+  repository: IDataRepository<T>;    // 数据仓库
+  queryService: IQueryService<I>;     // 查询服务
+  pageSize?: number;                  // 每页大小
+}
+```
+
+**使用示例：**
+```typescript
+// 获取BookManager单例
+const bookManager = BookManager.getInstance();
+
+// 创建Book实例
+const book = await bookManager.createBook<User, UserIndex>(
+  queryCondition,
+  {
+    repository: userRepository,
+    queryService: userQueryService,
+    pageSize: 20
+  },
+  { preloadNext: true }
+);
+
+// 获取分页数据
+const result = await book.getPage(0, { pageSize: 20 });
 ```
 
 **Book类的核心方法：**

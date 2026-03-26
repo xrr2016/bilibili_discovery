@@ -432,42 +432,41 @@ static async query<T>(
               if (!op.value) {
                 throw new Error('Add operation requires a value');
               }
-              store.add(op.value);
+              const addRequest = store.add(op.value);
+              addRequest.onsuccess = handleComplete;
+              addRequest.onerror = handleError;
               break;
               
             case 'put':
               if (!op.value) {
                 throw new Error('Put operation requires a value');
               }
-              store.put(op.value);
+              const putRequest = store.put(op.value);
+              putRequest.onsuccess = handleComplete;
+              putRequest.onerror = handleError;
               break;
               
             case 'delete':
               if (!op.key) {
                 throw new Error('Delete operation requires a key');
               }
-              store.delete(op.key);
+              const deleteRequest = store.delete(op.key);
+              deleteRequest.onsuccess = handleComplete;
+              deleteRequest.onerror = handleError;
               break;
               
             case 'deleteBatch':
               if (!op.keys || op.keys.length === 0) {
                 throw new Error('DeleteBatch operation requires keys');
               }
-              op.keys.forEach(key => store.delete(key));
+              op.keys.forEach(key => {
+                const deleteRequest = store.delete(key);
+                deleteRequest.onsuccess = handleComplete;
+                deleteRequest.onerror = handleError;
+              });
               break;
           }
           
-          // 监听每个请求的完成事件
-          if (op.operation === 'add' || op.operation === 'put') {
-            store.getAll().onsuccess = handleComplete;
-          } else if (op.operation === 'delete') {
-            if (op.key) {
-              store.get(op.key).onsuccess = handleComplete;
-            }
-          } else if (op.operation === 'deleteBatch') {
-            // 对于批量删除，直接调用完成处理
-            handleComplete();
-          }
         } catch (error) {
           handleError(error);
         }

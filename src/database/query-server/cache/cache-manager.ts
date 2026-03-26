@@ -8,6 +8,7 @@ import { DataCache } from './data-cache.js';
 import { TagCache } from './tag-cache.js';
 import type { CreatorIndex } from './types.js';
 import type { VideoIndex } from './types.js';
+import type { TagIndex } from './types.js';
 import type { Creator } from '../../types/creator.js';
 import type { Video } from '../../types/video.js';
 import type { Tag } from '../../types/semantic.js';
@@ -37,6 +38,9 @@ export class CacheManager {
   // 视频索引缓存
   private videoIndexCache: IndexCache<VideoIndex>;
 
+  // 标签索引缓存
+  private tagIndexCache: IndexCache<TagIndex>;
+
   private constructor() {
     // 初始化所有缓存单例
     this.indexCache = new IndexCache<CreatorIndex>();
@@ -57,6 +61,7 @@ export class CacheManager {
     });
     this.tagCache = new TagCache();
     this.videoIndexCache = new IndexCache<VideoIndex>();
+    this.tagIndexCache = new IndexCache<TagIndex>();
   }
 
   /**
@@ -112,6 +117,13 @@ export class CacheManager {
   }
 
   /**
+   * 获取标签索引缓存
+   */
+  getTagIndexCache(): IndexCache<TagIndex> {
+    return this.tagIndexCache;
+  }
+
+  /**
    * 清空所有缓存
    */
   clearAll(): void {
@@ -121,6 +133,7 @@ export class CacheManager {
     this.tagDataCache.clear();
     this.tagCache.clear();
     this.videoIndexCache.clear();
+    this.tagIndexCache.clear();
   }
 
   /**
@@ -133,6 +146,7 @@ export class CacheManager {
     tagDataCache: ReturnType<DataCache<Tag>['getStats']>;
     tagCache: ReturnType<TagCache['getStats']>;
     videoIndexCache: { size: number };
+    tagIndexCache: { size: number };
   } {
     return {
       indexCache: {
@@ -144,6 +158,9 @@ export class CacheManager {
       tagCache: this.tagCache.getStats(),
       videoIndexCache: {
         size: this.videoIndexCache.size()
+      },
+      tagIndexCache: {
+        size: this.tagIndexCache.size()
       }
     };
   }

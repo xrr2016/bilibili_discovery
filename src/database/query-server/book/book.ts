@@ -94,8 +94,13 @@ export class Book<T> {
    * 通过QueryService获取新的索引ID列表
    */
   async updateIndex(newCondition: QueryCondition): Promise<void> {
+    console.log('[Book] updateIndex called with condition:', newCondition);
     // 通过QueryService获取新的结果ID列表
     const newResultIds = await this.queryService.queryIds(newCondition);
+    console.log('[Book] updateIndex result:', {
+      resultCount: newResultIds.length,
+      bookId: this.bookId
+    });
 
     // 更新书
     this.resultIds = newResultIds;

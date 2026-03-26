@@ -8,6 +8,8 @@ export interface DragContext {
   originUpMid?: number;
   categoryId?: string;
   dropped: boolean;
+  isFilterTag?: boolean;
+  isSystemTag?: boolean;
 }
 
 let dragGhost: HTMLElement | null = null;

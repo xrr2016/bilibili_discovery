@@ -118,6 +118,29 @@ export interface CreatorIndex {
 }
 
 /**
+ * 标签索引
+ * 用于快速查询标签的轻量级数据结构
+ */
+export interface TagIndex {
+  /** 标签ID */
+  tagId: ID;
+  /** 标签名称 */
+  name: string;
+  /** 标签来源 */
+  source: string;
+}
+
+/**
+ * 标签查询条件
+ */
+export interface TagQueryCondition {
+  /** 搜索关键词 */
+  keyword?: string;
+  /** 标签来源 */
+  source?: string;
+}
+
+/**
  * 索引查询条件
  */
 export interface IndexQuery {

@@ -32,7 +32,10 @@
             <span class="toggle-label">已关注</span>
             <input id="up-search" type="text" placeholder="搜索UP..." />
           </div>
-          <div id="up-list" class="up-list"></div>
+          <div id="up-list-container" class="up-list-container">
+            <div id="up-list" class="up-list"></div>
+            <div id="up-pagination" class="pagination"></div>
+          </div>
         </div>
         <div class="panel">
           <div class="filter-area">
@@ -60,7 +63,10 @@
                 <input id="tag-search" type="text" placeholder="搜索标签..." />
                 <button id="btn-add-tag" class="add-tag-btn" title="新增标签">+</button>
               </div>
-              <div id="tag-list" class="list tag-list-scrollable"></div>
+              <div id="tag-list-container" class="list-container">
+                <div id="tag-list" class="list tag-list-scrollable"></div>
+                <div id="tag-pagination" class="pagination"></div>
+              </div>
             </div>
             <div class="section">
               <h2>大分区</h2>
@@ -68,7 +74,10 @@
                 <input id="category-search" type="text" placeholder="搜索分区..." />
                 <button id="btn-add-category" class="add-tag-btn" title="新增分区">+</button>
               </div>
-              <div id="category-list" class="list category-list-scrollable"></div>
+              <div id="category-list-container" class="list-container">
+                <div id="category-list" class="list category-list-scrollable"></div>
+                <div id="category-pagination" class="pagination"></div>
+              </div>
             </div>
           </div>
         </div>

@@ -26,13 +26,20 @@ export class ImageRepositoryImpl {
     // 压缩图片
     let finalData: Blob;
     try {
+      console.log(`[ImageRepository] 开始处理图像数据，原始Blob大小: ${image.data.size} bytes`);
       const dataUrl = await this.blobToDataUrl(image.data);
-      if (await shouldCompress(dataUrl, image.purpose)) {
+      console.log(`[ImageRepository] Blob转DataURL成功，DataURL长度: ${dataUrl.length}`);
+      const needsCompress = await shouldCompress(dataUrl, image.purpose);
+      console.log(`[ImageRepository] 是否需要压缩: ${needsCompress}`);
+      if (needsCompress) {
         finalData = await compressImage(dataUrl, image.purpose);
+        console.log(`[ImageRepository] 压缩后Blob大小: ${finalData.size} bytes`);
       } else {
         finalData = image.data;
+        console.log(`[ImageRepository] 使用原始Blob，大小: ${finalData.size} bytes`);
       }
-    } catch {
+    } catch (error) {
+      console.error(`[ImageRepository] 处理图像数据失败:`, error);
       finalData = image.data;
     }
 
@@ -50,11 +57,23 @@ export class ImageRepositoryImpl {
       data: finalData
     };
 
+    console.log(`[ImageRepository] 准备存储图像数据:`, {
+      metadataId,
+      dataId,
+      purpose: image.purpose,
+      dataSize: finalData.size
+    });
+
     // 使用事务确保数据一致性
     await DBUtils.transaction([
       { store: STORE_NAMES.IMAGES_METADATA, operation: 'add', value: metadata },
       { store: STORE_NAMES.IMAGES_DATA, operation: 'add', value: data }
     ]);
+
+    console.log(`[ImageRepository] 图像数据存储成功:`, {
+      metadataId,
+      dataId
+    });
 
     return {
       metadata,
@@ -96,12 +115,23 @@ export class ImageRepositoryImpl {
    * @returns 完整图片对象
    */
   async getImage(id: number): Promise<Image | null> {
+    console.log(`[ImageRepository] 开始获取图像 (id: ${id})`);
     const metadata = await this.getImageMetadata(id);
-    if (!metadata) return null;
+    console.log(`[ImageRepository] 获取图像元数据 (id: ${id}):`, metadata ? '成功' : '失败');
+    if (!metadata) {
+      console.log(`[ImageRepository] 图像元数据不存在 (id: ${id})`);
+      return null;
+    }
 
+    console.log(`[ImageRepository] 开始获取图像数据 (dataId: ${metadata.dataId})`);
     const data = await this.getImageData(metadata.dataId);
-    if (!data) return null;
+    console.log(`[ImageRepository] 获取图像数据 (dataId: ${metadata.dataId}):`, data ? `成功 (${data.data.size} bytes)` : '失败');
+    if (!data) {
+      console.log(`[ImageRepository] 图像数据不存在 (dataId: ${metadata.dataId})`);
+      return null;
+    }
 
+    console.log(`[ImageRepository] 图像获取成功 (id: ${id})`);
     return {
       metadata,
       data
@@ -396,10 +426,18 @@ export class ImageRepositoryImpl {
    * @returns DataURL字符串
    */
   private async blobToDataUrl(blob: Blob): Promise<string> {
+    console.log(`[ImageRepository] 开始将Blob转换为DataURL，Blob大小: ${blob.size} bytes，类型: ${blob.type}`);
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error('blobToDataUrl failed'));
+      reader.onload = () => {
+        const result = reader.result as string;
+        console.log(`[ImageRepository] Blob转DataURL成功，DataURL长度: ${result.length}`);
+        resolve(result);
+      };
+      reader.onerror = () => {
+        console.error('[ImageRepository] Blob转DataURL失败');
+        reject(new Error('blobToDataUrl failed'));
+      };
       reader.readAsDataURL(blob);
     });
   }

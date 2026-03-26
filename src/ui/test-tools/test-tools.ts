@@ -8,7 +8,9 @@ import { CreatorRepositoryImpl } from '../../database/implementations/creator-re
 import { CollectionRepositoryImpl } from '../../database/implementations/collection-repository.impl.js';
 import { TagRepositoryImpl } from '../../database/implementations/tag-repository.impl.js';
 import { CollectionItemRepositoryImpl } from '../../database/implementations/collection-item-repository.impl.js';
+import { ImageRepositoryImpl } from '../../database/implementations/image-repository.impl.js';
 import { Platform, TagSource } from '../../database/types/base.js';
+import { ImagePurpose } from '../../database/types/image.js';
 import { generateId } from '../../database/implementations/id-generator.js';
 
 // 随机数据生成器
@@ -96,6 +98,119 @@ class RandomDataGenerator {
     }
     return result;
   }
+
+  // 随机生成颜色
+  static randomColor(): string {
+    const r = this.randomInt(0, 255).toString(16).padStart(2, '0');
+    const g = this.randomInt(0, 255).toString(16).padStart(2, '0');
+    const b = this.randomInt(0, 255).toString(16).padStart(2, '0');
+    return `#${r}${g}${b}`;
+  }
+
+  // 生成随机颜色头像的Blob数据
+  static async generateAvatarBlob(width: number = 150, height: number = 150): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('无法获取canvas上下文'));
+        return;
+      }
+
+      // 填充随机背景色
+      const bgColor = this.randomColor();
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, width, height);
+
+      // 添加随机文字（取创作者名字的第一个字）
+      const chars = '的一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政四日那社义事平形相全表间样与关各重新线内数正心反你明看原又么利比或质气第向道命此变条只没结解问意建月公无系军很情者最立代想已通并提直题党程展五果料象员革位入常文总次品式活设及管特件长求老头基资边流路级少图山统接知较将组见计别她手角期根论运农指几九区强放决西被干做必战先回则任取据处队南给色光门即保治北造百规热领七海口东导器压志世金增争济阶油思术极交受联什认六共权收证改张群完确支感科维划选写画候状识病象数读独包今觉';
+      const text = chars.charAt(Math.floor(Math.random() * chars.length));
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.floor(width * 0.4)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, width / 2, height / 2);
+
+      // 转换为Blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('无法生成Blob'));
+        }
+      }, 'image/jpeg', 0.8);
+    });
+  }
+
+  // 生成随机封面图像的Blob数据
+  static async generateCoverBlob(width: number = 640, height: number = 360): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('无法获取canvas上下文'));
+        return;
+      }
+
+      // 填充随机背景色
+      const bgColor = this.randomColor();
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, width, height);
+
+      // 添加一些随机图形
+      for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = this.randomColor();
+        ctx.globalAlpha = 0.3;
+        const shapeType = this.randomInt(0, 2);
+        const x = this.randomInt(0, width);
+        const y = this.randomInt(0, height);
+        const size = this.randomInt(50, 200);
+
+        if (shapeType === 0) {
+          // 圆形
+          ctx.beginPath();
+          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (shapeType === 1) {
+          // 矩形
+          ctx.fillRect(x, y, size, size);
+        } else {
+          // 三角形
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + size, y + size);
+          ctx.lineTo(x - size, y + size);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+
+      // 添加随机文字
+      ctx.globalAlpha = 1.0;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.floor(width * 0.05)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const text = this.randomChinese(this.randomInt(4, 8));
+      ctx.fillText(text, width / 2, height / 2);
+
+      // 转换为Blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('无法生成Blob'));
+        }
+      }, 'image/jpeg', 0.8);
+    });
+  }
 }
 
 // 测试数据生成器
@@ -105,6 +220,7 @@ class TestDataGenerator {
   private collectionRepository: CollectionRepositoryImpl;
   private tagRepository: TagRepositoryImpl;
   private collectionItemRepository: CollectionItemRepositoryImpl;
+  private imageRepository: ImageRepositoryImpl;
 
   private existingCreators: any[] = [];
   private existingTags: any[] = [];
@@ -116,6 +232,7 @@ class TestDataGenerator {
     this.collectionRepository = new CollectionRepositoryImpl();
     this.tagRepository = new TagRepositoryImpl();
     this.collectionItemRepository = new CollectionItemRepositoryImpl();
+    this.imageRepository = new ImageRepositoryImpl();
   }
 
   // 初始化现有数据
@@ -183,11 +300,20 @@ class TestDataGenerator {
 
     for (let i = 0; i < count; i++) {
       const creatorId = generateId();
+      const name = RandomDataGenerator.randomChinese(RandomDataGenerator.randomInt(2, 8));
+      
+      // 生成头像数据
+      const avatarBlob = await RandomDataGenerator.generateAvatarBlob(150, 150);
+      const avatarImage = await this.imageRepository.createImage({
+        data: avatarBlob,
+        purpose: ImagePurpose.AVATAR
+      });
+      
       const creator = {
         creatorId,
         platform: RandomDataGenerator.randomChoice([Platform.BILIBILI, Platform.YOUTUBE]),
-        name: RandomDataGenerator.randomChinese(RandomDataGenerator.randomInt(2, 8)),
-        avatar: generateId(), // 简化处理，只生成ID
+        name: name,
+        avatar: avatarImage.metadata.id,
         avatarUrl: `https://example.com/avatar/${RandomDataGenerator.randomString(10)}.jpg`,
         isLogout: RandomDataGenerator.randomInt(0, 1),
         description: RandomDataGenerator.randomChinese(RandomDataGenerator.randomInt(10, 50)),
@@ -294,6 +420,13 @@ class TestDataGenerator {
         }
       }
 
+      // 生成封面图像数据
+      const coverBlob = await RandomDataGenerator.generateCoverBlob(640, 360);
+      const coverImage = await this.imageRepository.createImage({
+        data: coverBlob,
+        purpose: ImagePurpose.COVER
+      });
+
       const video = {
         bv: RandomDataGenerator.randomBV(),
         platform: creator.platform,
@@ -304,6 +437,7 @@ class TestDataGenerator {
         publishTime: RandomDataGenerator.randomDate(startDate, endDate),
         tags,
         coverUrl: `https://example.com/cover/${RandomDataGenerator.randomString(10)}.jpg`,
+        picture: coverImage.metadata.id,
         isInvalid: RandomDataGenerator.randomBoolean()
       };
 

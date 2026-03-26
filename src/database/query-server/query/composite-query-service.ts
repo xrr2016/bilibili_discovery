@@ -96,7 +96,17 @@ export class CompositeQueryService {
     indexes: CreatorIndex[],
     condition: CompositeQueryCondition
   ): ID[] {
+    console.log('[CompositeQueryService] queryIds called with:', {
+      totalIndexes: indexes.length,
+      keyword: condition.keyword,
+      isFollowing: condition.isFollowing,
+      tagCount: condition.tagExpressions?.length || 0
+    });
     const result = this.query(indexes, condition);
+    console.log('[CompositeQueryService] queryIds result:', {
+      matchedCount: result.indexes.length,
+      stats: result.stats
+    });
     return result.indexes.map(index => index.creatorId);
   }
 

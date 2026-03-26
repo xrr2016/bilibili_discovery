@@ -415,18 +415,29 @@ export class CreatorRepositoryImpl {
    * 如果本地没有头像数据，会尝试从URL下载并存储
    */
   async getAvatarBinary(creatorId: ID): Promise<Blob | null> {
+    console.log(`[CreatorRepository] 开始获取头像 (creatorId: ${creatorId})`);
     // 先获取创作者信息
     const creator = await this.getCreator(creatorId);
     if (!creator) {
+      console.log(`[CreatorRepository] 创作者不存在 (creatorId: ${creatorId})`);
       return null;
     }
+
+    console.log(`[CreatorRepository] 创作者信息 (creatorId: ${creatorId}):`, {
+      name: creator.name,
+      avatar: creator.avatar,
+      avatarUrl: creator.avatarUrl
+    });
 
     // 检查本地是否有缓存的二进制数据
     if (creator.avatar) {
       try {
+        console.log(`[CreatorRepository] 尝试获取图像数据 (imageId: ${creator.avatar})`);
         // 使用存储的图片ID获取完整图片数据
         const fullImage = await this.imageRepository.getImage(creator.avatar);
+        console.log(`[CreatorRepository] 获取图像结果 (imageId: ${creator.avatar}):`, fullImage ? '成功' : '失败');
         if (fullImage) {
+          console.log(`[CreatorRepository] 图像数据大小: ${fullImage.data.data.size} bytes`);
           // 更新图片的访问时间
           await this.imageRepository.updateImageMetadata(creator.avatar, {
             lastAccessTime: Date.now()
@@ -436,6 +447,8 @@ export class CreatorRepositoryImpl {
       } catch (error) {
         console.error(`[CreatorRepository] Failed to fetch avatar binary for ${creatorId}:`, error);
       }
+    } else {
+      console.log(`[CreatorRepository] 创作者没有头像 (creatorId: ${creatorId})`);
     }
 
     // 如果没有缓存，从URL下载
