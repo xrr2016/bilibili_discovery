@@ -7,7 +7,8 @@
 
 import { CollectionItem } from '../types/collection.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
-
+import { generateId } from './id-generator.js';
+import { ID } from '../types/base.js';
 /**
  * CollectionItemRepository 实现类
  */
@@ -16,7 +17,7 @@ export class CollectionItemRepository {
    * 根据主键获取收藏项
    * @param itemId 收藏项ID
    */
-  async getItem(itemId: string): Promise<CollectionItem | null> {
+  async getItem(itemId: ID): Promise<CollectionItem | null> {
     return DBUtils.get<CollectionItem>(
       STORE_NAMES.COLLECTION_ITEMS,
       itemId
@@ -28,7 +29,7 @@ export class CollectionItemRepository {
    * 基于videoId索引查询
    * @param videoId 视频ID
    */
-  async getItemsByVideo(videoId: string): Promise<CollectionItem[]> {
+  async getItemsByVideo(videoId: ID): Promise<CollectionItem[]> {
     return DBUtils.getByIndex<CollectionItem>(
       STORE_NAMES.COLLECTION_ITEMS,
       'videoId',
@@ -42,10 +43,10 @@ export class CollectionItemRepository {
    * @returns 创建的收藏项ID
    */
   async createItem(
-    collectionId: string,
+    collectionId: ID,
     item: Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>
-  ): Promise<string> {
-    const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  ): Promise<ID> {
+    const itemId = generateId();
     const newItem: CollectionItem = {
       itemId,
       collectionId,
@@ -64,13 +65,13 @@ export class CollectionItemRepository {
    * @returns 创建的收藏项ID列表
    */
   async createItems(
-    collectionId: string,
+    collectionId: ID,
     items: Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>[]
-  ): Promise<string[]> {
+  ): Promise<ID[]> {
     const addedAt = Date.now();
-    const itemIds: string[] = [];
+    const itemIds: ID[] = [];
     const itemsToAdd: CollectionItem[] = items.map(item => {
-      const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const itemId = generateId();
       itemIds.push(itemId);
       return {
         itemId,
@@ -90,7 +91,7 @@ export class CollectionItemRepository {
    * @param updates 要更新的字段
    */
   async updateItem(
-    itemId: string,
+    itemId: ID,
     updates: Partial<Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>>
   ): Promise<void> {
     const item = await this.getItem(itemId);
@@ -110,7 +111,7 @@ export class CollectionItemRepository {
    * 删除收藏项
    * @param itemId 收藏项ID
    */
-  async deleteItem(itemId: string): Promise<void> {
+  async deleteItem(itemId: ID): Promise<void> {
     await DBUtils.delete(STORE_NAMES.COLLECTION_ITEMS, itemId);
   }
 
@@ -118,18 +119,16 @@ export class CollectionItemRepository {
    * 批量删除收藏项
    * @param itemIds 收藏项ID列表
    */
-  async deleteItems(itemIds: string[]): Promise<void> {
+  async deleteItems(itemIds: ID[]): Promise<void> {
     if (itemIds.length === 0) return;
     await DBUtils.deleteBatch(STORE_NAMES.COLLECTION_ITEMS, itemIds);
   }
-
-
 
   /**
    * 获取收藏项的视频ID
    * @param itemId 收藏项ID
    */
-  async getVideoId(itemId: string): Promise<string | null> {
+  async getVideoId(itemId: ID): Promise<ID | null> {
     const item = await this.getItem(itemId);
     return item?.videoId || null;
   }
@@ -138,7 +137,7 @@ export class CollectionItemRepository {
    * 获取收藏项的收藏夹ID
    * @param itemId 收藏项ID
    */
-  async getCollectionId(itemId: string): Promise<string | null> {
+  async getCollectionId(itemId: ID): Promise<ID | null> {
     const item = await this.getItem(itemId);
     return item?.collectionId || null;
   }
@@ -147,7 +146,7 @@ export class CollectionItemRepository {
    * 获取收藏项的添加时间
    * @param itemId 收藏项ID
    */
-  async getAddedAt(itemId: string): Promise<number | null> {
+  async getAddedAt(itemId: ID): Promise<number | null> {
     const item = await this.getItem(itemId);
     return item?.addedAt || null;
   }
@@ -156,7 +155,7 @@ export class CollectionItemRepository {
    * 获取收藏项的备注
    * @param itemId 收藏项ID
    */
-  async getNote(itemId: string): Promise<string | null> {
+  async getNote(itemId: ID): Promise<string | null> {
     const item = await this.getItem(itemId);
     return item?.note || null;
   }
@@ -165,7 +164,7 @@ export class CollectionItemRepository {
    * 获取收藏项的排序权重
    * @param itemId 收藏项ID
    */
-  async getOrder(itemId: string): Promise<number | null> {
+  async getOrder(itemId: ID): Promise<number | null> {
     const item = await this.getItem(itemId);
     return item?.order || null;
   }
@@ -175,7 +174,7 @@ export class CollectionItemRepository {
    * @param itemId 收藏项ID
    * @param note 备注内容
    */
-  async updateNote(itemId: string, note: string): Promise<void> {
+  async updateNote(itemId: ID, note: string): Promise<void> {
     await this.updateItem(itemId, { note });
   }
 
@@ -184,7 +183,7 @@ export class CollectionItemRepository {
    * @param itemId 收藏项ID
    * @param order 排序权重
    */
-  async updateOrder(itemId: string, order: number): Promise<void> {
+  async updateOrder(itemId: ID, order: number): Promise<void> {
     await this.updateItem(itemId, { order });
   }
 

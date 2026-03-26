@@ -41,7 +41,7 @@ export interface Creator {
   /**
    * 创作者唯一ID
    * 在平台内唯一，结合platform使用
-   * bili是数字字符串,youtube是字母字符串,本身具备辨识度,不会混淆
+   * bili是数字字符串,将会自动转化为数字id,youtube暂时不考虑支持了
    */
   creatorId: ID;
   /**
@@ -54,9 +54,9 @@ export interface Creator {
   name: string;
   /**
    * 头像图片数据
-   * 存储头像URL或base64数据
+   * 存储image对象的ID
    */
-  avatar: string;
+  avatar: ID;
   /**
    * 头像URL
    * 存储原始头像URL，用于后续下载

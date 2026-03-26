@@ -10,7 +10,8 @@
 
 import { Collection, CollectionItem } from '../types/collection.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
-
+import { generateId } from './id-generator.js';
+import { ID } from '../types/base.js';
 /**
  * CollectionRepository 实现类
  */
@@ -20,8 +21,8 @@ export class CollectionRepository {
    * @param collection 收藏夹数据（不包含collectionId）
    * @returns 创建的收藏夹ID
    */
-  async createCollection(collection: Omit<Collection, 'collectionId'>): Promise<string> {
-    const collectionId = `collection_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  async createCollection(collection: Omit<Collection, 'collectionId'>): Promise<ID> {
+    const collectionId = generateId();
     const newCollection: Collection = {
       collectionId,
       ...collection,
@@ -37,7 +38,7 @@ export class CollectionRepository {
    * @param collectionId 收藏夹ID
    * @param collection 收藏夹数据
    */
-  async createCollectionWithId(collectionId: string, collection: Omit<Collection, 'collectionId'>): Promise<void> {
+  async createCollectionWithId(collectionId: ID, collection: Omit<Collection, 'collectionId'>): Promise<void> {
     const newCollection: Collection = {
       collectionId,
       ...collection,
@@ -51,7 +52,7 @@ export class CollectionRepository {
    * 根据主键获取收藏夹
    * @param collectionId 收藏夹ID
    */
-  async getCollection(collectionId: string): Promise<Collection | null> {
+  async getCollection(collectionId: ID): Promise<Collection | null> {
     return DBUtils.get<Collection>(STORE_NAMES.COLLECTIONS, collectionId);
   }
 
@@ -92,7 +93,7 @@ export class CollectionRepository {
    * 基于name索引查询
    * @param name 收藏夹名称
    */
-  async getCollectionsByName(name: string): Promise<Collection[]> {
+  async getCollectionsByName(name: ID): Promise<Collection[]> {
     return DBUtils.getByIndex<Collection>(
       STORE_NAMES.COLLECTIONS,
       'name',
@@ -151,7 +152,7 @@ export class CollectionRepository {
    * @param updates 要更新的字段
    */
   async updateCollection(
-    collectionId: string,
+    collectionId: ID,
     updates: Partial<Omit<Collection, 'collectionId' | 'createdAt'>>
   ): Promise<void> {
     const existing = await this.getCollection(collectionId);
@@ -172,7 +173,7 @@ export class CollectionRepository {
    * 删除收藏夹及其所有收藏项
    * @param collectionId 收藏夹ID
    */
-  async deleteCollection(collectionId: string): Promise<void> {
+  async deleteCollection(collectionId: ID): Promise<void> {
     // 先删除收藏夹中的所有收藏项
     const items = await DBUtils.getByIndex<CollectionItem>(
       STORE_NAMES.COLLECTION_ITEMS,
@@ -197,9 +198,9 @@ export class CollectionRepository {
    * @returns 创建的收藏项ID
    */
   async addItemToCollection(
-    collectionId: string,
+    collectionId: ID,
     item: Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>
-  ): Promise<string> {
+  ): Promise<ID> {
     // 检查收藏夹是否存在
     const collection = await this.getCollection(collectionId);
     if (!collection) {
@@ -219,7 +220,7 @@ export class CollectionRepository {
     }
 
     // 创建收藏项
-    const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const itemId = generateId();
     const addedAt = Date.now();
     
     const newItem: CollectionItem = {
@@ -250,9 +251,9 @@ export class CollectionRepository {
    * @returns 创建的收藏项ID列表
    */
   async addItemsToCollection(
-    collectionId: string,
+    collectionId: ID,
     items: Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>[]
-  ): Promise<string[]> {
+  ): Promise<ID[]> {
     // 检查收藏夹是否存在
     const collection = await this.getCollection(collectionId);
     if (!collection) {
@@ -268,14 +269,14 @@ export class CollectionRepository {
     
     const existingVideoIds = new Set(existingItems.map(i => i.videoId));
     const addedAt = Date.now();
-    const itemIds: string[] = [];
+    const itemIds: ID[] = [];
 
     // 过滤掉已存在的视频
     const newItems = items.filter(item => !existingVideoIds.has(item.videoId));
 
     // 批量创建收藏项
     const itemsToAdd: CollectionItem[] = newItems.map(item => {
-      const itemId = `item_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const itemId = generateId();
       itemIds.push(itemId);
       
       return {
@@ -308,8 +309,8 @@ export class CollectionRepository {
    * @param itemId 收藏项ID
    */
   async removeItemFromCollection(
-    collectionId: string,
-    itemId: string
+    collectionId: ID,
+    itemId: ID
   ): Promise<void> {
     // 检查收藏夹是否存在
     const collection = await this.getCollection(collectionId);
@@ -344,7 +345,7 @@ export class CollectionRepository {
    * @param itemIds 收藏项ID列表
    */
   async removeItemsFromCollection(
-    collectionId: string,
+    collectionId: ID,
     itemIds: string[]
   ): Promise<void> {
     if (!itemIds.length) return;
@@ -387,8 +388,8 @@ export class CollectionRepository {
    * @param videoId 视频ID
    */
   async removeVideoFromCollection(
-    collectionId: string,
-    videoId: string
+    collectionId: ID,
+    videoId: ID
   ): Promise<void> {
     // 检查收藏夹是否存在
     const collection = await this.getCollection(collectionId);
@@ -473,8 +474,8 @@ export class CollectionRepository {
    * @returns 收藏项，如果不存在则返回null
    */
   async getItemByCollectionAndVideo(
-    collectionId: string,
-    videoId: string
+    collectionId: ID,
+    videoId: ID
   ): Promise<CollectionItem | null> {
     const items = await DBUtils.getByIndex<CollectionItem>(
       STORE_NAMES.COLLECTION_ITEMS,
@@ -492,8 +493,8 @@ export class CollectionRepository {
    * @returns 是否存在
    */
   async hasVideoInCollection(
-    collectionId: string,
-    videoId: string
+    collectionId: ID,
+    videoId: ID
   ): Promise<boolean> {
     const items = await DBUtils.getByIndex<CollectionItem>(
       STORE_NAMES.COLLECTION_ITEMS,
@@ -509,7 +510,7 @@ export class CollectionRepository {
    * 自动更新收藏夹的videoCount
    * @param collectionId 收藏夹ID
    */
-  async clearCollection(collectionId: string): Promise<void> {
+  async clearCollection(collectionId: ID): Promise<void> {
     // 检查收藏夹是否存在
     const collection = await this.getCollection(collectionId);
     if (!collection) {

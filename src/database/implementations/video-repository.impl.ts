@@ -8,7 +8,7 @@
  */
 
 import { Video } from '../types/video.js';
-import { Platform, PaginationParams, PaginationResult } from '../types/base.js';
+import { Platform, PaginationParams, PaginationResult, ID } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 import { ImageRepository } from './image-repository.impl.js';
 import { ImagePurpose } from '../types/image.js';
@@ -45,7 +45,7 @@ export class VideoRepository {
    * @param platform 平台类型
    * @returns 视频对象，不存在返回 null
    */
-  async getVideo(videoId: string, platform: Platform): Promise<Video | null> {
+  async getVideo(videoId: ID, platform: Platform): Promise<Video | null> {
     const video = await DBUtils.get<Video>(STORE_NAMES.VIDEOS, videoId);
     if (!video || video.platform !== platform) {
       return null;
@@ -54,17 +54,40 @@ export class VideoRepository {
   }
 
   /**
+   * 根据BV号获取视频信息
+   * @param bv 视频BV号
+   * @param platform 平台类型
+   * @returns 视频对象，不存在返回 null
+   */
+  async getVideoByBV(bv: string, platform: Platform): Promise<Video | null> {
+    const allVideos = await DBUtils.getAll<Video>(STORE_NAMES.VIDEOS);
+    const video = allVideos.find(v => v.bv === bv && v.platform === platform);
+    return video || null;
+  }
+
+  /**
    * 批量获取视频信息（基于主键）
    * @param videoIds 视频ID数组
    * @param platform 平台类型
    * @returns 视频对象数组
    */
-  async getVideos(videoIds: string[], platform: Platform): Promise<Video[]> {
+  async getVideos(videoIds: ID[], platform: Platform): Promise<Video[]> {
     const allVideos = await DBUtils.getBatch<Video>(
       STORE_NAMES.VIDEOS,
       videoIds
     );
     return allVideos.filter(v => v.platform === platform && !v.isInvalid);
+  }
+
+  /**
+   * 根据BV号批量获取视频信息
+   * @param bvs BV号数组
+   * @param platform 平台类型
+   * @returns 视频对象数组
+   */
+  async getVideosByBV(bvs: string[], platform: Platform): Promise<Video[]> {
+    const allVideos = await DBUtils.getAll<Video>(STORE_NAMES.VIDEOS);
+    return allVideos.filter(v => bvs.includes(v.bv) && v.platform === platform && !v.isInvalid);
   }
 
   /**
@@ -105,7 +128,7 @@ export class VideoRepository {
    * @returns 分页结果
    */
   async getCreatorVideos(
-    creatorId: string,
+    creatorId: ID,
     platform: Platform,
     pagination: PaginationParams
   ): Promise<PaginationResult<Video>> {
@@ -168,7 +191,7 @@ export class VideoRepository {
    * @param videoId 视频ID
    * @param platform 平台类型
    */
-  async deleteVideo(videoId: string, platform: Platform): Promise<void> {
+  async deleteVideo(videoId: ID, platform: Platform): Promise<void> {
     const video = await this.getVideo(videoId, platform);
     if (!video) {
       return;
@@ -192,7 +215,7 @@ export class VideoRepository {
    * @param videoIds 视频ID数组
    * @param platform 平台类型
    */
-  async deleteVideos(videoIds: string[], platform: Platform): Promise<void> {
+  async deleteVideos(videoIds: ID[], platform: Platform): Promise<void> {
     // 获取所有视频以查找关联的图片
     const videos = await this.getVideos(videoIds, platform);
     if (videos.length === 0) {
@@ -202,7 +225,7 @@ export class VideoRepository {
     // 收集需要删除的图片ID
     const imageIds = videos
       .map(v => v.picture)
-      .filter((id): id is string => !!id);
+      .filter((id): id is ID => !!id);
 
     // 删除关联的图片
     if (imageIds.length > 0) {
@@ -223,7 +246,7 @@ export class VideoRepository {
    * @param platform 平台类型
    * @param tags 标签ID数组
    */
-  async updateVideoTags(videoId: string, platform: Platform, tags: string[]): Promise<void> {
+  async updateVideoTags(videoId: ID, platform: Platform, tags: ID[]): Promise<void> {
     const video = await this.getVideo(videoId, platform);
     if (!video) {
       throw new Error(`Video not found: ${videoId}`);
@@ -245,7 +268,7 @@ export class VideoRepository {
    * @param url 图片URL（可选，用于判断是否为同一图片）
    */
   async updateVideoPicture(
-    videoId: string,
+    videoId: ID,
     platform: Platform,
     imageBlob: Blob,
     url?: string
@@ -282,7 +305,7 @@ export class VideoRepository {
    * @param platform 平台类型
    * @returns 图片 Blob 数据，不存在返回 null
    */
-  async getVideoPicture(videoId: string, platform: Platform): Promise<Blob | null> {
+  async getVideoPicture(videoId: ID, platform: Platform): Promise<Blob | null> {
     const video = await this.getVideo(videoId, platform);
     if (!video || !video.picture) {
       return null;
@@ -297,7 +320,7 @@ export class VideoRepository {
    * @param videoId 视频ID
    * @param platform 平台类型
    */
-  async markVideoAsInvalid(videoId: string, platform: Platform): Promise<void> {
+  async markVideoAsInvalid(videoId: ID, platform: Platform): Promise<void> {
     const video = await this.getVideo(videoId, platform);
     if (!video) {
       throw new Error(`Video not found: ${videoId}`);
@@ -310,11 +333,28 @@ export class VideoRepository {
   }
 
   /**
-   * 批量标记视频为失效
-   * @param videoIds 视频ID数组
+   * 根据BV号标记视频为失效
+   * @param bv 视频BV号
    * @param platform 平台类型
    */
-  async markVideosAsInvalid(videoIds: string[], platform: Platform): Promise<void> {
+  async markVideoByBVAsInvalid(bv: string, platform: Platform): Promise<void> {
+    const video = await this.getVideoByBV(bv, platform);
+    if (!video) {
+      throw new Error(`Video not found: ${bv}`);
+    }
+
+    await this.upsertVideo({
+      ...video,
+      isInvalid: true
+    });
+  }
+
+  /**
+   * 批量标记视频为失效
+   * @param videoIds 视频ID数组DI
+   * @param platform 平台类型
+   */
+  async markVideosAsInvalid(videoIds: ID[], platform: Platform): Promise<void> {
     const videos = await this.getVideos(videoIds, platform);
     if (videos.length === 0) {
       return;

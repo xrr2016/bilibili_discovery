@@ -9,6 +9,7 @@ import { Platform, PaginationParams, PaginationResult } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 import { ImageRepository } from './image-repository.impl.js';
 import {ImagePurpose } from '../types/image.js'
+import { ID } from '../types/base.js';
 
 /**
  * CreatorRepository 实现类
@@ -47,7 +48,7 @@ export class CreatorRepository {
    * 获取单个创作者信息
    * 基于复合索引(creatorId+platform)的查询
    */
-  async getCreator(creatorId: string, platform: Platform): Promise<Creator | null> {
+  async getCreator(creatorId: ID, platform: Platform): Promise<Creator | null> {
     const creators = await DBUtils.getByIndex<Creator>(
       STORE_NAMES.CREATORS,
       'creatorId',
@@ -60,7 +61,7 @@ export class CreatorRepository {
    * 批量获取多个创作者信息
    * 基于主键索引的批量查询
    */
-  async getCreators(creatorIds: string[], platform: Platform): Promise<Creator[]> {
+  async getCreators(creatorIds: ID[], platform: Platform): Promise<Creator[]> {
     const allCreators = await DBUtils.getBatch<Creator>(
       STORE_NAMES.CREATORS,
       creatorIds
@@ -197,7 +198,7 @@ export class CreatorRepository {
    * 更新创作者关注状态
    * 先查询再更新，基于主键索引
    */
-  async updateFollowStatus(creatorId: string, platform: Platform, isFollowing: number): Promise<void> {
+  async updateFollowStatus(creatorId: ID, platform: Platform, isFollowing: number): Promise<void> {
     const creator = await this.getCreator(creatorId, platform);
     if (!creator) {
       throw new Error(`Creator not found: ${creatorId}`);
@@ -217,7 +218,7 @@ export class CreatorRepository {
    * 先查询再更新，基于主键索引
    */
   async updateTagWeights(
-    creatorId: string,
+    creatorId: ID,
     platform: Platform,
     tagWeights: Creator['tagWeights']
   ): Promise<void> {
@@ -256,7 +257,7 @@ export class CreatorRepository {
    * @param platform 平台类型
    * @returns 用户手动添加的标签ID列表
    */
-  async getUPManualTags(creatorId: string, platform: Platform): Promise<string[]> {
+  async getUPManualTags(creatorId: ID, platform: Platform): Promise<ID[]> {
     const creator = await this.getCreator(creatorId, platform);
     if (!creator) {
       return [];
@@ -271,7 +272,7 @@ export class CreatorRepository {
    * 删除创作者
    * 基于主键索引的删除操作
    */
-  async deleteCreator(creatorId: string, platform: Platform): Promise<void> {
+  async deleteCreator(creatorId: ID, platform: Platform): Promise<void> {
     await DBUtils.delete(STORE_NAMES.CREATORS, creatorId);
   }
 
@@ -279,7 +280,7 @@ export class CreatorRepository {
    * 标记创作者为已注销
    * 先查询再更新，基于主键索引
    */
-  async markCreatorAsLogout(creatorId: string, platform: Platform): Promise<void> {
+  async markCreatorAsLogout(creatorId: ID, platform: Platform): Promise<void> {
     const creator = await this.getCreator(creatorId, platform);
     if (!creator) {
       throw new Error(`Creator not found: ${creatorId}`);
@@ -321,7 +322,7 @@ export class CreatorRepository {
    * 更新创作者头像URL
    * 先查询再更新，基于主键索引
    */
-  async updateAvatarUrl(creatorId: string, platform: Platform, avatarUrl: string): Promise<void> {
+  async updateAvatarUrl(creatorId: ID, platform: Platform, avatarUrl: string): Promise<void> {
     const creator = await this.getCreator(creatorId, platform);
     if (!creator) {
       throw new Error(`Creator not found: ${creatorId}`);
@@ -339,7 +340,7 @@ export class CreatorRepository {
    * 获取创作者头像二进制数据
    * 如果本地没有头像数据，会尝试从URL下载并存储
    */
-  async getAvatarBinary(creatorId: string, platform: Platform): Promise<Blob | null> {
+  async getAvatarBinary(creatorId: ID, platform: Platform): Promise<Blob | null> {
     // 先获取创作者信息
     const creator = await this.getCreator(creatorId, platform);
     if (!creator) {
@@ -387,7 +388,7 @@ export class CreatorRepository {
    * 保存创作者头像二进制数据
    * 将二进制数据存储到images_data表中，并更新creator表的avatar字段
    */
-  async saveAvatarBinary(creatorId: string, platform: Platform, avatarBlob: Blob): Promise<void> {
+  async saveAvatarBinary(creatorId: ID, platform: Platform, avatarBlob: Blob): Promise<void> {
     // 先获取创作者信息
     const creator = await this.getCreator(creatorId, platform);
     if (!creator) {
@@ -416,7 +417,7 @@ export class CreatorRepository {
    * 删除创作者头像二进制数据
    * 同时清除images_data表中的对应数据
    */
-  async deleteAvatarBinary(creatorId: string, platform: Platform): Promise<void> {
+  async deleteAvatarBinary(creatorId: ID, platform: Platform): Promise<void> {
     // 先获取创作者信息
     const creator = await this.getCreator(creatorId, platform);
     if (!creator) {
@@ -433,10 +434,10 @@ export class CreatorRepository {
       }
     }
     
-    // 更新创作者信息，将avatar重置为空
+    // 更新创作者信息，将avatar重置为-1
     const updated: Creator = {
       ...creator,
-      avatar: '',
+      avatar: -1,
       avatarUrl: creator.avatarUrl // 保留URL，以便重新下载
     };
     

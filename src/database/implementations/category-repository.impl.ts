@@ -5,6 +5,8 @@
 
 import { Category } from '../types/semantic.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
+import { generateId } from './id-generator.js';
+import {ID} from "../types/base.js"
 
 /**
  * CategoryRepository 实现类
@@ -13,8 +15,8 @@ export class CategoryRepository {
   /**
    * 创建分区
    */
-  async createCategory(category: Omit<Category, 'id' | 'createdAt'>): Promise<string> {
-    const id = `category_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  async createCategory(category: Omit<Category, 'id' | 'createdAt'>): Promise<ID> {
+    const id = generateId();
     const newCategory: Category = {
       id,
       ...category,
@@ -27,10 +29,10 @@ export class CategoryRepository {
   /**
    * 批量创建分区
    */
-  async createCategories(categories: Omit<Category, 'id' | 'createdAt'>[]): Promise<string[]> {
-    const ids: string[] = [];
+  async createCategories(categories: Omit<Category, 'id' | 'createdAt'>[]): Promise<ID[]> {
+    const ids: ID[] = [];
     const newCategories: Category[] = categories.map(category => {
-      const id = `category_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const id = generateId();
       ids.push(id);
       return { id, ...category, createdAt: Date.now() };
     });
@@ -41,7 +43,7 @@ export class CategoryRepository {
   /**
    * 获取分区
    */
-  async getCategory(categoryId: string): Promise<Category | null> {
+  async getCategory(categoryId: ID): Promise<Category | null> {
     return DBUtils.get<Category>(STORE_NAMES.CATEGORIES, categoryId);
   }
 
@@ -66,7 +68,7 @@ export class CategoryRepository {
   /**
    * 更新分区
    */
-  async updateCategory(categoryId: string, updates: Partial<Omit<Category, 'id' | 'createdAt'>>): Promise<void> {
+  async updateCategory(categoryId: ID, updates: Partial<Omit<Category, 'id' | 'createdAt'>>): Promise<void> {
     const existing = await this.getCategory(categoryId);
     if (!existing) {
       throw new Error(`Category not found: ${categoryId}`);
@@ -81,14 +83,14 @@ export class CategoryRepository {
   /**
    * 删除分区
    */
-  async deleteCategory(categoryId: string): Promise<void> {
+  async deleteCategory(categoryId: ID): Promise<void> {
     await DBUtils.delete(STORE_NAMES.CATEGORIES, categoryId);
   }
 
   /**
    * 向分区添加标签
    */
-  async addTagsToCategory(categoryId: string, tagIds: string[]): Promise<void> {
+  async addTagsToCategory(categoryId: ID, tagIds: ID[]): Promise<void> {
     const existing = await this.getCategory(categoryId);
     if (!existing) {
       throw new Error(`Category not found: ${categoryId}`);
@@ -102,7 +104,7 @@ export class CategoryRepository {
   /**
    * 从分区移除标签
    */
-  async removeTagsFromCategory(categoryId: string, tagIds: string[]): Promise<void> {
+  async removeTagsFromCategory(categoryId: ID, tagIds: ID[]): Promise<void> {
     const existing = await this.getCategory(categoryId);
     if (!existing) {
       throw new Error(`Category not found: ${categoryId}`);
@@ -115,14 +117,14 @@ export class CategoryRepository {
   /**
    * 清空分区的所有标签
    */
-  async clearCategoryTags(categoryId: string): Promise<void> {
+  async clearCategoryTags(categoryId: ID): Promise<void> {
     await this.updateCategory(categoryId, { tagIds: [] });
   }
 
   /**
    * 获取分区的所有标签
    */
-  async getCategoryTags(categoryId: string): Promise<string[]> {
+  async getCategoryTags(categoryId: ID): Promise<ID[]> {
     const category = await this.getCategory(categoryId);
     return category?.tagIds ?? [];
   }
@@ -130,7 +132,7 @@ export class CategoryRepository {
   /**
    * 检查标签是否在分区中
    */
-  async isTagInCategory(categoryId: string, tagId: string): Promise<boolean> {
+  async isTagInCategory(categoryId: ID, tagId: ID): Promise<boolean> {
     const tags = await this.getCategoryTags(categoryId);
     return tags.includes(tagId);
   }

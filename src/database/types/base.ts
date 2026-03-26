@@ -65,7 +65,7 @@ export type Timestamp = number;
  * ID类型
  * 用于标识唯一实体
  */
-export type ID = string;
+export type ID = number;
 
 /**
  * 分页参数

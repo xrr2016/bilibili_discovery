@@ -7,10 +7,7 @@ import { Image, ImageMetadata, ImageData, ImagePurpose } from '../types/image.js
 import { PaginationParams, PaginationResult } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
 import { compressImage, shouldCompress } from '../../utls/image-utils.js';
-
-function generateId(): string {
-  return crypto.randomUUID();
-}
+import { generateId } from './id-generator.js';
 
 export class ImageRepository {
 
@@ -70,7 +67,7 @@ export class ImageRepository {
    * @param id 图片ID
    * @returns 图片元数据
    */
-  async getImageMetadata(id: string): Promise<ImageMetadata | null> {
+  async getImageMetadata(id: number): Promise<ImageMetadata | null> {
     const metadata = await DBUtils.get<ImageMetadata>(
       STORE_NAMES.IMAGES_METADATA,
       id
@@ -86,7 +83,7 @@ export class ImageRepository {
    * @param dataId 图片数据ID
    * @returns 图片数据
    */
-  async getImageData(dataId: string): Promise<ImageData | null> {
+  async getImageData(dataId: number): Promise<ImageData | null> {
     return DBUtils.get<ImageData>(
       STORE_NAMES.IMAGES_DATA,
       dataId
@@ -98,7 +95,7 @@ export class ImageRepository {
    * @param id 图片ID
    * @returns 完整图片对象
    */
-  async getImage(id: string): Promise<Image | null> {
+  async getImage(id: number): Promise<Image | null> {
     const metadata = await this.getImageMetadata(id);
     if (!metadata) return null;
 
@@ -116,7 +113,7 @@ export class ImageRepository {
    * @param ids 图片ID数组
    * @returns 图片元数据数组
    */
-  async getImagesMetadata(ids: string[]): Promise<ImageMetadata[]> {
+  async getImagesMetadata(ids: number[]): Promise<ImageMetadata[]> {
     return DBUtils.getBatch<ImageMetadata>(
       STORE_NAMES.IMAGES_METADATA,
       ids
@@ -128,7 +125,7 @@ export class ImageRepository {
    * @param dataIds 图片数据ID数组
    * @returns 图片数据数组
    */
-  async getImagesData(dataIds: string[]): Promise<ImageData[]> {
+  async getImagesData(dataIds: number[]): Promise<ImageData[]> {
     return DBUtils.getBatch<ImageData>(
       STORE_NAMES.IMAGES_DATA,
       dataIds
@@ -140,7 +137,7 @@ export class ImageRepository {
    * @param ids 图片ID数组
    * @returns 完整图片对象数组
    */
-  async getImages(ids: string[]): Promise<Image[]> {
+  async getImages(ids: number[]): Promise<Image[]> {
     const metas = await this.getImagesMetadata(ids);
     if (metas.length === 0) return [];
 
@@ -261,7 +258,7 @@ export class ImageRepository {
    * @param id 图片ID
    * @param newData 新的图片数据
    */
-  async updateImageData(id: string, newData: Blob): Promise<void> {
+  async updateImageData(id: number, newData: Blob): Promise<void> {
     const metadata = await this.getImageMetadata(id);
     if (!metadata) throw new Error('Image not found');
 
@@ -294,7 +291,7 @@ export class ImageRepository {
    * @param id 图片ID
    * @param newMetadata 新的元数据（不包含dataId）
    */
-  async updateImageMetadata(id: string, newMetadata: Partial<Omit<ImageMetadata, 'id' | 'dataId'>>): Promise<void> {
+  async updateImageMetadata(id: number, newMetadata: Partial<Omit<ImageMetadata, 'id' | 'dataId'>>): Promise<void> {
     const metadata = await this.getImageMetadata(id);
     if (!metadata) throw new Error('Image not found');
 
@@ -311,7 +308,7 @@ export class ImageRepository {
    * 删除图片（同时删除元数据和图片数据）
    * @param id 图片ID
    */
-  async deleteImage(id: string): Promise<void> {
+  async deleteImage(id: number): Promise<void> {
     const metadata = await this.getImageMetadata(id);
     if (!metadata) return;
 
@@ -326,7 +323,7 @@ export class ImageRepository {
    * 批量删除图片
    * @param ids 图片ID数组
    */
-  async deleteImages(ids: string[]): Promise<void> {
+  async deleteImages(ids: number[]): Promise<void> {
     const metas = await this.getImagesMetadata(ids);
     if (metas.length === 0) return;
 
@@ -346,8 +343,8 @@ export class ImageRepository {
    * @returns 清理的图片数量
    */
   async cleanupExpiredImages(expireTime: number): Promise<number> {
-    const expiredMetaIds: string[] = [];
-    const expiredDataIds: string[] = [];
+    const expiredMetaIds: number[] = [];
+    const expiredDataIds: number[] = [];
 
     const range = IDBKeyRange.upperBound(expireTime);
 
@@ -378,8 +375,8 @@ export class ImageRepository {
    * @param purpose 图片用途
    * @returns 图片ID数组
    */
-  async getImageIdsByPurpose(purpose: ImagePurpose): Promise<string[]> {
-    const ids: string[] = [];
+  async getImageIdsByPurpose(purpose: ImagePurpose): Promise<number[]> {
+    const ids: number[] = [];
 
     await DBUtils.cursor<ImageMetadata>(
       STORE_NAMES.IMAGES_METADATA,

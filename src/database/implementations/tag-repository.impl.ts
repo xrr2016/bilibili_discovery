@@ -7,6 +7,8 @@
 import { Tag } from '../types/semantic.js';
 import { TagSource, PaginationParams, PaginationResult } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
+import { ID } from '../types/base.js';
+import { generateId } from './id-generator.js';
 
 export class TagRepository {
 
@@ -16,8 +18,8 @@ export class TagRepository {
    * 创建单个标签（只提供name）
    * 直接使用 put 插入数据,如果 name 冲突则返回已存在标签的 ID
    */
-  async createTag(name: string, source: TagSource): Promise<string> {
-    const tagId = crypto.randomUUID();
+  async createTag(name: string, source: TagSource): Promise<ID> {
+    const tagId = generateId();
     const newTag: Tag = {
       tagId,
       name,
@@ -49,7 +51,7 @@ export class TagRepository {
    * 创建单个标签（提供id和name）
    * 直接使用 put 插入数据,如果 name 冲突则返回已存在标签的 ID
    */
-  async createTagWithId(id: string, name: string, source: TagSource): Promise<string> {
+  async createTagWithId(id: ID, name: string, source: TagSource): Promise<ID> {
     const newTag: Tag = {
       tagId: id,
       name,
@@ -80,19 +82,19 @@ export class TagRepository {
   /**
    * 批量创建标签（使用cursor优化）
    */
-  async createTags(names: string[], source: TagSource): Promise<string[]> {
+  async createTags(names: string[], source: TagSource): Promise<ID[]> {
     if (names.length === 0) return [];
     
     // 输入去重
     const nameSet = new Set<string>(names);
     const uniqueNames = Array.from(nameSet);
 
-    const resultIds: string[] = [];
+    const resultIds: ID[] = [];
     const tags: Tag[] = [];
 
     // 准备所有标签
     for (const name of uniqueNames) {
-      const tagId = crypto.randomUUID();
+      const tagId = generateId();
       tags.push({ tagId, name, source });
       resultIds.push(tagId);
     }
@@ -112,7 +114,7 @@ export class TagRepository {
    * 大批量：cursor 优化版本
    * 处理输入数据可能重复的情况，同时保证高效的批量创建
    */
-  private async createTagsByCursor(names: string[], source: TagSource): Promise<string[]> {
+  private async createTagsByCursor(names: string[], source: TagSource): Promise<ID[]> {
     if (names.length === 0) return [];
 
     // 1️⃣ 输入去重（处理输入数据可能重复的情况）
@@ -141,7 +143,7 @@ export class TagRepository {
     );
 
     // 3️⃣ 构建结果：已存在标签直接返回ID，新标签准备批量插入
-    const resultIds: string[] = [];
+    const resultIds: ID[] = [];
     const newTags: Tag[] = [];
 
     for (const name of uniqueNames) {
@@ -152,7 +154,7 @@ export class TagRepository {
         resultIds.push(existing.tagId);
       } else {
         // 新标签，准备批量插入
-        const tagId = crypto.randomUUID();
+        const tagId = generateId();
         newTags.push({
           tagId,
           name,
@@ -179,13 +181,13 @@ export class TagRepository {
    * 批量创建（带ID）
    * 处理输入数据可能重复的情况，同时保证高效的批量创建
    */
-  async createTagsWithIds(tags: { id: string; name: string }[], source: TagSource): Promise<string[]> {
+  async createTagsWithIds(tags: { id: ID; name: string }[], source: TagSource): Promise<ID[]> {
     if (tags.length === 0) return [];
   
     
     // 1️⃣ 输入去重（处理输入数据可能重复的情况）
     // 使用Map去重，保留每个名称对应的第一个ID
-    const uniqueTags = new Map<string, { id: string; name: string }>();
+    const uniqueTags = new Map<string, { id: ID; name: string }>();
     for (const tag of tags) {
       if (!uniqueTags.has(tag.name)) {
         uniqueTags.set(tag.name, { id: tag.id, name: tag.name });
@@ -216,7 +218,7 @@ export class TagRepository {
     );
 
     // 3️⃣ 构建结果：已存在标签直接返回ID，新标签准备批量插入
-    const resultIds: string[] = [];
+    const resultIds: ID[] = [];
     const newTags: Tag[] = [];
 
     for (const [name, tag] of uniqueTags.entries()) {
@@ -254,7 +256,7 @@ export class TagRepository {
   /**
    * 获取标签
    */
-  async getTag(tagId: string): Promise<Tag | null> {
+  async getTag(tagId: ID): Promise<Tag | null> {
     // 使用主键查询，这是IndexedDB最高效的查询方式
     return DBUtils.get<Tag>(STORE_NAMES.TAGS, tagId);
   }
@@ -381,7 +383,6 @@ export class TagRepository {
     pagination?: PaginationParams
   ): Promise<PaginationResult<Tag>> {
 
-
     // 使用范围查询优化搜索性能
     const range = IDBKeyRange.bound(
       keyword,
@@ -424,7 +425,7 @@ export class TagRepository {
   /**
    * 删除标签
    */
-  async deleteTag(tagId: string): Promise<boolean> {
+  async deleteTag(tagId: ID): Promise<boolean> {
     // 检查标签是否存在
     const existing = await this.getTag(tagId);
     if (!existing) return false;
@@ -442,7 +443,7 @@ export class TagRepository {
   /**
    * 批量删除标签
    */
-  async deleteTags(tagIds: string[]): Promise<void> {
+  async deleteTags(tagIds: ID[]): Promise<void> {
     if (tagIds.length === 0) return;
     
     // 批量删除以提高性能

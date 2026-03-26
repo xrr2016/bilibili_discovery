@@ -11,10 +11,13 @@ import { Platform, Timestamp, ID } from './base.js';
  */
 export interface Video {
   /**
-   * 视频唯一ID
-   * 在平台内唯一，结合platform使用
+   * 视频元数据唯一在数据库存储的ID
    */
   videoId: ID;
+  /**平台中的唯一视频编号
+   * 比如BV1897GIQW6
+   */
+  bv:string;
   /**
    * 平台类型
    */
@@ -56,7 +59,7 @@ export interface Video {
    * 视频封面图片
    * 存储图片信息,存储一个image的id,不记录图像的实际数据
    */
-  picture?: string;
+  picture?: ID;
 
   /**
    * 是否失效
