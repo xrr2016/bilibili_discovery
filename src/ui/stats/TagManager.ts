@@ -3,15 +3,11 @@
  * 负责标签列表的渲染和交互
  */
 
-import { bookManager, type BookConfig, type IDataRepository, type IQueryService } from "../../database/index.js";
 import { colorFromTag } from "../../utls/tag-utils.js";
 import type { TagInfo } from "./types.js";
-import type { TagIndex } from "../../database/query-server/cache/types.js";
 import type { Tag } from "../../database/types/semantic.js";
 import type { TagQueryCondition } from "../../database/query-server/cache/types.js";
-import type { QueryCondition } from "../../database/query-server/query/types.js";
 import type { ServiceContainer } from "./services.js";
-import { getOrCreateTagBook } from "./services.js";
 import { Platform, TagSource } from "../../database/types/base.js";
 import { setDragContext, createDragGhost } from "../../utls/drag-utils.js";
 
@@ -39,12 +35,9 @@ export class TagManager {
       totalRecords: number;
     };
   }> {
-    // 使用services.ts中的Book实例
-    if (!this.services.tagBook) {
-      throw new Error('Tag book not initialized. Call initTagBook first.');
-    }
-
-    const result = await this.services.tagBook.getPage(page, options);
+    // 使用container的getTagBook方法获取Book实例
+    const tagBook = await this.services.getTagBook();
+    const result = await tagBook.getPage(page, options);
 
     // 转换为TagInfo格式
     const items = result.items.map(tag => ({
@@ -63,20 +56,8 @@ export class TagManager {
    * 初始化标签Book
    */
   private async initTagBook(condition?: TagQueryCondition): Promise<void> {
-    // 使用services.ts中的Book实例
-    if (!this.services.tagBook) {
-      const queryCondition: QueryCondition = condition
-        ? { keyword: condition.keyword, platform: Platform.BILIBILI }
-        : { platform: Platform.BILIBILI };
-
-      this.services.tagBook = await getOrCreateTagBook(condition);
-    } else if (condition) {
-      const queryCondition: QueryCondition = {
-        keyword: condition.keyword,
-        platform: Platform.BILIBILI
-      };
-      await this.services.tagBook.updateIndex(queryCondition);
-    }
+    // 使用container的getTagBook方法
+    await this.services.getTagBook(condition);
   }
 
   /**
@@ -144,8 +125,8 @@ export class TagManager {
   async createTag(name: string): Promise<number> {
     const tagId = await this.services.tagRepo.createTag(name, TagSource.USER);
 
-    // 清空Book实例，强制重新加载
-    this.services.tagBook = null;
+    // 使用container的resetBooks方法清空Book实例，强制重新加载
+    this.services.resetBooks();
 
     return tagId;
   }

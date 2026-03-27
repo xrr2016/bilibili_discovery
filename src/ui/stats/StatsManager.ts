@@ -13,20 +13,41 @@ import { FilterManager } from "./FilterManager.js";
 import type { StatsState } from "./types.js";
 
 /**
- * 统计页面管理器
- * 负责协调所有子管理器，管理页面状态和渲染
+ * 实例容器接口
+ * 定义所有需要管理的实例
  */
-export class StatsManager {
-  private services: ServiceContainer;
-  private state: StatsState;
-  private upListManager: UpListManager;
-  private tagManager: TagManager;
-  private categoryManager: CategoryManager;
-  private filterManager: FilterManager;
+interface InstanceContainer {
+  // 服务容器
+  services: ServiceContainer;
+  // 状态管理
+  state: StatsState;
+  // 子管理器
+  upListManager: UpListManager;
+  tagManager: TagManager;
+  categoryManager: CategoryManager;
+  filterManager: FilterManager;
+}
+
+/**
+ * 实例容器类
+ * 负责创建、管理和分发所有实例
+ */
+class InstanceContainerImpl implements InstanceContainer {
+  private static instance: InstanceContainerImpl | null = null;
+
+  public readonly services: ServiceContainer;
+  public readonly state: StatsState;
+  public readonly upListManager: UpListManager;
+  public readonly tagManager: TagManager;
+  public readonly categoryManager: CategoryManager;
+  public readonly filterManager: FilterManager;
   private initialized: boolean = false;
 
-  constructor() {
+  private constructor() {
+    // 初始化服务容器
     this.services = getServiceContainer();
+
+    // 初始化状态
     this.state = createInitialState(Platform.BILIBILI);
 
     // 初始化子管理器
@@ -34,6 +55,60 @@ export class StatsManager {
     this.tagManager = new TagManager(this.services);
     this.categoryManager = new CategoryManager(this.services);
     this.filterManager = new FilterManager(this.services);
+  }
+
+  /**
+   * 获取实例容器的单例
+   */
+  public static getInstance(): InstanceContainerImpl {
+    if (!InstanceContainerImpl.instance) {
+      InstanceContainerImpl.instance = new InstanceContainerImpl();
+    }
+    return InstanceContainerImpl.instance;
+  }
+
+  /**
+   * 重置实例容器
+   */
+  public static reset(): void {
+    InstanceContainerImpl.instance = null;
+  }
+
+  /**
+   * 初始化所有实例
+   */
+  public async initialize(): Promise<void> {
+    if (this.initialized) {
+      console.warn('[InstanceContainer] 已经初始化过了');
+      return;
+    }
+
+    try {
+      this.initialized = true;
+    } catch (error) {
+      console.error('[InstanceContainer] 初始化失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 检查是否已初始化
+   */
+  public isInitialized(): boolean {
+    return this.initialized;
+  }
+}
+
+/**
+ * 统计页面管理器
+ * 负责协调所有子管理器，管理页面状态和渲染
+ */
+export class StatsManager {
+  private container: InstanceContainerImpl;
+  private initialized: boolean = false;
+
+  constructor(container?: InstanceContainerImpl) {
+    this.container = container || InstanceContainerImpl.getInstance();
   }
 
   /**
@@ -50,12 +125,15 @@ export class StatsManager {
     }
 
     try {
+      // 初始化实例容器
+      await this.container.initialize();
+
       // 绑定事件
       this.bindPageActions();
       this.bindInputs();
 
       // 设置拖拽功能
-      this.filterManager.setupDragAndDrop(this.state, () => this.rerender());
+      this.container.filterManager.setupDragAndDrop(this.container.state, () => this.rerender());
 
       // 加载数据
       await this.loadData();
@@ -63,7 +141,7 @@ export class StatsManager {
       this.initialized = true;
     } catch (error) {
       console.error('[StatsManager] 初始化失败:', error);
-      this.state.error = error instanceof Error ? error.message : '未知错误';
+      this.container.state.error = error instanceof Error ? error.message : '未知错误';
     }
   }
 
@@ -72,11 +150,11 @@ export class StatsManager {
    */
   private async loadStats(): Promise<void> {
     // 获取已关注和未关注的UP数量
-    const followedCount = await this.services.creatorRepo.getFollowedCount(this.state.platform);
-    const unfollowedCount = await this.services.creatorRepo.getUnfollowedCount(this.state.platform);
+    const followedCount = await this.container.services.creatorRepo.getFollowedCount(this.container.state.platform);
+    const unfollowedCount = await this.container.services.creatorRepo.getUnfollowedCount(this.container.state.platform);
 
     // 获取标签总数
-    const tagResult = await this.services.tagRepo.getAllTags();
+    const tagResult = await this.container.services.tagRepo.getAllTags();
     const tagCount = tagResult.total;
 
     // 更新UI
@@ -100,7 +178,7 @@ export class StatsManager {
    */
   private async loadData(): Promise<void> {
     console.log(`[StatsManager] loadData 被调用`);
-    this.state.loading = true;
+    this.container.state.loading = true;
 
     try {
       // 获取统计数据
@@ -108,15 +186,15 @@ export class StatsManager {
 
       // 并行加载所有数据
       await Promise.all([
-        this.tagManager.renderTagList(),
-        this.categoryManager.renderCategories(() => this.rerender()),
-        this.upListManager.renderUpList(this.state)
+        this.container.tagManager.renderTagList(),
+        this.container.categoryManager.renderCategories(() => this.rerender()),
+        this.container.upListManager.renderUpList(this.container.state)
       ]);
     } catch (error) {
       console.error('[StatsManager] 加载数据失败:', error);
-      this.state.error = error instanceof Error ? error.message : '加载失败';
+      this.container.state.error = error instanceof Error ? error.message : '加载失败';
     } finally {
-      this.state.loading = false;
+      this.container.state.loading = false;
     }
   }
 
@@ -125,10 +203,10 @@ export class StatsManager {
    */
   private async rerender(): Promise<void> {
     console.log(`[StatsManager] rerender 被调用`);
-    await this.upListManager.renderUpList(this.state);
-    await this.tagManager.renderTagList();
-    await this.categoryManager.renderCategories(() => this.rerender());
-    await this.filterManager.renderFilterTags(this.state, () => this.rerender());
+    await this.container.upListManager.renderUpList(this.container.state);
+    await this.container.tagManager.renderTagList();
+    await this.container.categoryManager.renderCategories(() => this.rerender());
+    await this.container.filterManager.renderFilterTags(this.container.state, () => this.rerender());
   }
 
   /**
@@ -141,11 +219,11 @@ export class StatsManager {
       const tagName = prompt('请输入标签名称:');
       if (tagName) {
         try {
-          await this.tagManager.createTag(tagName);
-          await this.tagManager.renderTagList();
+          await this.container.tagManager.createTag(tagName);
+          await this.container.tagManager.renderTagList();
         } catch (error) {
           console.error('[StatsManager] 添加标签失败:', error);
-          this.state.error = error instanceof Error ? error.message : '添加标签失败';
+          this.container.state.error = error instanceof Error ? error.message : '添加标签失败';
         }
       }
     });
@@ -156,11 +234,11 @@ export class StatsManager {
       const categoryName = prompt('请输入分类名称:');
       if (categoryName) {
         try {
-          await this.categoryManager.createCategory(categoryName);
-          await this.categoryManager.renderCategories(() => this.rerender());
+          await this.container.categoryManager.createCategory(categoryName);
+          await this.container.categoryManager.renderCategories(() => this.rerender());
         } catch (error) {
           console.error('[StatsManager] 添加分类失败:', error);
-          this.state.error = error instanceof Error ? error.message : '添加分类失败';
+          this.container.state.error = error instanceof Error ? error.message : '添加分类失败';
         }
       }
     });
@@ -168,7 +246,7 @@ export class StatsManager {
     // 绑定清除筛选按钮
     const clearFilterBtn = document.getElementById('btn-clear-filter');
     clearFilterBtn?.addEventListener('click', () => {
-      this.filterManager.clearFilters(this.state, () => this.rerender());
+      this.container.filterManager.clearFilters(this.container.state, () => this.rerender());
     });
   }
 
@@ -182,18 +260,18 @@ export class StatsManager {
       const keyword = (e.target as HTMLInputElement).value.trim();
       // 如果搜索框为空，清除搜索关键词状态
       if (keyword === '') {
-        this.state.searchKeyword = '';
+        this.container.state.searchKeyword = '';
       } else {
-        this.state.searchKeyword = keyword;
+        this.container.state.searchKeyword = keyword;
       }
-      this.upListManager.renderUpList(this.state);
+      this.container.upListManager.renderUpList(this.container.state);
     }, 300));
 
     // 绑定关注筛选开关
     const followToggle = document.getElementById('show-followed-toggle');
     followToggle?.addEventListener('change', (e) => {
-      this.state.showFollowedOnly = (e.target as HTMLInputElement).checked;
-      this.upListManager.renderUpList(this.state);
+      this.container.state.showFollowedOnly = (e.target as HTMLInputElement).checked;
+      this.container.upListManager.renderUpList(this.container.state);
     });
 
     // 绑定标签搜索框
@@ -202,9 +280,9 @@ export class StatsManager {
       const keyword = (e.target as HTMLInputElement).value.trim();
       // 如果搜索框为空，显示所有标签
       if (keyword === '') {
-        this.tagManager.renderTagList('');
+        this.container.tagManager.renderTagList('');
       } else {
-        this.tagManager.renderTagList(keyword);
+        this.container.tagManager.renderTagList(keyword);
       }
     }, 300));
   }
@@ -227,7 +305,14 @@ export class StatsManager {
    * 获取当前状态
    */
   getState(): StatsState {
-    return this.state;
+    return this.container.state;
+  }
+
+  /**
+   * 获取实例容器
+   */
+  getContainer(): InstanceContainer {
+    return this.container;
   }
 }
 
@@ -245,3 +330,19 @@ export function getStatsManager(): StatsManager {
   }
   return globalStatsManager;
 }
+
+/**
+ * 重置全局统计管理器
+ */
+export function resetStatsManager(): void {
+  globalStatsManager = null;
+  InstanceContainerImpl.reset();
+}
+
+/**
+ * 获取实例容器
+ */
+export function getInstanceContainer(): InstanceContainer {
+  return InstanceContainerImpl.getInstance();
+}
+

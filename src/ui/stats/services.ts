@@ -3,9 +3,9 @@
  * 所有 Repository、Service 和 Book 实例通过此容器统一管理和注入
  */
 
-import { 
-  CreatorRepository, 
-  TagRepository, 
+import {
+  CreatorRepository,
+  TagRepository,
   CategoryRepositoryImpl,
   QueryService,
   bookManager,
@@ -28,13 +28,13 @@ import type { TagQueryCondition } from "../../database/query-server/cache/types.
  */
 export interface ServiceContainer {
   // Repository 实例
-  creatorRepo: CreatorRepository;
-  tagRepo: TagRepository;
-  categoryRepo: CategoryRepositoryImpl;
+  readonly creatorRepo: CreatorRepository;
+  readonly tagRepo: TagRepository;
+  readonly categoryRepo: CategoryRepositoryImpl;
 
   // QueryService 实例
-  creatorQueryService: QueryService;
-  tagQueryService: TagQueryService;
+  readonly creatorQueryService: QueryService;
+  readonly tagQueryService: TagQueryService;
 
   // Book 实例
   creatorBook: BookType<Creator> | null;
@@ -47,64 +47,156 @@ export interface ServiceContainer {
     totalPages: number;
     totalItems: number;
   };
+
+  // Book获取方法
+  getCreatorBook(condition: QueryCondition): Promise<BookType<Creator>>;
+  getTagBook(condition?: TagQueryCondition): Promise<Book<Tag>>;
+
+  // 重置方法
+  resetBooks(): void;
+  resetPagination(): void;
 }
 
 /**
- * 创建服务容器实例
+ * 服务容器实现类
+ * 负责创建和管理所有服务实例
  */
-export function createServiceContainer(): ServiceContainer {
-  const creatorRepo = new CreatorRepository();
-  const tagRepo = new TagRepository();
-  const categoryRepo = new CategoryRepositoryImpl();
+class ServiceContainerImpl implements ServiceContainer {
+  private static instance: ServiceContainerImpl | null = null;
 
-  // 创建QueryService实例
-  const creatorQueryService = new QueryService(creatorRepo);
-  const tagQueryService = new TagQueryService(tagRepo);
+  // Repository 实例
+  public readonly creatorRepo: CreatorRepository;
+  public readonly tagRepo: TagRepository;
+  public readonly categoryRepo: CategoryRepositoryImpl;
 
-  return {
-    // Repository 实例
-    creatorRepo,
-    tagRepo,
-    categoryRepo,
+  // QueryService 实例
+  public readonly creatorQueryService: QueryService;
+  public readonly tagQueryService: TagQueryService;
 
-    // QueryService 实例
-    creatorQueryService,
-    tagQueryService,
+  // Book 实例
+  public creatorBook: BookType<Creator> | null = null;
+  public tagBook: Book<Tag> | null = null;
 
-    // Book 实例（初始为null，在使用时创建）
-    creatorBook: null,
-    tagBook: null,
+  // 分页状态
+  public paginationState: {
+    currentPage: number;
+    pageSize: number;
+    totalPages: number;
+    totalItems: number;
+  };
 
-    // 分页状态
-    paginationState: {
+  private constructor() {
+    // 初始化Repository实例
+    this.creatorRepo = new CreatorRepository();
+    this.tagRepo = new TagRepository();
+    this.categoryRepo = new CategoryRepositoryImpl();
+
+    // 初始化QueryService实例
+    this.creatorQueryService = new QueryService(this.creatorRepo);
+    this.tagQueryService = new TagQueryService(this.tagRepo);
+
+    // 初始化分页状态
+    this.paginationState = {
       currentPage: 0,
-      pageSize: 20, // 使用Book的默认分页大小
+      pageSize: 20,
       totalPages: 0,
       totalItems: 0
-    }
-  };
-}
-
-/**
- * 全局服务容器实例
- */
-let globalContainer: ServiceContainer | null = null;
-
-/**
- * 获取全局服务容器
- */
-export function getServiceContainer(): ServiceContainer {
-  if (!globalContainer) {
-    globalContainer = createServiceContainer();
+    };
   }
-  return globalContainer;
-}
 
-/**
- * 设置全局服务容器
- */
-export function setServiceContainer(container: ServiceContainer): void {
-  globalContainer = container;
+  /**
+   * 获取服务容器的单例
+   */
+  public static getInstance(): ServiceContainerImpl {
+    if (!ServiceContainerImpl.instance) {
+      ServiceContainerImpl.instance = new ServiceContainerImpl();
+    }
+    return ServiceContainerImpl.instance;
+  }
+
+  /**
+   * 重置服务容器
+   */
+  public static reset(): void {
+    if (ServiceContainerImpl.instance) {
+      ServiceContainerImpl.instance.resetBooks();
+      ServiceContainerImpl.instance.resetPagination();
+    }
+    ServiceContainerImpl.instance = null;
+  }
+
+  /**
+   * 获取或创建创作者Book实例
+   */
+  public async getCreatorBook(condition: QueryCondition): Promise<BookType<Creator>> {
+    if (this.creatorBook) {
+      // 更新现有Book的索引
+      await this.creatorBook.updateIndex(condition);
+      return this.creatorBook;
+    }
+
+    // 创建新的Book实例
+    const queryServiceAdapter = new CreatorQueryServiceAdapter(this.creatorQueryService);
+    const bookConfig: BookConfig<Creator, CreatorIndex> = {
+      repository: this.creatorRepo as unknown as IDataRepository<Creator>,
+      queryService: queryServiceAdapter
+    };
+
+    this.creatorBook = await bookManager.createBook(condition, bookConfig);
+    return this.creatorBook;
+  }
+
+  /**
+   * 获取或创建标签Book实例
+   */
+  public async getTagBook(condition?: TagQueryCondition): Promise<Book<Tag>> {
+    if (this.tagBook) {
+      if (condition) {
+        // 更新现有Book的索引
+        const queryCondition: QueryCondition = {
+          keyword: condition.keyword,
+          platform: Platform.BILIBILI
+        };
+        await this.tagBook.updateIndex(queryCondition);
+      }
+      return this.tagBook;
+    }
+
+    // 创建新的Book实例
+    const queryServiceAdapter = new TagQueryServiceAdapter(this.tagQueryService);
+    const bookConfig: BookConfig<Tag, TagIndex> = {
+      repository: this.tagRepo as unknown as IDataRepository<Tag>,
+      queryService: queryServiceAdapter
+    };
+
+    // 将TagQueryCondition转换为QueryCondition
+    const queryCondition: QueryCondition = condition
+      ? { keyword: condition.keyword, platform: Platform.BILIBILI }
+      : { platform: Platform.BILIBILI };
+
+    this.tagBook = await bookManager.createBook(queryCondition, bookConfig);
+    return this.tagBook;
+  }
+
+  /**
+   * 清空Book实例
+   */
+  public resetBooks(): void {
+    this.creatorBook = null;
+    this.tagBook = null;
+  }
+
+  /**
+   * 重置分页状态
+   */
+  public resetPagination(): void {
+    this.paginationState = {
+      currentPage: 0,
+      pageSize: 20,
+      totalPages: 0,
+      totalItems: 0
+    };
+  }
 }
 
 /**
@@ -129,45 +221,39 @@ class TagQueryServiceAdapter implements IQueryService<TagIndex> {
 }
 
 /**
- * 创建或获取标签Book实例
+ * 创建创作者查询服务适配器
+ * 将 QueryService 适配为 IQueryService 接口
  */
-export async function getOrCreateTagBook(condition?: TagQueryCondition): Promise<Book<Tag>> {
-  const container = getServiceContainer();
+class CreatorQueryServiceAdapter implements IQueryService<CreatorIndex> {
+  private queryService: QueryService;
 
-  if (container.tagBook) {
-    if (condition) {
-      // 更新现有Book的索引
-      const queryCondition: QueryCondition = {
-        keyword: condition.keyword,
-        platform:Platform.BILIBILI
-      };
-      await container.tagBook.updateIndex(queryCondition);
-    }
-    return container.tagBook;
+  constructor(queryService: QueryService) {
+    this.queryService = queryService;
   }
 
-  // 创建新的Book实例
-  const queryServiceAdapter = new TagQueryServiceAdapter(container.tagQueryService);
-  const bookConfig: BookConfig<Tag, TagIndex> = {
-    repository: container.tagRepo as unknown as IDataRepository<Tag>,
-    queryService: queryServiceAdapter
-    // 不指定pageSize，让Book使用默认值（20）
-  };
-
-  // 将TagQueryCondition转换为QueryCondition
-  const queryCondition: QueryCondition = condition
-    ? { keyword: condition.keyword, platform:Platform.BILIBILI } // Platform.BILIBILI
-    : { platform: Platform.BILIBILI }; // Platform.BILIBILI
-
-  container.tagBook = await bookManager.createBook(queryCondition, bookConfig);
-  return container.tagBook;
+  async queryIds(condition: QueryCondition): Promise<number[]> {
+    return await this.queryService.queryResultIds(condition);
+  }
 }
 
 /**
- * 清空Book实例
+ * 获取全局服务容器
  */
-export function clearBooks(): void {
-  const container = getServiceContainer();
-  container.creatorBook = null;
-  container.tagBook = null;
+export function getServiceContainer(): ServiceContainer {
+  return ServiceContainerImpl.getInstance();
+}
+
+/**
+ * 设置全局服务容器（用于测试）
+ */
+export function setServiceContainer(container: ServiceContainer): void {
+  // 注意：这个方法主要用于测试，实际使用中应该使用getInstance()
+  console.warn('[services] setServiceContainer is deprecated, use getInstance() instead');
+}
+
+/**
+ * 重置全局服务容器
+ */
+export function resetServiceContainer(): void {
+  ServiceContainerImpl.reset();
 }

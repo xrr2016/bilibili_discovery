@@ -648,3 +648,76 @@ input:checked + .slider:before {
   color: #606770;
   font-weight: 500;
 }
+
+/* 加载状态样式 */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #8b9dc3;
+  font-size: 16px;
+  gap: 12px;
+}
+
+.loading::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  border: 2px solid #8b9dc3;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* 页面切换动画 */
+.up-list {
+  transition: opacity 0.2s ease;
+}
+
+.up-list.page-transition {
+  opacity: 0;
+}
+
+/* UP列表项进入动画 */
+.up-item {
+  opacity: 0;
+  transform: translateX(-100%);
+  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideIn {
+  0% {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 错误状态样式 */
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #d4a5a5;
+  font-size: 16px;
+}
