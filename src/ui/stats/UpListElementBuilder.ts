@@ -179,10 +179,8 @@ export class UpListElementBuilder implements IUpListElementBuilder {
     const tagsContainer = document.createElement("div");
     tagsContainer.className = "up-tags";
 
-    // 按权重排序，取前5个标签
-    const sortedTags = [...creator.tagWeights]
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+    // 用户标签不限制数量；系统标签按权重排序后只取前 5 个
+    const sortedTags = [...creator.tagWeights].sort((a, b) => b.count - a.count);
 
     // 获取标签名称
     const tagIds = sortedTags.map(t => t.tagId);
@@ -192,7 +190,6 @@ export class UpListElementBuilder implements IUpListElementBuilder {
     const userTags = sortedTags.filter(t => t.source === 'user');
     const systemTags = sortedTags
       .filter(t => t.source === 'system')
-      .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
     // 渲染user标签
