@@ -3,21 +3,22 @@
  * 负责标签列表的渲染和交互
  */
 
-import { colorFromTag } from "../../utils/tag-utils.js";
 import type { TagInfo } from "./types.js";
 import type { Tag } from "../../database/types/semantic.js";
 import type { TagQueryCondition } from "../../database/query-server/cache/types.js";
 import type { ServiceContainer } from "./services.js";
-import { Platform, TagSource } from "../../database/types/base.js";
-import { setDragContext, createDragGhost } from "../../utils/drag-utils.js";
-
-type RenderFn = () => void | Promise<void>;
+import { TagSource } from "../../database/types/base.js";
+import { RenderBook } from "../../renderer/RenderBook.js";
+import { TagElementBuilder } from "./TagElementBuilder.js";
+import { TagListRender } from "./TagListRender.js";
 
 /**
  * 标签管理器
  */
 export class TagManager {
   private services: ServiceContainer;
+  private currentKeyword = "";
+  private tagListRender: TagListRender | null = null;
 
   constructor(services: ServiceContainer) {
     this.services = services;
@@ -64,59 +65,38 @@ export class TagManager {
    * 渲染标签列表
    */
   async renderTagList(keyword: string = "", page: number = 0): Promise<void> {
-    // 初始化Book
-    if (keyword.trim()) {
-      await this.initTagBook({ keyword });
-    } else {
-      await this.initTagBook();
-    }
-
-    // 使用getTagsByPage获取分页数据
-    const result = await this.getTagsByPage(page);
-
     const container = document.getElementById("tag-list");
     if (!container) return;
 
-    container.innerHTML = "";
+    const normalizedKeyword = keyword.trim();
+    const condition = normalizedKeyword ? { keyword: normalizedKeyword } : undefined;
 
-    // 渲染所有标签
-    for (const tag of result.items) {
-      const pill = await this.renderTagPill(tag);
-      container.appendChild(pill);
+    if (!this.tagListRender) {
+      const tagBook = await this.services.getTagBook(condition);
+      const renderBook = new RenderBook<Tag, HTMLElement>({
+        book: tagBook,
+        elementBuilder: new TagElementBuilder(),
+        maxCachePages: 3
+      });
+
+      this.tagListRender = new TagListRender({
+        container,
+        renderBook,
+        autoRender: false
+      });
+      this.currentKeyword = normalizedKeyword;
+      await this.tagListRender.initialize(page);
+      return;
     }
 
-    // 渲染分页控件
-    this.renderPagination(result.state.currentPage, result.state.totalPages, keyword);
-  }
+    if (normalizedKeyword === this.currentKeyword) {
+      await this.tagListRender.goToPage(page);
+      return;
+    }
 
-  /**
-   * 渲染标签药丸
-   */
-  private async renderTagPill(tag: TagInfo): Promise<HTMLElement> {
-    const pill = document.createElement("div");
-    pill.className = "tag-pill";
-    
-    // 使用colorFromTag获取颜色
-    const color = colorFromTag(tag.name);
-    pill.style.backgroundColor = color;
-    pill.textContent = tag.name;
-
-    // 添加拖拽属性
-    pill.draggable = true;
-
-    // 拖拽开始事件
-    pill.addEventListener('dragstart', (e) => {
-      const context = {
-        tagId: tag.tagId,
-        tagName: tag.name,
-        dropped: false,
-        isFilterTag: false
-      };
-      setDragContext(context);
-      createDragGhost(e as DragEvent, tag.name);
-    });
-
-    return pill;
+    this.currentKeyword = normalizedKeyword;
+    this.tagListRender.setTargetPage(page);
+    await this.initTagBook(condition);
   }
 
   /**
@@ -125,10 +105,30 @@ export class TagManager {
   async createTag(name: string): Promise<number> {
     const tagId = await this.services.tagRepo.createTag(name, TagSource.USER);
 
-    // 使用container的resetBooks方法清空Book实例，强制重新加载
+    // 清空标签查询索引缓存和Book实例，确保新标签会出现在列表中
+    this.services.tagQueryService.clearIndexCache();
     this.services.resetBooks();
+    this.destroyRenderChain();
 
     return tagId;
+  }
+
+  /**
+   * 根据名称获取或创建标签
+   */
+  async ensureTag(name: string): Promise<{ tagId: number; created: boolean }> {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      throw new Error("标签名称不能为空");
+    }
+
+    const existing = await this.services.tagRepo.findTagByName(normalizedName);
+    if (existing) {
+      return { tagId: existing.tagId, created: false };
+    }
+
+    const tagId = await this.createTag(normalizedName);
+    return { tagId, created: true };
   }
 
   /**
@@ -164,43 +164,15 @@ export class TagManager {
     return result;
   }
 
-  /**
-   * 渲染分页控件
-   */
-  private renderPagination(currentPage: number, totalPages: number, keyword: string): void {
-    const paginationContainer = document.getElementById("tag-pagination");
-    if (!paginationContainer) return;
+  destroy(): void {
+    this.destroyRenderChain();
+    this.currentKeyword = "";
+  }
 
-    paginationContainer.innerHTML = "";
-
-    // 上一页按钮
-    const prevBtn = document.createElement("button");
-    prevBtn.className = "pagination-btn";
-    prevBtn.textContent = "上一页";
-    prevBtn.disabled = currentPage === 0;
-    prevBtn.addEventListener("click", () => {
-      if (currentPage > 0) {
-        this.renderTagList(keyword, currentPage - 1);
-      }
-    });
-    paginationContainer.appendChild(prevBtn);
-
-    // 页码信息
-    const pageInfo = document.createElement("span");
-    pageInfo.className = "pagination-info";
-    pageInfo.textContent = `${currentPage + 1} / ${totalPages || 1}`;
-    paginationContainer.appendChild(pageInfo);
-
-    // 下一页按钮
-    const nextBtn = document.createElement("button");
-    nextBtn.className = "pagination-btn";
-    nextBtn.textContent = "下一页";
-    nextBtn.disabled = currentPage >= totalPages - 1;
-    nextBtn.addEventListener("click", () => {
-      if (currentPage < totalPages - 1) {
-        this.renderTagList(keyword, currentPage + 1);
-      }
-    });
-    paginationContainer.appendChild(nextBtn);
+  private destroyRenderChain(): void {
+    if (this.tagListRender) {
+      this.tagListRender.destroy();
+      this.tagListRender = null;
+    }
   }
 }

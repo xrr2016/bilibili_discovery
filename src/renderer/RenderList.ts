@@ -43,6 +43,16 @@ export abstract class RenderList<TData, TElement> implements IRenderListUpdateLi
     // 清空当前元素
     this.currentElements = [];
 
+    // 索引更新后收敛当前页，避免结果页数减少时继续访问失效页码
+    const totalPages = this.renderBook.state.totalPages;
+    if (totalPages === 0) {
+      this.currentPage = 0;
+    } else if (this.currentPage >= totalPages) {
+      this.currentPage = totalPages - 1;
+    } else if (this.currentPage < 0) {
+      this.currentPage = 0;
+    }
+
     // 重新渲染当前页
     if (this.autoRender) {
       this.renderCurrentPage();

@@ -150,15 +150,13 @@ class ServiceContainerImpl implements ServiceContainer {
    * 获取或创建标签Book实例
    */
   public async getTagBook(condition?: TagQueryCondition): Promise<Book<Tag>> {
+    const queryCondition: QueryCondition = condition
+      ? { keyword: condition.keyword, platform: Platform.BILIBILI }
+      : { platform: Platform.BILIBILI };
+
     if (this.tagBook) {
-      if (condition) {
-        // 更新现有Book的索引
-        const queryCondition: QueryCondition = {
-          keyword: condition.keyword,
-          platform: Platform.BILIBILI
-        };
-        await this.tagBook.updateIndex(queryCondition);
-      }
+      // 无论是否带 keyword，都更新现有 Book 的索引
+      await this.tagBook.updateIndex(queryCondition);
       return this.tagBook;
     }
 
@@ -168,11 +166,6 @@ class ServiceContainerImpl implements ServiceContainer {
       repository: this.tagRepo as unknown as IDataRepository<Tag>,
       queryService: queryServiceAdapter
     };
-
-    // 将TagQueryCondition转换为QueryCondition
-    const queryCondition: QueryCondition = condition
-      ? { keyword: condition.keyword, platform: Platform.BILIBILI }
-      : { platform: Platform.BILIBILI };
 
     this.tagBook = await bookManager.createBook(queryCondition, bookConfig);
     return this.tagBook;

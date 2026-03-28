@@ -224,11 +224,23 @@ export class StatsManager {
     // 绑定添加标签按钮
     const addTagBtn = document.getElementById('btn-add-tag');
     addTagBtn?.addEventListener('click', async () => {
-      const tagName = prompt('请输入标签名称:');
+      const tagSearchInput = document.getElementById('tag-search') as HTMLInputElement | null;
+      const inputValue = tagSearchInput?.value.trim() || '';
+      const tagName = inputValue || prompt('请输入标签名称:')?.trim() || '';
+
       if (tagName) {
         try {
-          await this.container.tagManager.createTag(tagName);
-          await this.container.tagManager.renderTagList();
+          const result = await this.container.tagManager.ensureTag(tagName);
+
+          if (tagSearchInput) {
+            tagSearchInput.value = tagName;
+          }
+
+          await this.container.tagManager.renderTagList(tagName);
+
+          if (!result.created) {
+            console.log('[StatsManager] 标签已存在，已定位到搜索结果:', tagName);
+          }
         } catch (error) {
           console.error('[StatsManager] 添加标签失败:', error);
           this.container.state.error = error instanceof Error ? error.message : '添加标签失败';
