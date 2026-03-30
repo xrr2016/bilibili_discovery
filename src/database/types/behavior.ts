@@ -27,11 +27,11 @@ export interface WatchEvent {
    */
   creatorId: ID;
   /**
-   * 观看开始时间
+   *第一次观看的时间
    */
   watchTime: Timestamp;
   /**
-   * 实际观看时长（秒）
+   * 一共实际观看总时长（秒）
    */
   watchDuration: number;
   /**
