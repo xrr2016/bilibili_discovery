@@ -36,6 +36,19 @@ export class CollectionItemRepositoryImpl {
       videoId
     );
   }
+
+  /**
+   * 获取指定收藏夹的所有收藏项
+   * 基于collectionId索引查询
+   * @param collectionId 收藏夹ID
+   */
+  async getItemsByCollection(collectionId: ID): Promise<CollectionItem[]> {
+    return DBUtils.getByIndex<CollectionItem>(
+      STORE_NAMES.COLLECTION_ITEMS,
+      'collectionId',
+      collectionId
+    );
+  }
   /**
    * 创建收藏项
    * @param item 收藏项数据（不包含itemId、collectionId、addedAt）
@@ -68,20 +81,27 @@ export class CollectionItemRepositoryImpl {
     collectionId: ID,
     items: Omit<CollectionItem, 'itemId' | 'collectionId' | 'addedAt'>[]
   ): Promise<ID[]> {
+    console.log(`[CollectionItemRepository] createItems called with collectionId: ${collectionId}, items count: ${items.length}`);
+    console.log(`[CollectionItemRepository] Input items:`, JSON.stringify(items, null, 2));
+    
     const addedAt = Date.now();
     const itemIds: ID[] = [];
-    const itemsToAdd: CollectionItem[] = items.map(item => {
+    const itemsToAdd: CollectionItem[] = items.map((item, index) => {
       const itemId = generateId();
       itemIds.push(itemId);
-      return {
+      const collectionItem: CollectionItem = {
         itemId,
         collectionId,
         addedAt,
         ...item
       };
+      console.log(`[CollectionItemRepository] Created item ${index + 1}:`, JSON.stringify(collectionItem, null, 2));
+      return collectionItem;
     });
 
+    console.log(`[CollectionItemRepository] About to add ${itemsToAdd.length} items to database`);
     await DBUtils.addBatch(STORE_NAMES.COLLECTION_ITEMS, itemsToAdd);
+    console.log(`[CollectionItemRepository] Successfully added ${itemIds.length} items`);
     return itemIds;
   }
 

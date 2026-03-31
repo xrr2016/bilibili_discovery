@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilibili Discovery 数据库统计</title>
+    <link rel="stylesheet" href="./database-stats.css" />
+  </head>
+  <body>
+    <div class="app">
+      <div class="header">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/>
+          </svg>
+        </div>
+        <h1>数据库统计</h1>
+        <p class="subtitle">查看和管理您的Bilibili Discovery数据</p>
+      </div>
+
+      <div class="content">
+        <div class="section">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"/>
+              <path d="M18 9l-5 5-4-4-3 3"/>
+            </svg>
+            数据统计
+          </h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">视频总数</div>
+              <div class="stat-value" id="stat-video-count">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">UP主总数</div>
+              <div class="stat-value" id="stat-creator-count">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">收藏夹总数</div>
+              <div class="stat-value" id="stat-collection-count">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">收藏项总数</div>
+              <div class="stat-value" id="stat-collection-item-count">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">标签总数</div>
+              <div class="stat-value" id="stat-tag-count">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">分类总数</div>
+              <div class="stat-value" id="stat-category-count">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+            收藏夹数据获取
+          </h2>
+          <div class="progress-container" id="progress-container" style="display: none;">
+            <div class="progress-info">
+              <div class="progress-title-container">
+                <span id="progress-text" class="progress-text">准备中...</span>
+              </div>
+              <span id="progress-percent" class="progress-percent">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-fill"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <button id="fetch-favorites-btn" class="btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              获取收藏夹数据
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p id="status" class="status"></p>
+      </div>
+    </div>
+    <script type="module" src="./database-stats.ts"></script>
+  </body>
+</html>

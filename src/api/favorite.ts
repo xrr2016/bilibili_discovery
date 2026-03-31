@@ -46,6 +46,10 @@ export async function getCollectedFolders(
     if (folders.length === 0) {
       break;
     }
+
+    // 将获取到的收藏夹添加到 allFolders 数组中
+    allFolders.push(...folders);
+
     // 如果获取的数量小于页大小，说明已经没有更多数据
     if (folders.length < pageSize) {
       break;
@@ -108,13 +112,26 @@ export async function getFavoriteVideos(
   options: ApiRequestOptions = {}
 ): Promise<FavoriteVideoInfo[]> {
   const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${media_id}&pn=${pn}&ps=${ps}`;
-  const data = await apiRequest<{ data?: { medias?: any[] } }>(url, options);
-  const medias = data?.data?.medias;
+  // 根据 api请求返回数据例子.md，API返回的数据结构是：
+  // { data: { info: {...}, medias: [...] } }
+  const data = await apiRequest<{ info?: any; medias?: any[] }>(url, options);
+  const medias = data?.medias;
   if (!Array.isArray(medias)) {
     return [];
   }
 
   // 将原始数据映射到 FavoriteVideoInfo 结构
+  // 根据 api请求返回数据例子.md，API返回的数据结构如下：
+  // - id: 视频ID
+  // - title: 视频标题
+  // - cover: 视频封面
+  // - intro: 视频简介
+  // - duration: 视频时长
+  // - upper.mid: UP主ID
+  // - upper.name: UP主名称
+  // - upper.face: UP主头像
+  // - pubtime: 发布时间
+  // - bvid: BV号
   return medias.map((item) => ({
     id: item.id,
     title: item.title,
@@ -122,7 +139,9 @@ export async function getFavoriteVideos(
     intro: item.intro,
     duration: item.duration,
     upper: {
-      mid: item.upper?.mid
+      mid: item.upper?.mid,
+      name: item.upper?.name,
+      face: item.upper?.face
     },
     pubtime: item.pubtime,
     bvid: item.bvid
@@ -143,10 +162,12 @@ export async function getSeasonVideos(
   options: ApiRequestOptions = {}
 ): Promise<SubscribedFavoriteVideoInfo[]> {
   const url = `https://api.bilibili.com/x/space/fav/season/list?season_id=${season_id}&pn=${pn}&ps=${ps}&web_location=333.1387`;
-  const data = await apiRequest<{ data?: { medias?: any[]; info?: any } }>(url, options);
+  // 根据 api请求返回数据例子.md，API返回的数据结构是：
+  // { data: { info: {...}, medias: [...] } }
+  const data = await apiRequest<{ medias?: any[]; info?: any }>(url, options);
 
   // 订阅合集API返回的数据结构中，视频列表在 medias 字段中
-  const videos = data?.data?.medias ?? [];
+  const videos = data?.medias ?? [];
 
   // 订阅合集API返回的数据中没有 intro 字段，需要添加默认值
   // 将原始数据映射到 SubscribedFavoriteVideoInfo 结构
@@ -183,8 +204,10 @@ export async function getCollectedVideos(
   options: ApiRequestOptions = {}
 ): Promise<SubscribedFavoriteVideoInfo[]> {
   const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${media_id}&pn=${pn}&ps=${ps}`;
-  const data = await apiRequest<{ data?: { medias?: any[] } }>(url, options);
-  const medias = data?.data?.medias;
+  // 根据 api请求返回数据例子.md，API返回的数据结构是：
+  // { data: { info: {...}, medias: [...] } }
+  const data = await apiRequest<{ info?: any; medias?: any[] }>(url, options);
+  const medias = data?.medias;
   if (!Array.isArray(medias)) {
     return [];
   }

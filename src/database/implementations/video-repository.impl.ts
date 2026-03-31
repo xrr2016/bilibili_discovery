@@ -100,6 +100,19 @@ export class VideoRepositoryImpl {
     );
   }
 
+  /**
+   * 根据 bv 获取视频信息
+   * @param bv BV号
+   * @returns 视频对象，不存在返回 null
+   */
+  async getVideoByBv(bv: string): Promise<Video | null> {
+    const videos = await DBUtils.getByIndex<Video>(
+      STORE_NAMES.VIDEOS,
+      'bv',
+      bv
+    );
+    return videos.length > 0 ? videos[0] : null;
+  }
 
   /**
    * 获取所有视频（仅用于数据导出等场景）

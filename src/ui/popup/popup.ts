@@ -1,4 +1,4 @@
-import { navigateToFavorites, navigateToStats, navigateToTestTools, navigateToOptions, navigateToThemeSettings } from "./popup-progress.js";
+import { navigateToFavorites, navigateToStats, navigateToTestTools, navigateToOptions, navigateToThemeSettings, navigateToDatabaseStats } from "./popup-progress.js";
 import { openExtensionPage } from "./popup-runtime.js";
 import { initThemedPage } from "../../themes/index.js";
 import { getValue } from "../../database/implementations/index.js";
@@ -103,6 +103,16 @@ function bindButtons(): void {
       event.preventDefault();
       event.stopPropagation();
       navigateToOptions();
+    });
+  }
+
+  const btnDatabaseStats = document.getElementById("btn-database-stats");
+  if (btnDatabaseStats) {
+    btnDatabaseStats.addEventListener("click", (event) => {
+      console.log("[popup] btn-database-stats clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToDatabaseStats();
     });
   }
 }

@@ -12,7 +12,7 @@ export const DB_NAME = 'DiscoveryDB';
  * 数据库版本
  * 每次修改数据库结构时需要递增此版本号
  */
-export const DB_VERSION = 6;
+export const DB_VERSION = 7;
 
 /**
  * 对象存储名称定义
@@ -58,7 +58,8 @@ export const INDEX_DEFINITIONS = {
   [STORE_NAMES.VIDEOS]: [
     { name: 'videoId', keyPath: 'videoId', options: { unique: true } },
     { name: 'creatorId', keyPath: 'creatorId', options: { unique: false } },
-    { name: 'platform', keyPath: 'platform', options: { unique: false } }
+    { name: 'platform', keyPath: 'platform', options: { unique: false } },
+    { name: 'bv', keyPath: 'bv', options: { unique: false } }
   ],
   [STORE_NAMES.IMAGES_METADATA]: [
     { name: 'purpose', keyPath: 'purpose', options: { unique: false } },

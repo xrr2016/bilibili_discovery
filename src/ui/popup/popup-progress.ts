@@ -19,3 +19,7 @@ export function navigateToOptions(): void {
 export function navigateToThemeSettings(): void {
   openExtensionPage("ui/theme-settings/theme-settings.html");
 }
+
+export function navigateToDatabaseStats(): void {
+  openExtensionPage("ui/database-stats/database-stats.html");
+}

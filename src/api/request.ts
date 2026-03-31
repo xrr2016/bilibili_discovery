@@ -14,6 +14,7 @@ interface ApiRequestOptions {
 }
 
 const DEFAULT_MIN_INTERVAL_MS = 200;
+const DEFAULT_MAX_INTERVAL_MS = 500;
 let lastRequestAt = 0;
 
 /**
@@ -27,12 +28,15 @@ export function delay(ms: number): Promise<void> {
  * Rate limiter for API requests.
  */
 export async function rateLimiter(
-  minIntervalMs: number = DEFAULT_MIN_INTERVAL_MS
+  minIntervalMs: number = DEFAULT_MIN_INTERVAL_MS,
+  maxIntervalMs: number = DEFAULT_MAX_INTERVAL_MS
 ): Promise<void> {
   const now = Date.now();
-  const waitTime = Math.max(0, lastRequestAt + minIntervalMs - now);
+  const baseWaitTime = Math.max(0, lastRequestAt + minIntervalMs - now);
+  const randomDelay = Math.random() * (maxIntervalMs - minIntervalMs);
+  const waitTime = baseWaitTime + randomDelay;
   if (waitTime > 0) {
-    console.log("[API] Rate limit wait", waitTime);
+    console.log("[API] Rate limit wait", Math.round(waitTime));
     await delay(waitTime);
   }
   lastRequestAt = Date.now();

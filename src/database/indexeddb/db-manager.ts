@@ -90,6 +90,7 @@ export class DBManager {
           autoIncrement: false
         });
       } else {
+        // 存储已存在，需要通过事务获取
         if (!upgradeTransaction) {
           return;
         }
@@ -100,8 +101,13 @@ export class DBManager {
       const indexes = INDEX_DEFINITIONS[storeName as keyof typeof INDEX_DEFINITIONS];
       if (indexes) {
         indexes.forEach((index: { name: string; keyPath: string; options: IDBIndexParameters }) => {
+          // 只有在索引不存在时才创建
           if (!store.indexNames.contains(index.name)) {
-            store.createIndex(index.name, index.keyPath, index.options);
+            try {
+              store.createIndex(index.name, index.keyPath, index.options);
+            } catch (error) {
+              console.warn(`[DBManager] Failed to create index ${index.name} for store ${storeName}:`, error);
+            }
           }
         });
       }

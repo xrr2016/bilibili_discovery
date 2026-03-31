@@ -316,10 +316,10 @@ body {
   color: var(--theme-text-primary);
   font-size: 14px;
   line-height: 1.5;
-  white-space: normal;
-  word-wrap: break-word;
-  word-break: break-all;
-  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
   background-color: var(--theme-stats-tag-bg);
   border: 1px solid transparent;
   box-shadow: inset 0 0 0 1px transparent;

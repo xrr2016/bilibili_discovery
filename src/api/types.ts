@@ -123,6 +123,8 @@ export interface FavoriteVideoInfo {
   duration: number;
   upper: {
     mid: number;
+    name?: string; // UP主名称
+    face?: string; // UP主头像
   };
   pubtime: number;
   bvid: string;

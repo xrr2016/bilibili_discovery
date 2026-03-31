@@ -128,13 +128,13 @@ export class FavoriteVideoQueryService {
     // 优化3：应用所有筛选条件
     const results = Array.from(indexMap.values()).filter(index => {
       const isValid = filters.every(filter => filter(index));
-      if (FavoriteVideoQueryService.DEBUG && !isValid) {
-        console.log("[FavoriteVideoQueryService] filtered index:", {
-          favoriteEntryId: index.favoriteEntryId,
-          videoId: index.videoId,
-          title: index.title
-        });
-      }
+      // if (FavoriteVideoQueryService.DEBUG && !isValid) {
+      //   console.log("[FavoriteVideoQueryService] filtered index:", {
+      //     favoriteEntryId: index.favoriteEntryId,
+      //     videoId: index.videoId,
+      //     title: index.title
+      //   });
+      // }
       return isValid;
     });
 

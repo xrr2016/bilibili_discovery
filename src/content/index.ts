@@ -133,6 +133,11 @@ class VideoTrackerManager {
       return;
     }
 
+    // 停止旧的元数据触发器（如果存在）
+    if (this.metadataTrigger) {
+      this.metadataTrigger.stop();
+    }
+
     // 创建元数据触发器（用于更新视频时长）
     this.metadataTrigger = new VideoMetadataTrigger(video, this.bvid);
     this.metadataTrigger.onCollect(async (data: WatchEventCollectData) => {
@@ -154,6 +159,11 @@ class VideoTrackerManager {
 
   private startPlaybackTrigger(video: HTMLVideoElement): void {
     if (!this.bvid) return;
+
+    // 停止旧的播放触发器（如果存在）
+    if (this.playbackTrigger) {
+      this.playbackTrigger.stop();
+    }
 
     // 创建播放触发器
     this.playbackTrigger = new VideoPlaybackTrigger(video, this.bvid);
