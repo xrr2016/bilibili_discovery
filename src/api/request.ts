@@ -7,14 +7,24 @@ import { getValue } from "../database/implementations/index.js";
 
 export type FetchFn = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+/**
+ * 风控错误类
+ */
+export class RateLimitError extends Error {
+  constructor(message: string = "触发B站风控，请求被限制") {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
 interface ApiRequestOptions {
   fetchFn?: FetchFn;
   fetchInit?: RequestInit;
   fallbackRequest?: (url: string) => Promise<unknown | null>;
 }
 
-const DEFAULT_MIN_INTERVAL_MS = 200;
-const DEFAULT_MAX_INTERVAL_MS = 500;
+const DEFAULT_MIN_INTERVAL_MS = 500;
+const DEFAULT_MAX_INTERVAL_MS = 1000;
 let lastRequestAt = 0;
 
 /**
@@ -91,9 +101,12 @@ export async function apiRequest<T>(
     const response = await fetchFn(url, fetchInit);
     if (!response.ok) {
       console.error("[API] Request failed", response.status, url);
-      if (response.status === 412 && options.fallbackRequest) {
-        const fallback = await options.fallbackRequest(url);
-        return (fallback as T | null) ?? null;
+      if (response.status === 412) {
+        if (options.fallbackRequest) {
+          const fallback = await options.fallbackRequest(url);
+          return (fallback as T | null) ?? null;
+        }
+        throw new RateLimitError("触发B站风控，请求被限制。请稍后再试或检查您的网络环境。");
       }
       return null;
     }

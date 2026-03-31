@@ -93,7 +93,7 @@ export class CollectionRepositoryImpl {
    * 基于name索引查询
    * @param name 收藏夹名称
    */
-  async getCollectionsByName(name: ID): Promise<Collection[]> {
+  async getCollectionsByName(name: string): Promise<Collection[]> {
     return DBUtils.getByIndex<Collection>(
       STORE_NAMES.COLLECTIONS,
       'name',

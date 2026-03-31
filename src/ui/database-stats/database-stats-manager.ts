@@ -14,6 +14,7 @@ import { getValue } from "../../database/implementations/settings-repository.imp
 import { FolderProcessor } from "./folder-processor.js";
 import { showProgress, hideProgress, showStatus, updateStatValue, updateFetchButtonState } from "./ui-helper.js";
 import type { ProgressCallback } from "./types.js";
+import { RateLimitError } from "../../api/request.js";
 
 /**
  * 数据库统计管理器类
@@ -165,10 +166,10 @@ export class DatabaseStatsManager {
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        // 用户主动中断，不显示错误
-        if (!this.isPaused) {
-          showStatus('已取消获取', 'info');
-        }
+        showStatus('已取消获取', 'info');
+      } else if (error instanceof RateLimitError) {
+        console.error('[DatabaseStatsManager] 触发风控:', error);
+        showStatus(error.message, 'error');
       } else {
         console.error('[DatabaseStatsManager] 获取收藏夹数据失败:', error);
         showStatus('获取收藏夹数据失败: ' + (error instanceof Error ? error.message : '未知错误'), 'error');

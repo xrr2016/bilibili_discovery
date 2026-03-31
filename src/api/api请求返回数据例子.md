@@ -498,6 +498,7 @@ https://api.bilibili.com/x/v3/fav/folder/collected/list?up_mid=355536702&pn=1&ps
         "bvid": ""
       },
 
+
 https://api.bilibili.com/x/space/fav/season/list?season_id=4120617&pn=1&ps=10
 获取订阅收藏夹的信息,这是别人创建的合集
 {

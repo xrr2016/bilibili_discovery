@@ -8,7 +8,7 @@ import type {
   SubscribedFavoriteFolderInfo,
   SubscribedFavoriteVideoInfo
 } from "./types.js";
-import { apiRequest, type ApiRequestOptions } from "./request.js";
+import { apiRequest, type ApiRequestOptions, RateLimitError } from "./request.js";
 
 /**
  * 获取用户收藏夹列表
@@ -114,7 +114,16 @@ export async function getFavoriteVideos(
   const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${media_id}&pn=${pn}&ps=${ps}`;
   // 根据 api请求返回数据例子.md，API返回的数据结构是：
   // { data: { info: {...}, medias: [...] } }
-  const data = await apiRequest<{ info?: any; medias?: any[] }>(url, options);
+  let data;
+  try {
+    data = await apiRequest<{ info?: any; medias?: any[] }>(url, options);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      throw error;
+    }
+    console.error("[getFavoriteVideos] API请求失败:", error);
+    return [];
+  }
   const medias = data?.medias;
   if (!Array.isArray(medias)) {
     return [];
@@ -206,7 +215,16 @@ export async function getCollectedVideos(
   const url = `https://api.bilibili.com/x/v3/fav/resource/list?media_id=${media_id}&pn=${pn}&ps=${ps}`;
   // 根据 api请求返回数据例子.md，API返回的数据结构是：
   // { data: { info: {...}, medias: [...] } }
-  const data = await apiRequest<{ info?: any; medias?: any[] }>(url, options);
+  let data;
+  try {
+    data = await apiRequest<{ info?: any; medias?: any[] }>(url, options);
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      throw error;
+    }
+    console.error("[getCollectedVideos] API请求失败:", error);
+    return [];
+  }
   const medias = data?.medias;
   if (!Array.isArray(medias)) {
     return [];

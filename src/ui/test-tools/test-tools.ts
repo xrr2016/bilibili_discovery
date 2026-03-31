@@ -767,6 +767,35 @@ class TestDataGenerator {
     
     console.log('[TestDataGenerator] 全部测试数据生成完成');
   }
+
+  // 更新收藏夹计数器
+  async updateCollectionCounters(onProgress?: (current: number, total: number, message: string) => void): Promise<void> {
+    console.log('[TestDataGenerator] 开始更新收藏夹计数器');
+
+    // 获取所有收藏夹
+    const collections = await this.collectionRepository.getAllCollections();
+    const total = collections.length;
+
+    for (let i = 0; i < total; i++) {
+      const collection = collections[i];
+
+      // 获取收藏夹中的所有收藏项
+      const items = await this.collectionItemRepository.getItemsByCollection(collection.collectionId);
+      const actualCount = items.length;
+
+      // 更新收藏夹的计数器
+      await this.collectionRepository.updateCollection(collection.collectionId, {
+        videoCount: actualCount
+      });
+
+      // 更新进度
+      if (onProgress) {
+        onProgress(i + 1, total, `已更新收藏夹: ${collection.name} (${actualCount} 个视频)`);
+      }
+    }
+
+    console.log('[TestDataGenerator] 收藏夹计数器更新完成');
+  }
 }
 
 // 初始化页面
@@ -782,6 +811,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const testDataProcessedCount = document.getElementById('test-data-processed-count') as HTMLSpanElement;
   const testDataTotalCount = document.getElementById('test-data-total-count') as HTMLSpanElement;
   const testDataMessage = document.getElementById('test-data-message') as HTMLSpanElement;
+  const updateStatsBtn = document.getElementById('update-stats-btn') as HTMLButtonElement;
+  const statsMessage = document.getElementById('stats-message') as HTMLSpanElement;
 
   // 生成测试数据按钮点击事件
   generateTestDataBtn.addEventListener('click', async () => {
@@ -872,6 +903,27 @@ document.addEventListener('DOMContentLoaded', async () => {
       generateTestDataBtn.disabled = false;
       testDataTypeSelect.disabled = false;
       testDataCountInput.disabled = false;
+    }
+  });
+
+  // 更新收藏夹统计按钮点击事件
+  updateStatsBtn.addEventListener('click', async () => {
+    // 禁用按钮
+    updateStatsBtn.disabled = true;
+
+    // 更新UI状态
+    statsMessage.textContent = '正在更新收藏夹统计...';
+
+    try {
+      await testDataGenerator.updateCollectionCounters((current, total, message) => {
+        statsMessage.textContent = `[${current}/${total}] ${message}`;
+      });
+      statsMessage.textContent = '收藏夹统计更新完成';
+    } catch (error) {
+      statsMessage.textContent = `错误: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      // 启用按钮
+      updateStatsBtn.disabled = false;
     }
   });
 });
