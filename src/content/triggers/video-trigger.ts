@@ -5,6 +5,7 @@
  */
 
 import { WatchEventCollectData } from '../types.js';
+import { Timestamp } from '../../database/types/base.js';
 
 /**
  * 视频触发器接口
@@ -28,7 +29,7 @@ export class VideoPlaybackTrigger implements VideoTrigger {
   private callbacks: Array<(data: WatchEventCollectData) => void> = [];
   private lastTime = 0;
   private accumulated = 0;
-  private lastSentAt = Date.now();
+  private watchStartTime: Timestamp | null = null;
   private isRunning = false;
 
   constructor(private videoElement: HTMLVideoElement, bvid: string) {
@@ -42,7 +43,7 @@ export class VideoPlaybackTrigger implements VideoTrigger {
     this.isRunning = true;
     this.lastTime = this.video.currentTime;
     this.accumulated = 0;
-    this.lastSentAt = Date.now();
+    this.watchStartTime = Date.now();
 
     // 监听视频事件
     this.video.addEventListener("timeupdate", this.handleTimeUpdate);
@@ -76,9 +77,6 @@ export class VideoPlaybackTrigger implements VideoTrigger {
     }
 
     if (!this.video.paused) {
-      const now = Date.now();
-      const watchedSeconds = (now - this.lastSentAt) / 1000;
-
       // 计算实际播放进度
       const delta = this.video.currentTime - this.lastTime;
       if (delta > 0 && delta < 5) {
@@ -112,7 +110,7 @@ export class VideoPlaybackTrigger implements VideoTrigger {
   };
 
   private triggerCollect(reason: string): void {
-    if (this.accumulated < 1 || !this.video || !this.bvid) {
+    if (this.accumulated < 1 || !this.video || !this.bvid || !this.watchStartTime) {
       return;
     }
 
@@ -123,7 +121,7 @@ export class VideoPlaybackTrigger implements VideoTrigger {
 
     const data: WatchEventCollectData = {
       bv: this.bvid,
-      watchTime: currentTimestamp - this.accumulated * 1000,
+      watchTime: this.watchStartTime,
       watchDuration: this.accumulated,
       videoDuration,
       progress,
@@ -132,8 +130,6 @@ export class VideoPlaybackTrigger implements VideoTrigger {
     };
 
     this.callbacks.forEach(callback => callback(data));
-    this.accumulated = 0;
-    this.lastSentAt = currentTimestamp;
   }
 }
 

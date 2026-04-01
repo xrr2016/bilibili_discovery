@@ -302,7 +302,7 @@ export class DataProcessor {
 
   /**
    * 处理观看事件数据
-   * 智能合并观看事件：如果是同一个视频且间隔时间较短，则累计观看时间；否则创建新事件
+   * 每个视频只有一个观看事件，持续更新累计观看时间和最近观看时间
    */
   async processWatchEventData(data: WatchEventCollectData): Promise<void> {
     logger.debug('[DataProcessor] 处理观看事件数据:', data);
@@ -330,25 +330,25 @@ export class DataProcessor {
       return;
     }
 
-    // 查询该视频最近的观看事件
-    const recentEvent = await this.watchEventRepo.getRecentWatchEvent(videoId);
+    // 查询该视频的观看事件
+    const existingEvent = await this.watchEventRepo.getWatchEventByVideoId(videoId);
 
-    if (recentEvent) {
-      // 存在最近的观看事件，更新观看时长和进度
-      logger.debug('[DataProcessor] 更新现有观看事件:', recentEvent.eventId);
+    if (existingEvent) {
+      // 存在观看事件，更新观看时长和进度
+      logger.debug('[DataProcessor] 更新现有观看事件:', existingEvent.eventId);
 
-      const updatedWatchDuration = recentEvent.watchDuration + data.watchDuration;
-      const updatedProgress = data.videoDuration > 0 ? data.progress : recentEvent.progress;
+      const updatedWatchDuration = existingEvent.watchDuration + data.watchDuration;
+      const updatedProgress = data.videoDuration > 0 ? data.progress : existingEvent.progress;
       const updatedIsComplete = updatedProgress >= 0.9 ? 1 : 0;
 
-      await this.watchEventRepo.updateWatchEvent(recentEvent.eventId, {
+      await this.watchEventRepo.updateWatchEvent(existingEvent.eventId, {
         watchDuration: updatedWatchDuration,
         progress: updatedProgress,
         isComplete: updatedIsComplete,
         endTime: data.endTime
       });
     } else {
-      // 不存在最近的观看事件，创建新的观看事件
+      // 不存在观看事件，创建新的观看事件
       logger.debug('[DataProcessor] 创建新的观看事件');
 
       const watchEvent: Omit<WatchEvent, 'eventId'> = {
