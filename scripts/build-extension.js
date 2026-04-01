@@ -38,6 +38,9 @@ function copyStaticAssets() {
   // 复制 icons 目录
   cpSync(join(srcRoot, "icons"), join(extensionRoot, "icons"), { recursive: true });
 
+  // 复制 _locales 目录
+  cpSync(join(srcRoot, "_locales"), join(extensionRoot, "_locales"), { recursive: true });
+
   // 只复制 ui 目录中的 HTML 和 CSS 文件，不复制 .ts 文件
   const uiSrcDir = join(srcRoot, "ui");
   const uiDestDir = join(extensionRoot, "ui");
