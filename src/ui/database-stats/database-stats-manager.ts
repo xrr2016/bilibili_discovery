@@ -9,12 +9,15 @@ import { CollectionRepositoryImpl } from "../../database/implementations/collect
 import { TagRepositoryImpl } from "../../database/implementations/tag-repository.impl.js";
 import { DBUtils, STORE_NAMES } from "../../database/indexeddb/index.js";
 import { getFavoriteFolders, getCollectedFolders } from "../../api/favorite.js";
-import type { SubscribedFavoriteFolderInfo, FavoriteFolderInfo } from "../../api/types.js";
+import { getFollowedUPs } from "../../api/user.js";
+import type { SubscribedFavoriteFolderInfo, FavoriteFolderInfo, FollowingUp } from "../../api/types.js";
 import { getValue } from "../../database/implementations/settings-repository.impl.js";
 import { FolderProcessor } from "./folder-processor.js";
-import { showProgress, hideProgress, showStatus, updateStatValue, updateFetchButtonState } from "./ui-helper.js";
+import { showProgress, hideProgress, showStatus, updateStatValue, updateFetchButtonState, showUPProgress, hideUPProgress, updateUPFetchButtonState } from "./ui-helper.js";
 import type { ProgressCallback } from "./types.js";
 import { RateLimitError } from "../../api/request.js";
+import type { Creator } from "../../database/types/creator.js";
+import { Platform } from "../../database/types/base.js";
 
 /**
  * 数据库统计管理器类
@@ -28,6 +31,9 @@ export class DatabaseStatsManager {
   private isFetching: boolean = false;
   private isPaused: boolean = false;
   private abortController: AbortController | null = null;
+  private isFetchingUP: boolean = false;
+  private isPausedUP: boolean = false;
+  private abortControllerUP: AbortController | null = null;
 
   constructor() {
     this.videoRepo = new VideoRepositoryImpl();
@@ -55,6 +61,9 @@ export class DatabaseStatsManager {
 
     // 绑定获取收藏夹按钮事件
     this.bindFetchButton();
+
+    // 绑定获取UP主按钮事件
+    this.bindUPFetchButton();
   }
 
   /**
@@ -224,6 +233,169 @@ export class DatabaseStatsManager {
     } catch (error) {
       console.error('[DatabaseStatsManager] 加载统计数据失败:', error);
       showStatus('加载数据失败: ' + (error instanceof Error ? error.message : '未知错误'), 'error');
+    }
+  }
+
+  /**
+   * 绑定获取UP主按钮事件
+   */
+  private bindUPFetchButton(): void {
+    const fetchBtn = document.getElementById('fetch-ups-btn');
+    if (fetchBtn) {
+      fetchBtn.addEventListener('click', async () => {
+        if (this.isFetchingUP) {
+          // 暂停获取
+          this.isPausedUP = true;
+          if (this.abortControllerUP) {
+            this.abortControllerUP.abort();
+          }
+          showStatus('已暂停获取UP主', 'info');
+          return;
+        }
+
+        // 从设置中获取UID
+        const userId = await getValue<number>("userId");
+        if (!userId) {
+          showStatus('请先在设置中配置用户UID', 'error');
+          return;
+        }
+
+        await this.fetchUPData(userId.toString());
+      });
+    }
+  }
+
+  /**
+   * 获取UP主数据
+   */
+  private async fetchUPData(uid: string): Promise<void> {
+    this.isFetchingUP = true;
+    this.isPausedUP = false;
+    this.abortControllerUP = new AbortController();
+
+    updateUPFetchButtonState(true);
+
+    try {
+      showUPProgress(0, 100, '正在获取已关注UP主列表...');
+
+      const allUPs: FollowingUp[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      // 分页获取所有已关注的UP主
+      while (hasMore && !this.isPausedUP) {
+        const { upList, hasMore: more } = await getFollowedUPs(
+          parseInt(uid),
+          page,
+          50
+        );
+
+        allUPs.push(...upList);
+        hasMore = more;
+
+        if (hasMore) {
+          showUPProgress(
+            page,
+            100,
+            `正在获取UP主列表: 已获取 ${allUPs.length} 个UP主...`
+          );
+        }
+
+        page++;
+
+        // 添加延迟避免触发风控
+        if (hasMore) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      if (this.isPausedUP) {
+        showStatus(`已暂停，已获取 ${allUPs.length} 个UP主`, 'info');
+        hideUPProgress();
+        return;
+      }
+
+      if (allUPs.length === 0) {
+        showStatus('未找到已关注的UP主', 'error');
+        hideUPProgress();
+        return;
+      }
+
+      // 处理每个UP主的信息
+      let processedCount = 0;
+      const creatorsToUpsert: Creator[] = [];
+
+      for (const up of allUPs) {
+        if (this.isPausedUP) {
+          showStatus(`已暂停，已处理 ${processedCount} 个UP主`, 'info');
+          break;
+        }
+
+        showUPProgress(
+          processedCount,
+          allUPs.length,
+          `正在处理UP主: ${up.uname} (${processedCount + 1}/${allUPs.length})`
+        );
+
+        try {
+          // 构建Creator对象（只使用关注列表API返回的基本信息）
+          // 暂时只保存头像URL，不下载头像图片
+          const creator: Creator = {
+            creatorId: up.mid,
+            platform: Platform.BILIBILI,
+            name: up.uname,
+            avatar: 0, // 暂时设置为0，后续可以下载头像
+            avatarUrl: up.face,
+            isLogout: 0,
+            description: '',
+            createdAt: Date.now(),
+            followTime: Date.now(),
+            isFollowing: 1,
+            tagWeights: [],
+            updatedAt: Date.now()
+          };
+
+          creatorsToUpsert.push(creator);
+
+          // 每处理20个UP主批量保存一次
+          if (creatorsToUpsert.length >= 20) {
+            await this.creatorRepo.upsertCreators(creatorsToUpsert);
+            creatorsToUpsert.length = 0;
+          }
+
+          processedCount++;
+        } catch (error) {
+          console.error(`[DatabaseStatsManager] 处理UP主失败: ${up.uname}`, error);
+        }
+      }
+
+      // 保存剩余的UP主
+      if (creatorsToUpsert.length > 0) {
+        await this.creatorRepo.upsertCreators(creatorsToUpsert);
+      }
+
+      if (!this.isPausedUP) {
+        showUPProgress(100, 100, '完成！');
+        showStatus(`成功处理 ${processedCount} 个UP主`, 'success');
+        // 重新加载统计数据
+        await this.loadStats();
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        showStatus('已取消获取UP主', 'info');
+      } else if (error instanceof RateLimitError) {
+        console.error('[DatabaseStatsManager] 触发风控:', error);
+        showStatus(error.message, 'error');
+      } else {
+        console.error('[DatabaseStatsManager] 获取UP主数据失败:', error);
+        showStatus('获取UP主数据失败: ' + (error instanceof Error ? error.message : '未知错误'), 'error');
+      }
+    } finally {
+      this.isFetchingUP = false;
+      this.isPausedUP = false;
+      this.abortControllerUP = null;
+      updateUPFetchButtonState(false);
+      setTimeout(() => hideUPProgress(), 2000);
     }
   }
 }

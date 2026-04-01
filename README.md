@@ -4,48 +4,42 @@
 
 ## 主要功能
 
-### 🎲 随机推荐UP主
-从您的关注列表中随机推荐UP主，帮助您发现新的有趣内容
+### 1. 自动数据同步
+- 自动从B站拉取已关注UP主数据
+- 自动同步收藏夹视频数据
+- 无需手动操作，保持数据最新
 
-### 🏷️ 智能分类
-- **分类原理**：自动获取UP主首页的视频标题，通过LLM（大语言模型）分析视频内容，为UP主生成分类标签
-- **数据获取**：使用web标签页抓取方式获取UP主视频信息，无需配置Cookie
-- **AI接口**：支持OpenAI规范的API接口，默认使用DeepSeek
-- **使用方式**：在设置页面配置API密钥后，点击"开始分类"即可自动为所有关注的UP主添加分类标签
+### 2. 智能数据记录
+- 用户观看视频时无感知记录相关数据
+- 自动记录UP主信息（名称、头像等）
+- 自动记录视频信息（标题、标签、时长等）
+- 自动记录观看信息（观看时长、观看进度等）
 
-### 📊 统计信息
-- 查看关注UP数量
-- 查看UP分类词条数
-- 查看视频数量
-- 查看关注UP列表（点击头像或名称可跳转到UP主页）
-- **UP列表搜索**：支持通过UP主名称进行搜索，可与标签过滤功能混用
+### 3. UP主搜索与管理
+- 支持基于UP主名称搜索
+- 支持基于标签筛选
+- 支持基于关注状态过滤
+- 多条件组合搜索，快速找到目标UP主
 
-### 🔍 标签筛选
-- 在统计页面中查看所有UP分类词条
-- 支持搜索标签
-- 支持拖拽标签到"包含"或"排除"区域进行条件筛选
-- 实时显示符合条件的UP列表
-- **标签自动创建**：通过输入不存在的标签可创建新标签
-- **标签自动收集**：看过的视频下方的标签会自动进入标签库
+### 4. 视频搜索与筛选
+- 支持基于视频标题搜索
+- 支持基于UP主名称筛选
+- 支持基于收藏夹筛选
+- 支持基于视频标签筛选
+- 多条件组合搜索，快速找到目标视频
 
-### 📂 大分区功能
-- 创建大分区，可包含多个标签
-- 将大分区拖入过滤条件时，内部标签会进行"或"运算
-- 方便按主题分类管理多个相关标签
-- **标签权重系统**：随着观看视频增加，标签在UP主中的权重会自动提升
+### 5. 个性化主题
+- 提供多套主题配色方案
+- 支持明暗模式切换
+- 配色更加个性化，符合个人喜好
+- 动态切换，无需刷新页面
+
+### 6. 持续更新
+- 更多功能正在开发中
+- 持续优化用户体验
+- 定期更新和改进
 
 ![up分类界面展示](./picture/up界面演示动画.gif)
-
-### 📈 用户统计与历史记录
-- **观看时长统计**：
-  - 观看时长热力图：直观展示不同时间段的观看热度
-  - 观看时长折线图：追踪观看时长的变化趋势
-  - 查看不同时间段的观看总时长
-- **UP主偏好分析**：
-  - 查看最喜欢观看的Top 10 UP主
-- **视频偏好分析**：
-  - 查看观看时长最长的10个视频
-- **视频搜索**：支持通过搜索或标签过滤来查找历史视频记录
 
 ![视频观看信息展示](./picture/视频播放界面展示.png)
 
@@ -129,29 +123,221 @@ npm run build
 
 ```
 bilibili_discovery/
-├── src/               # TypeScript 源码
-│   └── database/      # 数据库模块
-│   │   ├── types/              # 数据结构定义
-│   │   ├── interfaces/         # 接口规范定义
-│   │   ├── implementations/    # 接口实现
-│   │   ├── indexeddb/         # IndexedDB 基础设施
-│   │   ├── repository/        # 对外接口层（薄层）
-│   │   ├── manager/           # 核心调度层
-│   │   ├── strategy/          # 策略层
-│   │   ├── plan/              # 查询计划
-│   │   ├── cache/             # 缓存层
-│   │   ├── index-cache/       # 索引缓存层
-│   │   └── query/             # 查询层
-│   ├── api/          # B站API接口
-│   ├── background/    # 后台服务
-│   ├── content/      # 内容脚本
-│   ├── engine/       # 分类和推荐引擎
-│   ├── storage/      # 存储管理（旧版）
-│   └── ui/          # 用户界面
-├── dist/            # 构建输出
-├── scripts/         # 构建脚本
+├── src/                    # TypeScript 源码
+│   ├── api/               # B站API接口层
+│   │   ├── README.md
+│   │   ├── bili-api.ts    # B站接口主封装
+│   │   ├── types.ts       # API返回数据类型定义
+│   │   ├── request.ts     # 请求工具
+│   │   ├── video.ts       # 视频相关API
+│   │   ├── user.ts        # 用户相关API
+│   │   ├── favorite.ts    # 收藏夹相关API
+│   │   ├── search.ts      # 搜索相关API
+│   │   ├── comment.ts     # 评论相关API
+│   │   ├── danmaku.ts     # 弹幕相关API
+│   │   ├── region.ts      # 分区相关API
+│   │   └── wbi.ts         # WBI签名生成
+│   │
+│   ├── background/        # 后台服务层
+│   │   ├── README.md
+│   │   └── service-worker.ts  # Service Worker入口
+│   │
+│   ├── content/           # 内容脚本层
+│   │   ├── README.md
+│   │   ├── types.ts       # 类型定义
+│   │   ├── index.ts       # 主入口
+│   │   ├── triggers/      # 触发器层
+│   │   │   ├── video-trigger.ts
+│   │   │   ├── follow-trigger.ts
+│   │   │   └── favorite-trigger.ts
+│   │   ├── collectors/    # 收集器层
+│   │   │   ├── video-collector.ts
+│   │   │   └── up-collector.ts
+│   │   └── forwarder/     # 转发层
+│   │       └── data-forwarder.ts
+│   │
+│   ├── database/          # 数据库层
+│   │   ├── README.md
+│   │   ├── types/         # 数据类型定义
+│   │   ├── indexeddb/     # IndexedDB基础设施
+│   │   ├── implementations/  # 数据访问实现
+│   │   ├── repositories/  # Repository层
+│   │   ├── query-server/  # 查询服务器
+│   │   │   ├── cache/     # 缓存层
+│   │   │   ├── query/     # 查询层
+│   │   │   └── book/      # 书管理层
+│   │   └── app-state.ts   # 应用状态管理
+│   │
+│   ├── engine/            # 业务计算层
+│   │   ├── README.md
+│   │   ├── llm-client.ts  # LLM调用封装
+│   │   ├── classifier.ts  # 分类逻辑
+│   │   └── recommender.ts  # 推荐逻辑
+│   │
+│   ├── renderer/          # 渲染层
+│   │   ├── README.md
+│   │   ├── 使用手册.md
+│   │   ├── 生命周期对接.md
+│   │   ├── RenderBook.ts  # 渲染书实现
+│   │   ├── RenderList.ts  # 渲染列表实现
+│   │   ├── types.ts       # 类型定义
+│   │   └── index.ts       # 模块入口
+│   │
+│   ├── themes/            # 主题管理
+│   │   ├── README.md
+│   │   ├── types.ts       # 类型定义
+│   │   ├── theme-configs.ts  # 主题配置
+│   │   ├── theme-manager.ts   # 主题管理器
+│   │   ├── theme-variables.ts # CSS变量
+│   │   └── page-theme.ts  # 页面主题
+│   │
+│   ├── ui/                # UI层
+│   │   ├── README.md
+│   │   ├── popup/         # 弹窗页面
+│   │   ├── options/       # 设置页面
+│   │   ├── stats/         # 统计页面
+│   │   ├── watch-stats/   # 观看统计页面
+│   │   ├── favorites/     # 收藏夹页面
+│   │   ├── theme-settings/  # 主题设置页面
+│   │   ├── theme-example/   # 主题示例页面
+│   │   ├── test-tools/     # 测试工具页面
+│   │   ├── database-stats/  # 数据库统计页面
+│   │   └── shared/        # 共享组件
+│   │
+│   ├── icons/             # 图标资源
+│   │   ├── README.md
+│   │   ├── icon.svg
+│   │   └── icon16.svg
+│   │
+│   └── utils/             # 工具函数
+│       ├── dom-utils.ts
+│       ├── drag-utils.ts
+│       ├── image-compression.ts
+│       ├── image-utils.ts
+│       ├── logger.ts
+│       ├── tag-utils.ts
+│       └── url-builder.ts
+│
+├── docs/                  # 项目文档
+│   ├── UI层架构设计规范.md
+│   ├── ai生成代码规范.md
+│   ├── webapi手册.md
+│   ├── 主题页面开发规范.md
+│   ├── 日志系统使用说明.md
+│   ├── 未来更新功能目标.md
+│   └── 查询架构设计规范.md
+│
+├── scripts/              # 构建脚本
+│   ├── build-extension.js
+│   ├── bundle-content-script.js
+│   ├── generate-icons.html
+│   ├── package-extension.js
+│   ├── package-simple.js
+│   ├── prebuild.js
+│   ├── probe-arcopen.js
+│   ├── probe-bili-api.js
+│   ├── release.js
+│   ├── run-db-tests.js
+│   └── view-db.js
+│
+├── picture/              # 图片资源
+├── config/               # 配置文件
+├── CHANGELOG.md         # 版本历史
+├── CONTRIBUTING.md      # 贡献指南
+├── LICENSE             # 许可证
 └── package.json
 ```
+
+### 核心模块说明
+
+#### 1. API层 (`src/api`)
+
+负责封装与Bilibili相关的外部接口访问逻辑，主要职责包括：
+- 统一管理请求入口、参数拼装与鉴权头
+- 提供面向业务的API方法，如获取关注列表、UP信息、视频列表等
+- 隔离外部接口细节，避免业务层直接拼接URL
+
+**主要类型定义**：
+- `BiliResponse<T>`：所有B站API的通用响应格式
+- `UpInfo`/`FollowingUp`：UP主基础信息
+- `VideoInfo`：视频基础信息
+- `FavoriteFolderInfo`：收藏夹基础信息
+
+#### 2. 后台服务层 (`src/background`)
+
+存放扩展后台运行入口与后台生命周期相关代码：
+- 启动service worker
+- 注册消息监听、定时任务、后台能力入口
+- 将后台主流程拆分到模块中实现
+
+#### 3. 内容脚本层 (`src/content`)
+
+采用三层架构设计，负责从B站页面收集数据：
+
+**触发器层 (triggers)**：
+- 决定何时触发数据收集
+- 监听视频播放事件、关注/收藏按钮状态变化等
+
+**收集器层 (collectors)**：
+- 决定从页面收集什么数据
+- 提取视频元数据、UP主信息等
+
+**转发层 (forwarder)**：
+- 统一的数据转发接口
+- 将收集到的数据发送到后台处理
+
+#### 4. 数据库层 (`src/database`)
+
+采用分层架构设计，提供高性能的数据存储、查询和缓存能力：
+
+**Repository层**：
+- 数据访问、缓存管理、数据一致性保障
+- 查询协调、数据转换
+
+**Query-Server层**：
+- Cache Layer：管理索引和完整数据的内存缓存
+- Query Layer：执行查询逻辑
+- Book Layer：管理查询结果和分页数据
+
+**Implementations层**：
+- 实现Repository接口
+- 提供批量操作能力
+
+#### 5. 业务计算层 (`src/engine`)
+
+负责业务计算、分类与推荐等规则/算法层逻辑：
+- 进行UP内容分类
+- 调用LLM完成标签推断
+- 基于兴趣分数、标签权重和视频信息做推荐
+
+#### 6. 渲染层 (`src/renderer`)
+
+介于数据层和UI层之间的中间层，负责将数据对象转换为网页元素：
+
+**RenderBook**：
+- 数据转换、分页显示、缓存管理
+
+**RenderList**：
+- 元素渲染、翻页交互、元素管理
+
+#### 7. 主题管理 (`src/themes`)
+
+集中式的主题管理系统：
+- 支持多套主题配色（莫兰迪主题等）
+- 动态主题切换
+- CSS变量自动应用
+- 主题变更通知机制
+
+#### 8. UI层 (`src/ui`)
+
+提供扩展内各个前端页面的实现：
+- popup：浏览器工具栏弹出页
+- options：扩展设置页
+- stats：UP分类与标签管理页
+- watch-stats：观看统计展示页
+- favorites：收藏夹视频浏览与标签筛选页
+- theme-settings：主题设置页面
+- shared：跨页面复用的UI基础组件
 
 ### 可用命令
 
@@ -241,6 +427,17 @@ npm run probe:bili
   - 支持分页查询
   - 支持批量操作
   - 完整的文档注释
+- 🎨 新增主题管理系统
+  - 支持莫兰迪主题（浅色/深色）
+  - 动态主题切换
+  - CSS变量自动应用
+- 📊 实现渲染书和渲染列表系统
+  - 数据与UI分离
+  - 高效的分页管理
+  - 智能缓存机制
+- 🔧 重构内容脚本层
+  - 采用三层架构（触发器、收集器、转发器）
+  - 提高代码可维护性和可测试性
 
 ### v1.0.0 (2024-03-12)
 - 🎉 首次正式发布
@@ -250,6 +447,30 @@ npm run probe:bili
 - ✨ 实现标签筛选功能
 - 🎨 优化UI设计
 - 🎨 添加精美图标
+
+详细版本历史请查看 [CHANGELOG.md](./CHANGELOG.md)
+
+## 项目文档
+
+项目包含详细的开发文档，位于 `docs/` 目录下：
+
+- [UI层架构设计规范](./docs/UI层架构设计规范.md) - UI层的架构设计规范和最佳实践
+- [AI生成代码规范](./docs/ai生成代码规范.md) - 使用AI生成代码时的规范和指导
+- [WebAPI手册](./docs/webapi手册.md) - Web API的使用说明
+- [主题页面开发规范](./docs/主题页面开发规范.md) - 主题页面的开发规范
+- [日志系统使用说明](./docs/日志系统使用说明.md) - 日志系统的使用方法
+- [未来更新功能目标](./docs/未来更新功能目标.md) - 项目未来的功能规划
+- [查询架构设计规范](./docs/查询架构设计规范.md) - 数据库查询架构的设计说明
+
+各模块的详细文档：
+- [API层说明](./src/api/README.md) - B站API接口层的详细说明
+- [后台服务层说明](./src/background/README.md) - 后台服务层的说明
+- [内容脚本层说明](./src/content/README.md) - 内容脚本层的架构和使用说明
+- [数据库层说明](./src/database/README.md) - 数据库层的详细使用指南
+- [业务计算层说明](./src/engine/README.md) - 分类和推荐引擎的说明
+- [渲染层说明](./src/renderer/README.md) - 渲染书和渲染列表的使用手册
+- [主题管理说明](./src/themes/README.md) - 主题管理系统的详细文档
+- [UI层说明](./src/ui/README.md) - UI层的结构和说明
 
 ## 贡献
 

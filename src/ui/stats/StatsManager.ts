@@ -278,6 +278,8 @@ export class StatsManager {
   private bindInputs(): void {
     this.cleanupFns.push(bindDebouncedTextInput("up-search", (keyword) => {
       this.container.state.searchKeyword = keyword;
+      // 重置页码到第一页
+      this.container.services.paginationState.currentPage = 0;
       void this.container.upListManager.renderUpList(this.container.state);
     }));
 
@@ -285,6 +287,8 @@ export class StatsManager {
     const followToggle = document.getElementById('show-followed-toggle');
     followToggle?.addEventListener('change', (e) => {
       this.container.state.showFollowedOnly = (e.target as HTMLInputElement).checked;
+      // 重置页码到第一页
+      this.container.services.paginationState.currentPage = 0;
       this.container.upListManager.renderUpList(this.container.state);
     });
 

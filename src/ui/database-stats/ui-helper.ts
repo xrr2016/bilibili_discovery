@@ -93,3 +93,69 @@ export function updateFetchButtonState(isFetching: boolean): void {
     }
   }
 }
+
+/**
+ * 显示UP主进度条
+ * @param current 当前进度值
+ * @param total 总进度值
+ * @param message 进度消息
+ */
+export function showUPProgress(current: number, total: number, message: string): void {
+  const container = document.getElementById('up-progress-container');
+  const textElement = document.getElementById('up-progress-text');
+  const percentElement = document.getElementById('up-progress-percent');
+  const fillElement = document.getElementById('up-progress-fill');
+
+  if (container) {
+    container.style.display = 'block';
+  }
+  if (textElement) {
+    textElement.textContent = message;
+  }
+  if (percentElement) {
+    const percent = Math.round((current / total) * 100);
+    percentElement.textContent = `${percent}%`;
+  }
+  if (fillElement) {
+    const percent = Math.round((current / total) * 100);
+    fillElement.style.width = `${percent}%`;
+  }
+}
+
+/**
+ * 隐藏UP主进度条
+ */
+export function hideUPProgress(): void {
+  const container = document.getElementById('up-progress-container');
+  if (container) {
+    container.style.display = 'none';
+  }
+}
+
+/**
+ * 更新获取UP主按钮状态
+ * @param isFetching 是否正在获取
+ */
+export function updateUPFetchButtonState(isFetching: boolean): void {
+  const fetchBtn = document.getElementById('fetch-ups-btn') as HTMLButtonElement;
+  if (fetchBtn) {
+    if (isFetching) {
+      fetchBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="6" y="4" width="4" height="16"/>
+          <rect x="14" y="4" width="4" height="16"/>
+        </svg>
+        暂停获取
+      `;
+    } else {
+      fetchBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        获取已关注UP主
+      `;
+    }
+  }
+}

@@ -27,6 +27,8 @@ export class FilterManager {
   addIncludeTag(state: StatsState, tagId: ID): void {
     if (!state.filters.includeTags.includes(tagId)) {
       state.filters.includeTags.push(tagId);
+      // 重置页码到第一页
+      this.services.paginationState.currentPage = 0;
     }
   }
 
@@ -35,6 +37,8 @@ export class FilterManager {
    */
   removeIncludeTag(state: StatsState, tagId: ID): void {
     state.filters.includeTags = state.filters.includeTags.filter(id => id !== tagId);
+    // 重置页码到第一页
+    this.services.paginationState.currentPage = 0;
   }
 
   /**
@@ -43,6 +47,8 @@ export class FilterManager {
   addExcludeTag(state: StatsState, tagId: ID): void {
     if (!state.filters.excludeTags.includes(tagId)) {
       state.filters.excludeTags.push(tagId);
+      // 重置页码到第一页
+      this.services.paginationState.currentPage = 0;
     }
   }
 
@@ -51,11 +57,15 @@ export class FilterManager {
    */
   removeExcludeTag(state: StatsState, tagId: ID): void {
     state.filters.excludeTags = state.filters.excludeTags.filter(id => id !== tagId);
+    // 重置页码到第一页
+    this.services.paginationState.currentPage = 0;
   }
 
   addIncludeCategory(state: StatsState, categoryId: ID, tagIds: ID[]): void {
     if (!state.filters.includeCategories.includes(categoryId)) {
       state.filters.includeCategories.push(categoryId);
+      // 重置页码到第一页
+      this.services.paginationState.currentPage = 0;
     }
 
     const exists = state.filters.includeCategoryTags.some(category => category.categoryId === categoryId);
@@ -67,11 +77,15 @@ export class FilterManager {
   removeIncludeCategory(state: StatsState, categoryId: ID): void {
     state.filters.includeCategories = state.filters.includeCategories.filter(id => id !== categoryId);
     state.filters.includeCategoryTags = state.filters.includeCategoryTags.filter(category => category.categoryId !== categoryId);
+    // 重置页码到第一页
+    this.services.paginationState.currentPage = 0;
   }
 
   addExcludeCategory(state: StatsState, categoryId: ID, tagIds: ID[]): void {
     if (!state.filters.excludeCategories.includes(categoryId)) {
       state.filters.excludeCategories.push(categoryId);
+      // 重置页码到第一页
+      this.services.paginationState.currentPage = 0;
     }
 
     const exists = state.filters.excludeCategoryTags.some(category => category.categoryId === categoryId);
@@ -83,6 +97,8 @@ export class FilterManager {
   removeExcludeCategory(state: StatsState, categoryId: ID): void {
     state.filters.excludeCategories = state.filters.excludeCategories.filter(id => id !== categoryId);
     state.filters.excludeCategoryTags = state.filters.excludeCategoryTags.filter(category => category.categoryId !== categoryId);
+    // 重置页码到第一页
+    this.services.paginationState.currentPage = 0;
   }
 
   /**
@@ -95,6 +111,8 @@ export class FilterManager {
     state.filters.excludeCategories = [];
     state.filters.includeCategoryTags = [];
     state.filters.excludeCategoryTags = [];
+    // 重置页码到第一页
+    this.services.paginationState.currentPage = 0;
   }
 
   /**

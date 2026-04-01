@@ -80,7 +80,14 @@ function copyCompiledCode() {
 
 function buildManifest() {
   const manifestPath = join(srcRoot, "manifest.tson");
+  const packageJsonPath = join(root, "package.json");
+  
   const manifestJson = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+
+  // Sync version from package.json to manifest.json
+  manifestJson.version = packageJson.version;
+  console.log(`Syncing version: ${packageJson.version}`);
 
   manifestJson.background = {
     service_worker: "background/service-worker.js",
