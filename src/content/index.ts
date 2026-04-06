@@ -11,11 +11,13 @@ import {
   WatchEventCollectData, 
   FollowStatusEvent, 
   FavoriteStatusEvent,
+  VideoInteractionEvent,
   VideoCollectData, 
 } from './types.js';
 import { VideoPlaybackTrigger, VideoMetadataTrigger } from './triggers/video-trigger.js';
 import { FollowButtonTrigger } from './triggers/follow-trigger.js';
 import { FavoriteButtonTrigger } from './triggers/favorite-trigger.js';
+import { VideoInteractionTrigger } from './triggers/interaction-trigger.js';
 import { VideoDataCollector } from './collectors/video-collector.js';
 import { UpDataCollector } from './collectors/up-collector.js';
 import { createDataForwarder } from './forwarder/data-forwarder.js';
@@ -398,6 +400,75 @@ class FavoriteTrackerManager {
 }
 
 /**
+ * 视频交互追踪器管理器
+ */
+class InteractionTrackerManager {
+  private trigger = new VideoInteractionTrigger();
+  private collector = new VideoDataCollector();
+  private forwarder = createDataForwarder();
+  private userMid: number | null = null;
+
+  constructor() {
+    this.initialize();
+  }
+
+  private async initialize(): Promise<void> {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    if (!window.location.href.includes('bilibili.com') || !window.location.href.includes('/video/')) {
+      return;
+    }
+
+    try {
+      const { getValue } = await import('../database/implementations/index.js');
+      const settings = await getValue('settings') as { userId?: number } | null;
+      this.userMid = settings?.userId || null;
+      logger.debug('[InteractionTracker] User mid:', this.userMid);
+    } catch (error) {
+      console.error('[InteractionTracker] Failed to load user settings:', error);
+    }
+
+    this.trigger.onCollect((data: VideoInteractionEvent) => {
+      void this.handleInteraction(data);
+    });
+
+    this.trigger.start();
+  }
+
+  private async handleInteraction(data: VideoInteractionEvent): Promise<void> {
+    const meta = await this.collector.extractVideoMeta();
+    const enrichedData: VideoInteractionEvent = {
+      ...data,
+      title: data.title || meta.title,
+      creatorId: meta.upMid
+    };
+
+    if (this.userMid && enrichedData.creatorId === this.userMid) {
+      logger.debug('[InteractionTracker] Skipping user own interaction, mid:', this.userMid);
+      return;
+    }
+
+    logger.debug('[InteractionTracker] Interaction captured:', enrichedData);
+
+    const messageType = enrichedData.action === 'like'
+      ? 'LIKE_EVENT'
+      : enrichedData.action === 'share'
+        ? 'SHARE_EVENT'
+        : 'COIN_EVENT';
+    this.forwarder.send(messageType, enrichedData);
+
+    const eventName = enrichedData.action === 'like'
+      ? 'videoLiked'
+      : enrichedData.action === 'share'
+        ? 'videoShared'
+        : 'videoCoined';
+    window.dispatchEvent(new CustomEvent(eventName, { detail: enrichedData }));
+  }
+}
+
+/**
  * UP页面数据收集管理器
  */
 class UPPageCollectorManager {
@@ -514,6 +585,9 @@ function initializeTrackers(): void {
 
     // 初始化收藏追踪器
     new FavoriteTrackerManager();
+
+    // 初始化点赞/分享交互追踪器
+    new InteractionTrackerManager();
 
     // 初始化UP页面收集器
     new UPPageCollectorManager();

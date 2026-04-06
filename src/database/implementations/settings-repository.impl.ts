@@ -31,13 +31,9 @@ export interface AppSettings {
    */
   apiKey: string;
   /**
-   * 分类数据获取方式
+   * 图片缓存保留天数
    */
-  classifyMethod: "api" | "page";
-  /**
-   * B站Cookie
-   */
-  biliCookie: string;
+  imageCacheRetentionDays: 7 | 30 | 180 | 365;
 }
 
 interface SettingsRecord<T = unknown> {

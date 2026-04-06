@@ -108,6 +108,26 @@ export interface FavoriteStatusEvent {
   title: string;
   /** 操作类型 */
   action: "add" | "remove";
+  /** 收藏夹名称列表 */
+  folderNames?: string[];
+  /** 事件时间戳 */
+  timestamp: Timestamp;
+}
+
+/**
+ * 视频交互事件
+ */
+export interface VideoInteractionEvent {
+  /** 视频BV号 */
+  bv: string;
+  /** 视频标题 */
+  title?: string;
+  /** UP主ID */
+  creatorId?: ID;
+  /** 交互类型 */
+  action: "like" | "share" | "coin";
+  /** 投币枚数 */
+  amount?: number;
   /** 事件时间戳 */
   timestamp: Timestamp;
 }

@@ -3,7 +3,6 @@
  */
 
 import type { BiliResponse } from "./types.js";
-import { getValue } from "../database/implementations/index.js";
 
 export type FetchFn = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -60,27 +59,6 @@ export function __resetRateLimiter(): void {
 }
 
 /**
- * Get authentication headers
- */
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = {
-    "Accept": "application/json, text/plain, */*",
-    "Content-Type": "application/json"
-  };
-
-  try {
-    const settings = await getValue<{ biliCookie?: string }>("settings");
-    if (settings?.biliCookie) {
-      headers["Cookie"] = settings.biliCookie;
-    }
-  } catch (error) {
-    console.error("[API] Failed to get settings:", error);
-  }
-
-  return headers;
-}
-
-/**
  * Unified API request helper.
  */
 export async function apiRequest<T>(
@@ -88,11 +66,13 @@ export async function apiRequest<T>(
   options: ApiRequestOptions = {}
 ): Promise<T | null> {
   const fetchFn = options.fetchFn || (fetch as unknown as FetchFn);
-  const authHeaders = await getAuthHeaders();
   const fetchInit: RequestInit = {
     credentials: "include",
     mode: "cors",
-    headers: authHeaders,
+    headers: {
+      "Accept": "application/json, text/plain, */*",
+      "Content-Type": "application/json"
+    },
     ...(options.fetchInit ?? {})
   };
   try {

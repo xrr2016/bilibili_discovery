@@ -131,9 +131,18 @@ export class ImageRepositoryImpl {
       return null;
     }
 
+    const now = Date.now();
+    await DBUtils.put(STORE_NAMES.IMAGES_METADATA, {
+      ...metadata,
+      lastAccessTime: now
+    });
+
     console.log(`[ImageRepository] 图像获取成功 (id: ${id})`);
     return {
-      metadata,
+      metadata: {
+        ...metadata,
+        lastAccessTime: now
+      },
       data
     };
   }
@@ -373,7 +382,6 @@ export class ImageRepositoryImpl {
    * @returns 清理的图片数量
    */
   async cleanupExpiredImages(expireTime: number): Promise<number> {
-    const expiredMetaIds: number[] = [];
     const expiredDataIds: number[] = [];
 
     const range = IDBKeyRange.upperBound(expireTime);
@@ -382,22 +390,19 @@ export class ImageRepositoryImpl {
     await DBUtils.cursor<ImageMetadata>(
       STORE_NAMES.IMAGES_METADATA,
       (value) => {
-        expiredMetaIds.push(value.id);
         expiredDataIds.push(value.dataId);
       },
       'lastAccessTime',
       range
     );
 
-    if (expiredMetaIds.length > 0) {
-      // 使用事务批量删除
+    if (expiredDataIds.length > 0) {
       await DBUtils.transaction([
-        { store: STORE_NAMES.IMAGES_METADATA, operation: 'deleteBatch', keys: expiredMetaIds },
         { store: STORE_NAMES.IMAGES_DATA, operation: 'deleteBatch', keys: expiredDataIds }
       ]);
     }
 
-    return expiredMetaIds.length;
+    return expiredDataIds.length;
   }
 
   /**

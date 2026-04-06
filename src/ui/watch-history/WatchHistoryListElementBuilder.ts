@@ -1,4 +1,5 @@
 import type { WatchHistoryEntry } from "../../database/types/watch-history.js";
+import { VideoRepository, type ID } from "../../database/index.js";
 import type { IElementBuilder } from "../../renderer/types.js";
 import { buildSearchUrl, buildUserSpaceUrl, buildVideoUrl } from "../../utils/url-builder.js";
 import { createDraggableTagPill } from "../shared/index.js";
@@ -8,6 +9,10 @@ const DEFAULT_COVER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180'%3E%3Crect width='320' height='180' fill='%23d8dee9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='18' fill='%235b6475'%3ENo Cover%3C/text%3E%3C/svg%3E";
 
 export class WatchHistoryListElementBuilder implements IElementBuilder<WatchHistoryEntry, HTMLElement> {
+  private readonly videoRepository = new VideoRepository();
+  private readonly coverUrlCache = new Map<ID, string>();
+  private readonly loadingCovers = new Set<ID>();
+
   async buildElement(item: WatchHistoryEntry): Promise<HTMLElement> {
     const card = document.createElement("article");
     card.className = "history-card";
@@ -28,11 +33,8 @@ export class WatchHistoryListElementBuilder implements IElementBuilder<WatchHist
     const cover = document.createElement("img");
     cover.alt = item.title;
     cover.loading = "lazy";
-    cover.src = item.coverUrl || DEFAULT_COVER;
-    cover.onerror = () => {
-      cover.onerror = null;
-      cover.src = DEFAULT_COVER;
-    };
+    cover.src = DEFAULT_COVER;
+    await this.applyCoverSource(cover, item);
     coverLink.appendChild(cover);
     coverWrapper.appendChild(coverLink);
     card.appendChild(coverWrapper);
@@ -142,6 +144,72 @@ export class WatchHistoryListElementBuilder implements IElementBuilder<WatchHist
 
   async buildElements(items: WatchHistoryEntry[]): Promise<HTMLElement[]> {
     return Promise.all(items.map((item) => this.buildElement(item)));
+  }
+
+  private async applyCoverSource(image: HTMLImageElement, item: WatchHistoryEntry): Promise<void> {
+    try {
+      const cachedUrl = this.coverUrlCache.get(item.videoId);
+      if (cachedUrl) {
+        image.src = cachedUrl;
+        return;
+      }
+
+      if (item.picture) {
+        const coverBlob = await this.videoRepository.getVideoPicture(item.videoId);
+        if (coverBlob) {
+          const objectUrl = URL.createObjectURL(coverBlob);
+          this.coverUrlCache.set(item.videoId, objectUrl);
+          image.src = objectUrl;
+          return;
+        }
+      }
+    } catch (error) {
+      console.error(`[WatchHistoryListElementBuilder] 加载本地封面失败 (videoId: ${item.videoId}):`, error);
+    }
+
+    this.cacheRemoteCoverIfNeeded(item);
+    this.applyRemoteCoverFallback(image, item.coverUrl);
+  }
+
+  private cacheRemoteCoverIfNeeded(item: WatchHistoryEntry): void {
+    if (!item.coverUrl || item.picture || this.loadingCovers.has(item.videoId)) {
+      return;
+    }
+
+    this.loadingCovers.add(item.videoId);
+    void this.downloadAndPersistCover(item);
+  }
+
+  private async downloadAndPersistCover(item: WatchHistoryEntry): Promise<void> {
+    try {
+      const response = await fetch(item.coverUrl!);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      await this.videoRepository.updateVideoPicture(item.videoId, blob, item.coverUrl);
+
+      const objectUrl = URL.createObjectURL(blob);
+      this.coverUrlCache.set(item.videoId, objectUrl);
+    } catch (error) {
+      console.error(`[WatchHistoryListElementBuilder] 远程封面缓存失败 (videoId: ${item.videoId}):`, error);
+    } finally {
+      this.loadingCovers.delete(item.videoId);
+    }
+  }
+
+  private applyRemoteCoverFallback(image: HTMLImageElement, coverUrl?: string): void {
+    if (!coverUrl) {
+      image.src = DEFAULT_COVER;
+      return;
+    }
+
+    image.onerror = () => {
+      image.onerror = null;
+      image.src = DEFAULT_COVER;
+    };
+    image.src = coverUrl;
   }
 
   private createMetric(label: string, value: string): HTMLElement {

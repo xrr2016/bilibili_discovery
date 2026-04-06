@@ -20,6 +20,7 @@ export { CreatorRepositoryImpl } from './creator-repository.impl.js';
 
 // Video 实现
 export { VideoRepositoryImpl } from './video-repository.impl.js';
+export { ImageRepositoryImpl } from './image-repository.impl.js';
 
 // Behavior 实现
 export { WatchEventRepositoryImpl } from './watch-event-repository.impl.js';

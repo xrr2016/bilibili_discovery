@@ -346,14 +346,25 @@ export class VideoRepositoryImpl {
       throw new Error(`Video not found: ${videoId}`);
     }
 
-    // 如果提供了 URL，通过 URL 判断是否为同一图片
-    // 只有当 URL 相同且 picture 已存在时才跳过
-    if (url && video.coverUrl === url && video.picture) {
-      console.log(`[VideoRepository] Picture already cached for ${videoId}`);
-      return;
+    if (video.picture) {
+      const metadata = await this.imageRepository.getImageMetadata(video.picture);
+      if (metadata) {
+        const existingData = await this.imageRepository.getImageData(metadata.dataId);
+        if (url && video.coverUrl === url && existingData) {
+          console.log(`[VideoRepository] Picture already cached for ${videoId}`);
+          return;
+        }
+
+        await this.imageRepository.updateImageData(video.picture, imageBlob);
+        await this.upsertVideo({
+          ...video,
+          coverUrl: url ?? video.coverUrl,
+          picture: video.picture
+        });
+        return;
+      }
     }
 
-    // 创建新的图片记录
     const image = await this.imageRepository.createImage({
       purpose: ImagePurpose.COVER,
       data: imageBlob

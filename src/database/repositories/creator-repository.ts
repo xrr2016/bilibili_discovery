@@ -340,8 +340,8 @@ export class CreatorRepository implements IDataRepository<Creator> {
     // 1. 先更新数据库
     await this.repository.updateAvatarUrl(creatorId, avatarUrl);
 
-    // 2. 更新缓存
-    const creator = await this.getCreator(creatorId);
+    // 2. 重新从数据库读取最新记录并更新缓存，避免命中旧的 DataCache
+    const creator = await this.repository.getCreator(creatorId);
     if (creator) {
       this.updateAllCaches(creator);
     }
@@ -363,8 +363,8 @@ export class CreatorRepository implements IDataRepository<Creator> {
     // 1. 先更新数据库
     await this.repository.saveAvatarBinary(creatorId, avatarBlob);
 
-    // 2. 更新缓存
-    const creator = await this.getCreator(creatorId);
+    // 2. 重新从数据库读取最新记录并更新缓存，避免命中旧的 DataCache
+    const creator = await this.repository.getCreator(creatorId);
     if (creator) {
       this.updateAllCaches(creator);
     }

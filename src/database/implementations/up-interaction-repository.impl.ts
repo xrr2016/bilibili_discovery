@@ -283,10 +283,10 @@ export class UPInteractionRepositoryImpl {
   /**
    * 记录投币事件
    */
-  async recordCoin(creatorId: ID): Promise<void> {
+  async recordCoin(creatorId: ID, amount: number = 1): Promise<void> {
     await this.updateInteraction({
       creatorId,
-      coinDelta: 1
+      coinDelta: amount
     });
   }
 

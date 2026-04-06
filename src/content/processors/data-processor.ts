@@ -9,6 +9,7 @@ import {
   WatchEventCollectData, 
   CreatorCollectData,
   FavoriteStatusEvent,
+  VideoInteractionEvent,
   UPPageData 
 } from '../types.js';
 import { 
@@ -17,6 +18,9 @@ import {
 import { 
   VideoRepositoryImpl 
 } from '../../database/implementations/video-repository.impl.js';
+import {
+  CollectionRepositoryImpl
+} from '../../database/implementations/collection-repository.impl.js';
 import { 
   WatchEventRepositoryImpl 
 } from '../../database/implementations/watch-event-repository.impl.js';
@@ -50,6 +54,7 @@ import { logger } from '../../utils/logger.js';
 export class DataProcessor {
   private creatorRepo: CreatorRepositoryImpl;
   private videoRepo: VideoRepositoryImpl;
+  private collectionRepo: CollectionRepositoryImpl;
   private watchEventRepo: WatchEventRepositoryImpl;
   private tagRepo: TagRepositoryImpl;
   private imageRepo: ImageRepositoryImpl;
@@ -63,6 +68,7 @@ export class DataProcessor {
     this.imageRepo = new ImageRepositoryImpl();
     this.creatorRepo = new CreatorRepositoryImpl(this.imageRepo);
     this.videoRepo = new VideoRepositoryImpl();
+    this.collectionRepo = new CollectionRepositoryImpl();
     this.watchEventRepo = new WatchEventRepositoryImpl();
     this.tagRepo = new TagRepositoryImpl();
     this.upInteractionRepo = new UPInteractionRepositoryImpl();
@@ -407,8 +413,88 @@ export class DataProcessor {
    */
   async processFavoriteEventData(data: FavoriteStatusEvent): Promise<void> {
     logger.debug('[DataProcessor] 处理收藏事件数据:', data);
-    // TODO: 实现收藏数据的处理
-    // 需要查看CollectionRepositoryImpl和CollectionItemRepositoryImpl的实现
+
+    await this.ensureDbInitialized();
+
+    const creatorId = await this.findCreatorIdByBv(data.bv);
+    const videoId = await this.findVideoIdByBv(data.bv);
+
+    if (!creatorId || !videoId) {
+      console.warn('[DataProcessor] 收藏事件缺少必要的视频或UP信息，跳过处理:', data);
+      return;
+    }
+
+    const folderNames = data.folderNames?.length ? data.folderNames : (
+      data.action === 'add' ? ['默认收藏夹'] : []
+    );
+
+    if (data.action === 'add') {
+      await this.ensureUPInteractionExists(creatorId, Platform.BILIBILI);
+      await this.upInteractionRepo.recordFavorite(creatorId);
+      await this.syncFavoriteCollections(videoId, folderNames, 'add');
+      return;
+    }
+
+    await this.syncFavoriteCollections(videoId, folderNames, 'remove');
+  }
+
+  /**
+   * 处理点赞事件数据
+   */
+  async processLikeEventData(data: VideoInteractionEvent): Promise<void> {
+    logger.debug('[DataProcessor] 处理点赞事件数据:', data);
+
+    await this.ensureDbInitialized();
+
+    const creatorId = data.creatorId || await this.findCreatorIdByBv(data.bv);
+    if (!creatorId) {
+      console.warn('[DataProcessor] 点赞事件缺少UP主ID，跳过处理:', data);
+      return;
+    }
+
+    await this.ensureUPInteractionExists(creatorId, Platform.BILIBILI);
+    await this.upInteractionRepo.recordLike(creatorId);
+  }
+
+  /**
+   * 处理分享事件数据
+   */
+  async processShareEventData(data: VideoInteractionEvent): Promise<void> {
+    logger.debug('[DataProcessor] 处理分享事件数据:', data);
+
+    await this.ensureDbInitialized();
+
+    const creatorId = data.creatorId || await this.findCreatorIdByBv(data.bv);
+    if (!creatorId) {
+      console.warn('[DataProcessor] 分享事件缺少UP主ID，暂不入库:', data);
+      return;
+    }
+
+    await this.ensureUPInteractionExists(creatorId, Platform.BILIBILI);
+    logger.debug('[DataProcessor] 分享事件已接收，当前仅保留处理入口:', {
+      creatorId,
+      bv: data.bv,
+      timestamp: data.timestamp
+    });
+  }
+
+  /**
+   * 处理投币事件数据
+   */
+  async processCoinEventData(data: VideoInteractionEvent): Promise<void> {
+    logger.debug('[DataProcessor] 处理投币事件数据:', data);
+
+    await this.ensureDbInitialized();
+
+    const creatorId = data.creatorId || await this.findCreatorIdByBv(data.bv);
+    if (!creatorId) {
+      console.warn('[DataProcessor] 投币事件缺少UP主ID，跳过处理:', data);
+      return;
+    }
+
+    const amount = Number.isFinite(data.amount) && (data.amount ?? 0) > 0 ? Math.floor(data.amount as number) : 1;
+    await this.ensureUPInteractionExists(creatorId, Platform.BILIBILI);
+    await this.upInteractionRepo.recordCoin(creatorId, amount);
   }
 
   /**
@@ -565,6 +651,71 @@ export class DataProcessor {
     const allVideos = await this.videoRepo.getAllVideos();
     const video = allVideos.find(v => v.bv === bv);
     return video?.videoId;
+  }
+
+  /**
+   * 通过BV号查找UP主ID
+   */
+  private async findCreatorIdByBv(bv: string): Promise<ID | undefined> {
+    await dbManager.init();
+    const allVideos = await this.videoRepo.getAllVideos();
+    const video = allVideos.find(v => v.bv === bv);
+    return video?.creatorId;
+  }
+
+  private async syncFavoriteCollections(
+    videoId: ID,
+    folderNames: string[],
+    mode: 'add' | 'remove'
+  ): Promise<void> {
+    if (folderNames.length === 0) {
+      if (mode === 'remove') {
+        const collections = await this.collectionRepo.getCollectionsByPlatform(Platform.BILIBILI);
+        for (const collection of collections) {
+          const exists = await this.collectionRepo.hasVideoInCollection(collection.collectionId, videoId);
+          if (exists) {
+            await this.collectionRepo.removeVideoFromCollection(collection.collectionId, videoId);
+          }
+        }
+      }
+      return;
+    }
+
+    for (const folderName of folderNames) {
+      const collectionId = await this.ensureFavoriteCollection(folderName);
+      if (mode === 'add') {
+        const exists = await this.collectionRepo.hasVideoInCollection(collectionId, videoId);
+        if (!exists) {
+          await this.collectionRepo.addItemToCollection(collectionId, { videoId });
+        }
+      } else {
+        const exists = await this.collectionRepo.hasVideoInCollection(collectionId, videoId);
+        if (exists) {
+          await this.collectionRepo.removeVideoFromCollection(collectionId, videoId);
+        }
+      }
+    }
+  }
+
+  private async ensureFavoriteCollection(folderName: string): Promise<ID> {
+    const collections = await this.collectionRepo.getCollectionsByName(folderName);
+    const existing = collections.find(
+      collection => collection.platform === Platform.BILIBILI && (collection.type === 'user' || !collection.type)
+    );
+
+    if (existing) {
+      return existing.collectionId;
+    }
+
+    return this.collectionRepo.createCollection({
+      platform: Platform.BILIBILI,
+      name: folderName,
+      description: '从B站收藏操作同步',
+      createdAt: Date.now(),
+      lastUpdate: Date.now(),
+      type: 'user',
+      videoCount: 0
+    });
   }
 
   /**

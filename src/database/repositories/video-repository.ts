@@ -248,8 +248,8 @@ export class VideoRepository implements IDataRepository<Video> {
     // 1. 先更新数据库
     await this.repository.updateVideoPicture(videoId, imageBlob, url);
 
-    // 2. 更新缓存
-    const video = await this.getVideo(videoId);
+    // 2. 重新从数据库读取最新记录并更新缓存，避免命中旧的 DataCache
+    const video = await this.repository.getVideo(videoId);
     if (video) {
       this.updateAllCaches(video);
     }

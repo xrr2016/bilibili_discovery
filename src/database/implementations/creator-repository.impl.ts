@@ -481,23 +481,28 @@ export class CreatorRepositoryImpl {
     if (!creator) {
       throw new Error(`Creator not found: ${creatorId}`);
     }
-    
-    // 使用ImageRepository存储二进制数据
-    const purpose = ImagePurpose.AVATAR;
-    
-    // 存储二进制数据
+
+    if (creator.avatar) {
+      const metadata = await this.imageRepository.getImageMetadata(creator.avatar);
+      if (metadata) {
+        await this.imageRepository.updateImageData(creator.avatar, avatarBlob);
+        await this.upsertCreator({
+          ...creator,
+          avatar: creator.avatar
+        });
+        return;
+      }
+    }
+
     const image = await this.imageRepository.createImage({
-      purpose,
+      purpose: ImagePurpose.AVATAR,
       data: avatarBlob
     });
-    
-    // 更新创作者信息，将avatar设置为图片ID
-    const updated: Creator = {
+
+    await this.upsertCreator({
       ...creator,
-      avatar: image.metadata.id // 存储图片ID
-    };
-    
-    await this.upsertCreator(updated);
+      avatar: image.metadata.id
+    });
   }
 
   /**

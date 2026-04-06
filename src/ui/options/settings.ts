@@ -6,8 +6,7 @@ export const DEFAULT_SETTINGS: Settings = {
   apiBaseUrl: "https://api.deepseek.com",
   apiModel: "deepseek-chat",
   apiKey: "",
-  classifyMethod: "page",
-  biliCookie: ""
+  imageCacheRetentionDays: 30
 };
 
 export function normalizeSettings(input: Partial<Settings>): Settings {
@@ -18,12 +17,16 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
   const apiBaseUrl = String(input.apiBaseUrl ?? DEFAULT_SETTINGS.apiBaseUrl).trim();
   const apiModel = String(input.apiModel ?? DEFAULT_SETTINGS.apiModel).trim();
   const apiKey = String(input.apiKey ?? DEFAULT_SETTINGS.apiKey).trim();
-  const classifyMethodRaw = input.classifyMethod ?? DEFAULT_SETTINGS.classifyMethod;
-  const classifyMethod: "api" | "page" =
-    classifyMethodRaw === "api" || classifyMethodRaw === "page"
-      ? classifyMethodRaw
-      : DEFAULT_SETTINGS.classifyMethod;
-  const biliCookie = String(input.biliCookie ?? DEFAULT_SETTINGS.biliCookie).trim();
+  const imageCacheRetentionDaysRaw = Number(
+    input.imageCacheRetentionDays ?? DEFAULT_SETTINGS.imageCacheRetentionDays
+  );
+  const imageCacheRetentionDays: Settings["imageCacheRetentionDays"] =
+    imageCacheRetentionDaysRaw === 7 ||
+    imageCacheRetentionDaysRaw === 30 ||
+    imageCacheRetentionDaysRaw === 180 ||
+    imageCacheRetentionDaysRaw === 365
+      ? imageCacheRetentionDaysRaw
+      : DEFAULT_SETTINGS.imageCacheRetentionDays;
 
   return {
     cacheHours,
@@ -31,8 +34,7 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
     apiBaseUrl,
     apiModel,
     apiKey,
-    classifyMethod,
-    biliCookie
+    imageCacheRetentionDays
   };
 }
 

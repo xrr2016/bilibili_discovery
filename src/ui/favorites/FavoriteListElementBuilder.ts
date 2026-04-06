@@ -13,8 +13,6 @@ export class FavoriteListElementBuilder implements IElementBuilder<FavoriteVideo
   private readonly videoDataCache = this.cacheManager.getVideoDataCache();
   private readonly coverUrlCache = new Map<ID, string>();
   private readonly loadingCovers = new Set<ID>();
-  private readonly coverQueue = new Array<{ videoId: ID; image: HTMLImageElement; item: FavoriteVideoEntry }>();
-  private isProcessingQueue = false;
 
   async buildElement(item: FavoriteVideoEntry): Promise<HTMLElement> {
     const card = document.createElement("article");
@@ -139,7 +137,36 @@ export class FavoriteListElementBuilder implements IElementBuilder<FavoriteVideo
       console.error(`[FavoriteListElementBuilder] 加载本地封面失败 (videoId: ${item.videoId}):`, error);
     }
 
+    this.cacheRemoteCoverIfNeeded(item);
     this.applyRemoteCoverFallback(image, item.coverUrl);
+  }
+
+  private cacheRemoteCoverIfNeeded(item: FavoriteVideoEntry): void {
+    if (!item.coverUrl || item.picture || this.loadingCovers.has(item.videoId)) {
+      return;
+    }
+
+    this.loadingCovers.add(item.videoId);
+    void this.downloadAndPersistCover(item);
+  }
+
+  private async downloadAndPersistCover(item: FavoriteVideoEntry): Promise<void> {
+    try {
+      const response = await fetch(item.coverUrl!);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      await this.videoRepository.updateVideoPicture(item.videoId, blob, item.coverUrl);
+
+      const objectUrl = URL.createObjectURL(blob);
+      this.coverUrlCache.set(item.videoId, objectUrl);
+    } catch (error) {
+      console.error(`[FavoriteListElementBuilder] 远程封面缓存失败 (videoId: ${item.videoId}):`, error);
+    } finally {
+      this.loadingCovers.delete(item.videoId);
+    }
   }
 
   private applyRemoteCoverFallback(image: HTMLImageElement, coverUrl?: string): void {

@@ -27,6 +27,10 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
   private observer: MutationObserver | null = null;
   private favoriteBtn: HTMLElement | null = null;
   private isRunning = false;
+  private isFavorited = false;
+  private dialogInitialFolders: string[] = [];
+  private dialogSnapshotTimer: number | null = null;
+  private lastDialogConfirmAt = 0;
 
   constructor() {
     this.setupObserver();
@@ -43,6 +47,11 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
     this.isRunning = false;
     if (this.observer) {
       this.observer.disconnect();
+    }
+    document.removeEventListener("click", this.handleDocumentClick, true);
+    if (this.dialogSnapshotTimer !== null) {
+      clearTimeout(this.dialogSnapshotTimer);
+      this.dialogSnapshotTimer = null;
     }
   }
 
@@ -82,6 +91,7 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
     }
 
     logger.debug("[FavoriteTrigger] Favorite button found, setting up observer");
+    this.isFavorited = this.favoriteBtn.classList.contains("on");
 
     // 开始观察按钮变化
     if (this.observer) {
@@ -90,6 +100,9 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
         attributeFilter: ["class"]
       });
     }
+
+    document.removeEventListener("click", this.handleDocumentClick, true);
+    document.addEventListener("click", this.handleDocumentClick, true);
   }
 
   private setupObserver(): void {
@@ -98,13 +111,115 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
         if (mutation.type === "attributes" && mutation.attributeName === "class") {
           const target = mutation.target as HTMLElement;
           const isFavorited = target.classList.contains("on");
-          this.triggerCollect(isFavorited);
+          if (isFavorited !== this.isFavorited) {
+            this.handleFavoriteStateChange(isFavorited);
+            this.isFavorited = isFavorited;
+          }
         }
       });
     });
   }
 
-  private triggerCollect(isFavorited: boolean): void {
+  private handleDocumentClick = (event: MouseEvent): void => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const favoriteButton = target.closest(".video-fav");
+    if (favoriteButton instanceof HTMLElement) {
+      this.scheduleDialogSnapshot();
+      return;
+    }
+
+    const confirmButton = target.closest(".collection-m-exp .bottom .submit-move");
+    if (confirmButton instanceof HTMLButtonElement && !confirmButton.disabled) {
+      this.handleDialogConfirm(confirmButton);
+    }
+  };
+
+  private handleFavoriteStateChange(isFavorited: boolean): void {
+    const now = Date.now();
+    if (now - this.lastDialogConfirmAt < 1500) {
+      return;
+    }
+
+    if (isFavorited) {
+      this.triggerCollect(true, ['默认收藏夹']);
+    } else {
+      this.triggerCollect(false);
+    }
+  }
+
+  private scheduleDialogSnapshot(): void {
+    if (this.dialogSnapshotTimer !== null) {
+      clearTimeout(this.dialogSnapshotTimer);
+    }
+
+    let attempts = 0;
+    const capture = () => {
+      const dialog = document.querySelector('.collection-m-exp');
+      if (dialog) {
+        this.dialogInitialFolders = this.getCheckedFolderNames(dialog);
+        this.dialogSnapshotTimer = null;
+        return;
+      }
+
+      attempts += 1;
+      if (attempts < 10) {
+        this.dialogSnapshotTimer = window.setTimeout(capture, 200);
+      } else {
+        this.dialogSnapshotTimer = null;
+      }
+    };
+
+    this.dialogSnapshotTimer = window.setTimeout(capture, 100);
+  }
+
+  private handleDialogConfirm(confirmButton: HTMLButtonElement): void {
+    const dialog = confirmButton.closest('.collection-m-exp');
+    if (!dialog) {
+      return;
+    }
+
+    const currentFolders = this.getCheckedFolderNames(dialog);
+    const initialFolders = this.dialogInitialFolders;
+    const addedFolders = currentFolders.filter(name => !initialFolders.includes(name));
+    const removedFolders = initialFolders.filter(name => !currentFolders.includes(name));
+
+    this.lastDialogConfirmAt = Date.now();
+
+    if (addedFolders.length > 0) {
+      this.triggerCollect(true, addedFolders);
+    }
+
+    if (removedFolders.length > 0) {
+      this.triggerCollect(false, removedFolders);
+    }
+
+    this.dialogInitialFolders = [];
+  }
+
+  private getCheckedFolderNames(dialog: Element): string[] {
+    const labels = Array.from(dialog.querySelectorAll('.group-list li label'));
+    const names: string[] = [];
+
+    for (const label of labels) {
+      const input = label.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+      if (!input?.checked) {
+        continue;
+      }
+
+      const name = label.querySelector('.fav-title')?.textContent?.trim();
+      if (name) {
+        names.push(name);
+      }
+    }
+
+    return names;
+  }
+
+  private triggerCollect(isFavorited: boolean, folderNames?: string[]): void {
     const url = window.location.href;
     const bvidMatch = url.match(/\/video\/(BV[a-zA-Z0-9]+)/);
     const bvid = bvidMatch ? bvidMatch[1] : "";
@@ -121,6 +236,7 @@ export class FavoriteButtonTrigger implements FavoriteTrigger {
       bv: bvid,
       title,
       action: isFavorited ? "add" : "remove",
+      folderNames,
       timestamp: Date.now()
     };
 
