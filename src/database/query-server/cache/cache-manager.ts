@@ -10,10 +10,12 @@ import type { CreatorIndex } from './types.js';
 import type { VideoIndex } from './types.js';
 import type { TagIndex } from './types.js';
 import type { FavoriteVideoIndex } from './types.js';
+import type { WatchHistoryIndex } from './types.js';
 import type { Creator } from '../../types/creator.js';
 import type { Video } from '../../types/video.js';
 import type { Tag } from '../../types/semantic.js';
 import type { FavoriteVideoEntry } from '../../types/favorite-video.js';
+import type { WatchHistoryEntry } from '../../types/watch-history.js';
 
 /**
  * 全局缓存管理器类
@@ -49,6 +51,12 @@ export class CacheManager {
   // 收藏视频数据缓存
   private favoriteVideoDataCache: DataCache<FavoriteVideoEntry>;
 
+  // 观看历史索引缓存
+  private watchHistoryIndexCache: IndexCache<WatchHistoryIndex>;
+
+  // 观看历史数据缓存
+  private watchHistoryDataCache: DataCache<WatchHistoryEntry>;
+
   private constructor() {
     // 初始化所有缓存单例
     this.indexCache = new IndexCache<CreatorIndex>();
@@ -72,6 +80,12 @@ export class CacheManager {
     this.tagIndexCache = new IndexCache<TagIndex>();
     this.favoriteVideoIndexCache = new IndexCache<FavoriteVideoIndex>();
     this.favoriteVideoDataCache = new DataCache<FavoriteVideoEntry>({
+      maxSize: 1000,
+      maxAge: 3600000,
+      cleanupRatio: 0.2
+    });
+    this.watchHistoryIndexCache = new IndexCache<WatchHistoryIndex>();
+    this.watchHistoryDataCache = new DataCache<WatchHistoryEntry>({
       maxSize: 1000,
       maxAge: 3600000,
       cleanupRatio: 0.2
@@ -145,6 +159,14 @@ export class CacheManager {
     return this.favoriteVideoDataCache;
   }
 
+  getWatchHistoryIndexCache(): IndexCache<WatchHistoryIndex> {
+    return this.watchHistoryIndexCache;
+  }
+
+  getWatchHistoryDataCache(): DataCache<WatchHistoryEntry> {
+    return this.watchHistoryDataCache;
+  }
+
   /**
    * 清空所有缓存
    */
@@ -158,6 +180,8 @@ export class CacheManager {
     this.tagIndexCache.clear();
     this.favoriteVideoIndexCache.clear();
     this.favoriteVideoDataCache.clear();
+    this.watchHistoryIndexCache.clear();
+    this.watchHistoryDataCache.clear();
   }
 
   /**
@@ -173,6 +197,8 @@ export class CacheManager {
     tagIndexCache: { size: number };
     favoriteVideoIndexCache: { size: number };
     favoriteVideoDataCache: ReturnType<DataCache<FavoriteVideoEntry>['getStats']>;
+    watchHistoryIndexCache: { size: number };
+    watchHistoryDataCache: ReturnType<DataCache<WatchHistoryEntry>['getStats']>;
   } {
     return {
       indexCache: {
@@ -192,6 +218,11 @@ export class CacheManager {
         size: this.favoriteVideoIndexCache.size()
       },
       favoriteVideoDataCache: this.favoriteVideoDataCache.getStats()
+      ,
+      watchHistoryIndexCache: {
+        size: this.watchHistoryIndexCache.size()
+      },
+      watchHistoryDataCache: this.watchHistoryDataCache.getStats()
     };
   }
 }

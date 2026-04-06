@@ -4,9 +4,32 @@
  * 专门针对IndexedDB优化，提供高效的增删改查方法
  */
 
-import { UPInteraction, UPInteractionUpdate, UPStatSummary } from '../types/up-interaction.js';
-import { Platform, PaginationParams, PaginationResult, ID } from '../types/base.js';
+import { UPInteraction } from '../types/up-interaction.js';
+import { Platform, PaginationParams, PaginationResult, ID, Timestamp } from '../types/base.js';
 import { DBUtils, STORE_NAMES } from '../indexeddb/index.js';
+
+/**
+ * UP主交互更新参数
+ * 用于增量更新UP主交互数据
+ */
+interface UPInteractionUpdate {
+  /** UP主ID */
+  creatorId: ID;
+  /** 观看时长增量（秒） */
+  watchDurationDelta?: number;
+  /** 观看次数增量 */
+  watchCountDelta?: number;
+  /** 点赞次数增量 */
+  likeDelta?: number;
+  /** 投币次数增量 */
+  coinDelta?: number;
+  /** 收藏次数增量 */
+  favoriteDelta?: number;
+  /** 评论次数增量 */
+  commentDelta?: number;
+  /** 更新观看时间 */
+  watchTime?: Timestamp;
+}
 
 /**
  * UPInteractionRepositoryImpl 实现类
@@ -123,30 +146,19 @@ export class UPInteractionRepositoryImpl {
 
   /**
    * 获取按观看时长排序的Top N UP主
-   * 基于totalWatchDuration索引的查询
+   * 先获取所有数据，在内存中排序，然后取前N个
    */
   async getTopByWatchDuration(
     platform: Platform,
     limit: number = 10
   ): Promise<UPInteraction[]> {
-    const results: UPInteraction[] = [];
+    // 获取所有UP主交互数据
+    const all = await this.getAllByPlatform(platform);
 
-    // 使用游标遍历，按观看时长降序获取
-    await DBUtils.cursor<UPInteraction>(
-      STORE_NAMES.UP_INTERACTIONS,
-      (value, cursor) => {
-        results.push(value);
-        if (results.length >= limit) {
-          return false;
-        }
-        cursor.continue();
-      },
-      'totalWatchDuration',
-      undefined,
-      'prev' // 降序
-    );
-
-    return results.filter(i => i.platform === platform);
+    // 在内存中按观看时长降序排序
+    return all
+      .sort((a, b) => b.totalWatchDuration - a.totalWatchDuration)
+      .slice(0, limit);
   }
 
   /**
@@ -170,35 +182,20 @@ export class UPInteractionRepositoryImpl {
   async getTopByInteractionRate(
     platform: Platform,
     limit: number = 10
-  ): Promise<UPStatSummary[]> {
+  ): Promise<UPInteraction[]> {
     const all = await this.getAllByPlatform(platform);
 
     return all
-      .map(interaction => {
-        const totalInteractions = interaction.likeCount + 
-                            interaction.coinCount + 
-                            interaction.favoriteCount;
-        const interactionRate = interaction.totalWatchCount > 0 
-          ? totalInteractions / interaction.totalWatchCount 
+      .sort((a, b) => {
+        const rateA = a.totalWatchCount > 0
+          ? (a.likeCount + a.coinCount + a.favoriteCount) / a.totalWatchCount
           : 0;
+        const rateB = b.totalWatchCount > 0
+          ? (b.likeCount + b.coinCount + b.favoriteCount) / b.totalWatchCount
+          : 0; 
+        return rateB - rateA; 
 
-        return {
-          creatorId: interaction.creatorId,
-          totalWatchDuration: interaction.totalWatchDuration,
-          totalWatchCount: interaction.totalWatchCount,
-          likeCount: interaction.likeCount,
-          coinCount: interaction.coinCount,
-          favoriteCount: interaction.favoriteCount,
-          commentCount: interaction.commentCount,
-          lastWatchTime: interaction.lastWatchTime,
-          firstWatchTime: interaction.firstWatchTime,
-          interactionRate,
-          avgWatchDuration: interaction.totalWatchCount > 0
-            ? interaction.totalWatchDuration / interaction.totalWatchCount
-            : 0
-        };
       })
-      .sort((a, b) => (b.interactionRate || 0) - (a.interactionRate || 0))
       .slice(0, limit);
   }
 

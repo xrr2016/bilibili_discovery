@@ -5,7 +5,7 @@
 
 import type { Platform, ID } from '../../types/base.js';
 import type { CollectionType } from '../../types/collection.js';
-import type { TagExpression } from '../cache/types.js';
+import type { TagExpression, WatchHistoryQueryCondition as CacheWatchHistoryQueryCondition } from '../cache/types.js';
 
 /**
  * 查询输入规范
@@ -49,7 +49,12 @@ export interface QueryStats {
 /**
  * 查询条件类型
  */
-export type QueryCondition = NameQueryCondition | TagQueryCondition | CompositeQueryCondition | FavoriteVideoQueryCondition;
+export type QueryCondition =
+  | NameQueryCondition
+  | TagQueryCondition
+  | CompositeQueryCondition
+  | FavoriteVideoQueryCondition
+  | WatchHistoryQueryCondition;
 
 /**
  * 名称查询条件
@@ -174,6 +179,8 @@ export interface FavoriteVideoQueryCondition {
   /** 标签表达式 */
   tagExpressions?: TagExpression[];
 }
+
+export interface WatchHistoryQueryCondition extends CacheWatchHistoryQueryCondition {}
 
 // 重新导出 TagExpression 以便其他模块使用
 export type { TagExpression } from '../cache/types.js';

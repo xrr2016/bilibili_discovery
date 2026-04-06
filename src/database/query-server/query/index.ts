@@ -23,6 +23,7 @@ export {
   filterCombined
 } from './query-engine.js';
 export { VideoQueryService } from './video-query-service.js';
+export { WatchHistoryQueryService } from './watch-history-query-service.js';
 export { TagFilterEngine, type TagFilterResult } from './tag-filter-engine.js';
 export { 
   CompositeQueryService, 

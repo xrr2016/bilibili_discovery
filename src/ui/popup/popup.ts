@@ -1,4 +1,4 @@
-import { navigateToFavorites, navigateToStats, navigateToTestTools, navigateToOptions, navigateToThemeSettings, navigateToDatabaseStats, navigateToWatchStats } from "./popup-progress.js";
+import { navigateToFavorites, navigateToStats, navigateToTestTools, navigateToOptions, navigateToThemeSettings, navigateToDatabaseStats, navigateToWatchStats, navigateToWatchHistory } from "./popup-progress.js";
 import { openExtensionPage } from "./popup-runtime.js";
 import { initThemedPage } from "../../themes/index.js";
 import { getValue } from "../../database/implementations/index.js";
@@ -63,6 +63,16 @@ function bindButtons(): void {
       event.preventDefault();
       event.stopPropagation();
       navigateToWatchStats();
+    });
+  }
+
+  const btnWatchHistory = document.getElementById("btn-watch-history");
+  if (btnWatchHistory) {
+    btnWatchHistory.addEventListener("click", (event) => {
+      console.log("[popup] btn-watch-history clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToWatchHistory();
     });
   }
 

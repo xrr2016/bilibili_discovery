@@ -122,6 +122,12 @@ body {
   gap: 9px;
   max-height: 400px;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.collection-tabs::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .collection-tab {
@@ -202,8 +208,14 @@ body {
 }
 
 .tag-list-scrollable {
-  max-height: 540px;
+  max-height: 340px;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.tag-list-scrollable::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .tag-count {
@@ -217,6 +229,12 @@ body {
   max-height: calc(100vh - 180px);
   overflow-y: auto;
   padding-right: 6px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.video-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .video-status-layer {

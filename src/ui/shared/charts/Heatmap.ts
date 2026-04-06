@@ -86,7 +86,8 @@ export class Heatmap {
     grid.className = 'heatmap-grid';
     grid.style.display = 'grid';
     grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
-    grid.style.gap = '6px';
+    grid.style.width = '100%';
+    grid.style.height = '100%';
 
     // 渲染每个数据点
     for (const point of data) {
@@ -104,6 +105,8 @@ export class Heatmap {
     // 创建年度视图容器
     const yearContainer = document.createElement('div');
     yearContainer.className = 'heatmap-year-grid';
+    yearContainer.style.width = '100%';
+    yearContainer.style.height = '100%';
 
     // 按月份分组数据
     const monthData: HeatmapDataPoint[][] = Array.from({ length: 12 }, () => []);
@@ -130,6 +133,9 @@ export class Heatmap {
   private createMonthBlock(monthName: string, data: HeatmapDataPoint[], maxSeconds: number): HTMLElement {
     const block = document.createElement('div');
     block.className = 'heatmap-month-block';
+    block.style.flex = '1';
+    block.style.display = 'flex';
+    block.style.flexDirection = 'column';
 
     // 添加月份标题
     const title = document.createElement('div');
@@ -143,6 +149,8 @@ export class Heatmap {
     grid.style.display = 'grid';
     grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
     grid.style.gap = '2px';
+    grid.style.flex = '1';
+    grid.style.width = '100%';
 
     // 渲染该月的每个数据点
     for (const point of data) {

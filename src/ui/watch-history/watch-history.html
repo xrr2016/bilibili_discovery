@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>观看历史搜索</title>
+    <link rel="stylesheet" href="./watch-history.css" />
+  </head>
+  <body>
+    <div class="watch-history-page">
+      <div class="history-shell">
+        <section class="history-main">
+          <div class="hero-card">
+            <div>
+              <p class="hero-kicker">Watch History Search</p>
+              <h1>搜索过去看过的每一个视频</h1>
+              <p class="hero-subtitle">按标题、UP 主、观看时长、观看时间、进度、标签与完播状态筛选，专注于按视频聚合后的真实观看痕迹。</p>
+            </div>
+            <div class="hero-searches">
+              <input id="searchInput" class="search-input" type="text" placeholder="搜索标题或 BV 号" />
+              <input id="creatorInput" class="search-input" type="text" placeholder="搜索 UP 主" />
+            </div>
+          </div>
+
+          <div class="summary-grid">
+            <article class="summary-card">
+              <span class="summary-label">命中视频</span>
+              <strong id="summaryTotal" class="summary-value">0</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-label">累计已看时长</span>
+              <strong id="summaryDuration" class="summary-value">0:00</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-label">完播视频</span>
+              <strong id="summaryComplete" class="summary-value">0</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-label">重看视频</span>
+              <strong id="summaryRewatch" class="summary-value">0</strong>
+            </article>
+            <article class="summary-card">
+              <span class="summary-label">平均进度</span>
+              <strong id="summaryProgress" class="summary-value">0%</strong>
+            </article>
+          </div>
+
+          <div class="results-head">
+            <div id="resultCount" class="results-count">0 条结果</div>
+          </div>
+
+          <div class="history-status-layer">
+            <div class="loading" id="loading">
+              <div class="spinner"></div>
+              <p>加载中...</p>
+            </div>
+            <div class="empty" id="empty" style="display: none;">
+              <p>没有匹配的观看记录</p>
+            </div>
+            <div class="error" id="error" style="display: none;">
+              <p id="errorMessage"></p>
+            </div>
+          </div>
+
+          <div class="history-list" id="historyList"></div>
+
+          <div class="pagination" id="pagination" style="display: none;">
+            <button id="prevPage" class="btn btn-secondary" type="button">上一页</button>
+            <span id="pageInfo">1 / 1</span>
+            <button id="nextPage" class="btn btn-secondary" type="button">下一页</button>
+          </div>
+        </section>
+
+        <aside class="history-sidebar history-sidebar-tags">
+          <section class="panel-card">
+            <h3>标签过滤</h3>
+            <div class="filter-zone-group">
+              <div>
+                <p class="zone-title">必须包含</p>
+                <div id="includeTags" class="filter-tag-zone"></div>
+              </div>
+              <div>
+                <p class="zone-title">排除标签</p>
+                <div id="excludeTags" class="filter-tag-zone"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel-card">
+            <h3>标签列表</h3>
+            <input id="tagSearchInput" class="search-input search-input-compact" type="text" placeholder="搜索标签..." />
+            <div id="tagList" class="tag-list"></div>
+          </section>
+        </aside>
+
+        <aside class="history-sidebar history-sidebar-filters">
+          <section class="panel-card panel-card-filters">
+            <div class="panel-header-row">
+              <h3>复杂筛选</h3>
+              <button id="resetFilters" class="ghost-button" type="button">重置</button>
+            </div>
+
+            <div class="filter-grid">
+              <label class="field">
+                <span>视频时长</span>
+                <div class="range-pair">
+                  <input id="durationMin" type="number" min="0" placeholder="最短秒数" />
+                  <input id="durationMax" type="number" min="0" placeholder="最长秒数" />
+                </div>
+              </label>
+
+              <label class="field">
+                <span>已看时长</span>
+                <div class="range-pair">
+                  <input id="watchDurationMin" type="number" min="0" placeholder="最少秒数" />
+                  <input id="watchDurationMax" type="number" min="0" placeholder="最多秒数" />
+                </div>
+              </label>
+
+              <label class="field">
+                <span>观看进度 (%)</span>
+                <div class="range-pair">
+                  <input id="progressMin" type="number" min="0" placeholder="最低%" />
+                  <input id="progressMax" type="number" min="0" placeholder="最高%" />
+                </div>
+              </label>
+
+              <label class="field">
+                <span>发布时间</span>
+                <div class="range-pair">
+                  <input id="publishDateStart" type="date" />
+                  <input id="publishDateEnd" type="date" />
+                </div>
+              </label>
+
+              <label class="field">
+                <span>观看时间</span>
+                <div class="range-pair">
+                  <input id="watchDateStart" type="date" />
+                  <input id="watchDateEnd" type="date" />
+                </div>
+              </label>
+
+              <label class="field">
+                <span>完播状态</span>
+                <select id="completeFilter">
+                  <option value="all">全部</option>
+                  <option value="complete">只看完播</option>
+                  <option value="incomplete">只看未完播</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>重看状态</span>
+                <select id="rewatchFilter">
+                  <option value="all">全部</option>
+                  <option value="rewatched">只看重看</option>
+                  <option value="single">只看未重看</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>排序字段</span>
+                <select id="sortBy">
+                  <option value="endTime">最近观看</option>
+                  <option value="watchTime">首次观看</option>
+                  <option value="watchDuration">已看时长</option>
+                  <option value="progress">观看进度</option>
+                  <option value="publishTime">发布时间</option>
+                  <option value="duration">视频时长</option>
+                  <option value="title">标题</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>排序方向</span>
+                <select id="sortOrder">
+                  <option value="desc">降序</option>
+                  <option value="asc">升序</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="checkbox-row">
+              <input id="includeInvalid" type="checkbox" />
+              <span>包含已失效视频</span>
+            </label>
+          </section>
+        </aside>
+      </div>
+    </div>
+    <script type="module" src="./watch-history.ts"></script>
+  </body>
+</html>

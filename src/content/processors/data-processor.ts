@@ -360,6 +360,16 @@ export class DataProcessor {
         isComplete: updatedIsComplete,
         endTime: data.endTime
       });
+
+      // 同步更新UP主的总观看时长(不增加观看次数)
+      if (data.creatorId) {
+        await this.upInteractionRepo.updateInteraction({
+          creatorId: data.creatorId,
+          watchDurationDelta: data.watchDuration,
+          watchCountDelta: 0, // 不增加观看次数
+          watchTime: data.watchTime || Date.now()
+        });
+      }
     } else {
       // 不存在观看事件，创建新的观看事件
       logger.debug('[DataProcessor] 创建新的观看事件');
@@ -377,15 +387,15 @@ export class DataProcessor {
       };
 
       await this.watchEventRepo.recordWatchEvent(watchEvent);
-    }
 
-    // 同步更新UP主的总观看时长
-    if (data.creatorId) {
-      await this.upInteractionRepo.recordWatch(
-        data.creatorId,
-        data.watchDuration,
-        data.watchTime || Date.now()
-      );
+      // 同步更新UP主的总观看时长(增加观看次数)
+      if (data.creatorId) {
+        await this.upInteractionRepo.recordWatch(
+          data.creatorId,
+          data.watchDuration,
+          data.watchTime || Date.now()
+        );
+      }
     }
 
     // 更新每日观看统计

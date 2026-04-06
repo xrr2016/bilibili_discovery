@@ -67,6 +67,20 @@ export class WatchEventRepositoryImpl {
     return videoEvents.length > 0 ? videoEvents[0] : null;
   }
 
+  async getWatchEventsByVideoIds(videoIds: ID[]): Promise<WatchEvent[]> {
+    if (videoIds.length === 0) {
+      return [];
+    }
+
+    const idSet = new Set(videoIds);
+    const allEvents = await DBUtils.getAll<WatchEvent>(STORE_NAMES.WATCH_EVENTS);
+    return allEvents.filter((event) => idSet.has(event.videoId));
+  }
+
+  async getAllWatchEvents(): Promise<WatchEvent[]> {
+    return DBUtils.getAll<WatchEvent>(STORE_NAMES.WATCH_EVENTS);
+  }
+
   /**
    * 批量记录观看事件
    */

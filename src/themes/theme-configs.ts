@@ -131,10 +131,132 @@ const morandiDarkTheme: ThemeConfig = {
 };
 
 /**
+ * 海洋蓝主题 - 浅色模式
+ */
+const oceanLightTheme: ThemeConfig = {
+  id: ThemeId.Ocean,
+  name: '海洋蓝',
+  type: ThemeType.Light,
+  tagColors: {
+    hueStart: 180,
+    hueRange: 60,
+    saturationMin: 50,
+    saturationMax: 70,
+    lightnessMin: 75,
+    lightnessMax: 90
+  },
+  heatmapColors: {
+    level0: '#f0f7ff',
+    level1: '#e0efff',
+    level2: '#b8d4ff',
+    level3: '#7eb8ff',
+    level4: '#4a9eff',
+    level5: '#1a7eff'
+  },
+  colors: {
+    primary: '#1a7eff',
+    primaryHover: '#0a6eff',
+    primaryLight: '#e0efff',
+    secondary: '#6b8fa3',
+    secondaryHover: '#5a7e93',
+    accent: '#ff7a7a',
+    accentHover: '#ff6a6a',
+    success: '#4ade80',
+    warning: '#fbbf24',
+    danger: '#f87171',
+    info: '#38bdf8',
+    text: {
+      primary: '#1e293b',
+      secondary: '#475569',
+      tertiary: '#94a3b8',
+      inverse: '#ffffff'
+    },
+    background: {
+      primary: '#ffffff',
+      secondary: '#f0f7ff',
+      tertiary: '#e0efff',
+      inverse: '#1e293b'
+    },
+    border: {
+      primary: '#e2e8f0',
+      secondary: '#cbd5e1',
+      tertiary: '#bfdbfe'
+    },
+    shadow: {
+      light: 'rgba(26, 126, 255, 0.08)',
+      medium: 'rgba(26, 126, 255, 0.12)',
+      dark: 'rgba(26, 126, 255, 0.18)'
+    }
+  }
+};
+
+/**
+ * 海洋蓝主题 - 深色模式
+ */
+const oceanDarkTheme: ThemeConfig = {
+  id: ThemeId.Ocean,
+  name: '海洋蓝',
+  type: ThemeType.Dark,
+  tagColors: {
+    hueStart: 180,
+    hueRange: 60,
+    saturationMin: 40,
+    saturationMax: 60,
+    lightnessMin: 40,
+    lightnessMax: 60
+  },
+  heatmapColors: {
+    level0: '#1e293b',
+    level1: '#1e3a5f',
+    level2: '#1e4a7f',
+    level3: '#1e5a9f',
+    level4: '#1e6abf',
+    level5: '#1e7adf'
+  },
+  colors: {
+    primary: '#38bdf8',
+    primaryHover: '#0ea5e9',
+    primaryLight: '#1e3a5f',
+    secondary: '#94a3b8',
+    secondaryHover: '#64748b',
+    accent: '#f87171',
+    accentHover: '#ef4444',
+    success: '#22c55e',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    info: '#38bdf8',
+    text: {
+      primary: '#f1f5f9',
+      secondary: '#cbd5e1',
+      tertiary: '#64748b',
+      inverse: '#1e293b'
+    },
+    background: {
+      primary: '#0f172a',
+      secondary: '#1e293b',
+      tertiary: '#1e3a5f',
+      inverse: '#f1f5f9'
+    },
+    border: {
+      primary: '#1e3a5f',
+      secondary: '#334155',
+      tertiary: '#475569'
+    },
+    shadow: {
+      light: 'rgba(26, 126, 255, 0.15)',
+      medium: 'rgba(26, 126, 255, 0.25)',
+      dark: 'rgba(26, 126, 255, 0.35)'
+    }
+  }
+};
+
+/**
  * 导出当前启用的所有主题配置
  * 当前仅保留莫兰迪主题
  */
 export const themeConfigs: ThemeConfig[] = [
   morandiLightTheme,
-  morandiDarkTheme
+  morandiDarkTheme,
+  oceanLightTheme,
+  oceanDarkTheme
 ];

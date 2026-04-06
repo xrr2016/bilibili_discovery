@@ -63,6 +63,10 @@ export type {
   FavoriteVideoEntry
 } from './favorite-video.js';
 
+export type {
+  WatchHistoryEntry
+} from './watch-history.js';
+
 // DailyWatchStats 类型
 export type {
   DailyWatchStats

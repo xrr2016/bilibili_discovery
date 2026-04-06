@@ -20,7 +20,8 @@ export enum ThemeId {
   Purple = 'purple',
   Pink = 'pink',
   Orange = 'orange',
-  Morandi = 'morandi'
+  Morandi = 'morandi',
+  Ocean = 'ocean'
 }
 
 /**

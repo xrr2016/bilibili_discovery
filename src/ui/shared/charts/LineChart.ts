@@ -49,10 +49,12 @@ export class LineChart {
    * 渲染折线图
    */
   render(data: LineChartDataPoint[]): void {
+    console.log('[LineChart] 开始渲染,数据:', data);
     this.data = data;
 
     // 设置画布尺寸
     const rect = this.canvas.getBoundingClientRect();
+    console.log('[LineChart] 画布尺寸:', rect);
     const dpr = window.devicePixelRatio || 1;
     this.canvas.width = rect.width * dpr;
     this.canvas.height = rect.height * dpr;
@@ -64,10 +66,13 @@ export class LineChart {
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
+    console.log('[LineChart] 图表区域:', { width, height, chartWidth, chartHeight });
+
     // 清空画布
     this.ctx.clearRect(0, 0, width, height);
 
     if (data.length === 0) {
+      console.log('[LineChart] 数据为空,显示空状态');
       this.drawEmptyState(width, height);
       return;
     }
@@ -75,12 +80,16 @@ export class LineChart {
     // 计算数据范围
     const maxValue = this.options.maxValue || Math.max(...data.map(d => d.value), 1);
     const minValue = 0;
+    console.log('[LineChart] 数据范围:', { maxValue, minValue });
 
     // 绘制网格线和Y轴标签
     this.drawGridLines(chartHeight, chartWidth, padding, maxValue, minValue);
 
     // 绘制X轴标签
     this.drawXAxisLabels(data, chartWidth, chartHeight, padding);
+
+    // 绘制渐变填充区域
+    this.drawArea(data, chartWidth, chartHeight, padding, maxValue);
 
     // 绘制折线
     this.drawLine(data, chartWidth, chartHeight, padding, maxValue);
@@ -89,6 +98,8 @@ export class LineChart {
     if (this.options.showPoints) {
       this.drawPoints(data, chartWidth, chartHeight, padding, maxValue);
     }
+
+    console.log('[LineChart] 渲染完成');
   }
 
   /**
@@ -146,6 +157,71 @@ export class LineChart {
   }
 
   /**
+   * 绘制渐变填充区域
+   */
+  private drawArea(
+    data: LineChartDataPoint[],
+    chartWidth: number,
+    chartHeight: number,
+    padding: { top: number; right: number; bottom: number; left: number },
+    maxValue: number
+  ): void {
+    const stepX = chartWidth / (data.length - 1 || 1);
+
+    // 创建渐变
+    const gradient = this.ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+
+    // 检查是否是CSS变量，如果是则使用默认颜色
+    let color = this.options.lineColor;
+    if (color.startsWith('var(')) {
+      color = '#3b82f6'; // 默认蓝色
+    }
+
+    // 将颜色转换为rgba格式
+    let rgbaColor = color;
+    if (color.startsWith('#')) {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      rgbaColor = `rgb(${r}, ${g}, ${b})`;
+    }
+
+    gradient.addColorStop(0, rgbaColor.replace('rgb', 'rgba').replace(')', ', 0.3)'));
+    gradient.addColorStop(1, rgbaColor.replace('rgb', 'rgba').replace(')', ', 0)'));
+
+    this.ctx.fillStyle = gradient;
+    this.ctx.beginPath();
+
+    // 从左下角开始
+    this.ctx.moveTo(padding.left, padding.top + chartHeight);
+
+    // 绘制所有数据点
+    for (let i = 0; i < data.length; i++) {
+      const x = padding.left + stepX * i;
+      const y = padding.top + chartHeight - (data[i].value / maxValue) * chartHeight;
+      this.ctx.lineTo(x, y);
+    }
+
+    // 到右下角
+    this.ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+
+    // 闭合路径
+    this.ctx.closePath();
+    this.ctx.fill();
+  }
+
+  /**
+   * 解析颜色值，处理CSS变量
+   */
+  private parseColor(color: string): string {
+    // 如果是CSS变量，使用默认颜色
+    if (color.startsWith('var(')) {
+      return '#3b82f6'; // 默认蓝色
+    }
+    return color;
+  }
+
+  /**
    * 绘制折线
    */
   private drawLine(
@@ -156,9 +232,19 @@ export class LineChart {
     maxValue: number
   ): void {
     const stepX = chartWidth / (data.length - 1 || 1);
+    const color = this.parseColor(this.options.lineColor);
 
-    this.ctx.strokeStyle = this.options.lineColor;
-    this.ctx.lineWidth = 2;
+    this.ctx.strokeStyle = color;
+    this.ctx.lineWidth = 3;
+    this.ctx.lineCap = 'round';
+    this.ctx.lineJoin = 'round';
+
+    // 添加阴影效果
+    this.ctx.shadowColor = color;
+    this.ctx.shadowBlur = 10;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 4;
+
     this.ctx.beginPath();
 
     for (let i = 0; i < data.length; i++) {
@@ -168,10 +254,23 @@ export class LineChart {
       if (i === 0) {
         this.ctx.moveTo(x, y);
       } else {
-        this.ctx.lineTo(x, y);
+        // 使用贝塞尔曲线使线条更平滑
+        const prevX = padding.left + stepX * (i - 1);
+        const prevY = padding.top + chartHeight - (data[i - 1].value / maxValue) * chartHeight;
+        const cp1x = prevX + (x - prevX) / 2;
+        const cp1y = prevY;
+        const cp2x = prevX + (x - prevX) / 2;
+        const cp2y = y;
+        this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y);
       }
     }
     this.ctx.stroke();
+
+    // 重置阴影
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 0;
   }
 
   /**
@@ -185,13 +284,20 @@ export class LineChart {
     maxValue: number
   ): void {
     const stepX = chartWidth / (data.length - 1 || 1);
-
-    this.ctx.fillStyle = this.options.pointColor;
+    const color = this.parseColor(this.options.pointColor);
 
     for (let i = 0; i < data.length; i++) {
       const x = padding.left + stepX * i;
       const y = padding.top + chartHeight - (data[i].value / maxValue) * chartHeight;
 
+      // 绘制外圈（白色背景）
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, 6, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // 绘制内圈（主题色）
+      this.ctx.fillStyle = color;
       this.ctx.beginPath();
       this.ctx.arc(x, y, 4, 0, Math.PI * 2);
       this.ctx.fill();

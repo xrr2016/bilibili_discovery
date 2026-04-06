@@ -27,3 +27,7 @@ export function navigateToDatabaseStats(): void {
 export function navigateToWatchStats(): void {
   openExtensionPage("ui/watch-stats/watch-stats.html");
 }
+
+export function navigateToWatchHistory(): void {
+  openExtensionPage("ui/watch-history/watch-history.html");
+}

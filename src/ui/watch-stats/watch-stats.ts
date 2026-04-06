@@ -70,9 +70,9 @@ export class WatchStatsPage {
    * 初始化图表组件
    */
   private initCharts(): void {
-    // 初始化热力图
+    // 初始化热力图（只在未初始化时创建）
     const heatmapContainer = document.getElementById('heatmap-container');
-    if (heatmapContainer) {
+    if (heatmapContainer && !this.heatmap) {
       this.heatmap = new Heatmap(heatmapContainer, {
         showTodayMarker: true,
         showTooltip: true,
@@ -80,9 +80,9 @@ export class WatchStatsPage {
       });
     }
 
-    // 初始化折线图
+    // 初始化折线图（只在未初始化时创建）
     const lineChartCanvas = document.getElementById('line-chart') as HTMLCanvasElement;
-    if (lineChartCanvas) {
+    if (lineChartCanvas && !this.lineChart) {
       this.lineChart = new LineChart(lineChartCanvas, {
         showPoints: true,
         showTooltip: true
@@ -209,14 +209,16 @@ export class WatchStatsPage {
       // 确保数据库已初始化
       await dbManager.init();
 
-      // 获取最近365天的统计数据
+      // 获取最近7天的统计数据
       const now = new Date();
       const endDate = new Date(now);
       const startDate = new Date(now);
-      startDate.setFullYear(now.getFullYear() - 1);
+      startDate.setDate(now.getDate() - 6); // 获取最近7天（包括今天）
 
       const startKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
       const endKey = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+      console.log('[WatchStatsPage] 查询日期范围:', { startKey, endKey });
 
       // 从数据库获取统计数据
       const stats = await this.dailyWatchStatsRepo.getStatsByDateRange(
@@ -224,6 +226,8 @@ export class WatchStatsPage {
         endKey,
         Platform.BILIBILI
       );
+
+      console.log('[WatchStatsPage] 查询到的统计数据:', stats);
 
       // 构建每日观看时长映射
       this.dailySeconds = {};
@@ -238,8 +242,17 @@ export class WatchStatsPage {
         }
       }
 
+      console.log('[WatchStatsPage] 每日观看时长映射:', this.dailySeconds);
+
       // 更新统计卡片
       this.updateStatCards({
+        dailySeconds: this.dailySeconds,
+        totalSeconds: this.totalSeconds,
+        lastUpdate: this.lastUpdate
+      } as WatchStatsData);
+
+      // 更新折线图
+      this.updateLineChart({
         dailySeconds: this.dailySeconds,
         totalSeconds: this.totalSeconds,
         lastUpdate: this.lastUpdate
@@ -444,14 +457,19 @@ export class WatchStatsPage {
     if (!this.lineChart) return;
 
     const recentDays = this.getRecentDays(7).reverse();
+    console.log('[WatchStatsPage] 最近7天日期列表:', recentDays);
+
     const chartData = recentDays.map(day => {
       const date = new Date(day);
+      const value = data.dailySeconds[day] ?? 0;
+      console.log(`[WatchStatsPage] 日期 ${day} 的观看时长:`, value);
       return {
         label: `${date.getMonth() + 1}/${date.getDate()}`,
-        value: data.dailySeconds[day] ?? 0
+        value: value
       };
     });
 
+    console.log('[WatchStatsPage] 折线图数据:', chartData);
     this.lineChart.render(chartData);
   }
 

@@ -42,7 +42,7 @@ body {
 .header {
   background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%);
   color: var(--theme-text-inverse);
-  padding: 36px 24px;
+  padding: 24px 20px;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -65,8 +65,8 @@ body {
 }
 
 .header h1 {
-  margin: 0 0 10px 0;
-  font-size: 36px;
+  margin: 0 0 8px 0;
+  font-size: 28px;
   font-weight: 700;
   position: relative;
   z-index: 1;
@@ -75,7 +75,7 @@ body {
 
 .subtitle {
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   opacity: 0.95;
   position: relative;
   z-index: 1;
@@ -83,10 +83,10 @@ body {
 }
 
 .content {
-  padding: 28px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 20px;
   position: relative;
   z-index: 1;
 }
@@ -95,8 +95,8 @@ body {
 .stats-section {
   width: 100%;
   position: relative;
-  padding-bottom: 8px;
-  padding-top: 8px;
+  padding-bottom: 4px;
+  padding-top: 4px;
 }
 
 .stats-section::before {
@@ -135,7 +135,7 @@ body {
 .charts-section {
   width: 100%;
   position: relative;
-  padding: 24px 0;
+  padding: 16px 0;
 }
 
 .charts-section::before {
@@ -169,12 +169,15 @@ body {
 .chart-panel {
   background: linear-gradient(145deg, var(--theme-bg-secondary) 0%, var(--theme-bg-tertiary) 100%);
   border-radius: 18px;
-  padding: 24px;
+  padding: 18px;
   box-shadow: 0 4px 16px var(--theme-shadow-light),
               0 0 0 1px var(--theme-border-primary);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
 }
 
 .chart-panel::before {
@@ -196,8 +199,21 @@ body {
 
 .heatmap-container {
   width: 100%;
-  min-height: 300px;
-  margin-top: 16px;
+  height: 340px;
+  margin-top: 12px;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 隐藏滚动条但保留滚动功能 */
+.heatmap-container::-webkit-scrollbar {
+  display: none;
+}
+
+.heatmap-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* 热力图控制面板 */
@@ -205,7 +221,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .view-controls {
@@ -214,12 +230,12 @@ body {
 }
 
 .view-btn {
-  padding: 8px 18px;
+  padding: 6px 14px;
   border: 2px solid var(--theme-border-secondary);
   background: var(--theme-bg-primary);
   color: var(--theme-text-secondary);
-  border-radius: 10px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -246,21 +262,21 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 14px;
+  gap: 8px;
+  padding: 8px;
   background: linear-gradient(145deg, var(--theme-bg-tertiary) 0%, var(--theme-bg-secondary) 100%);
-  border-radius: 14px;
-  margin-bottom: 18px;
+  border-radius: 12px;
+  margin-bottom: 10px;
   border: 1px solid var(--theme-border-primary);
 }
 
 .control-btn {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: linear-gradient(145deg, var(--theme-bg-primary) 0%, var(--theme-bg-secondary) 100%);
   color: var(--theme-text-secondary);
-  border-radius: 10px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -282,10 +298,10 @@ body {
 }
 
 .period-label {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--theme-text-primary);
-  min-width: 120px;
+  min-width: 90px;
   text-align: center;
 }
 
@@ -293,19 +309,19 @@ body {
 .heatmap-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  padding: 8px;
+  gap: 4px;
+  padding: 6px 40px;
   transition: opacity 0.3s ease, transform 0.3s ease;
   will-change: opacity, transform;
 }
 
 .heatmap-cell {
-  aspect-ratio: 1;
-  border-radius: 8px;
+  aspect-ratio: 1.6;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--theme-text-primary);
   cursor: pointer;
@@ -313,11 +329,13 @@ body {
   position: relative;
   box-shadow: 0 2px 8px var(--theme-shadow-light),
               0 0 0 1px var(--theme-border-primary);
+  width: 100%;
+  height: auto;
 }
 
 .heatmap-cell:hover {
-  transform: translateY(-6px) scale(1.08);
-  box-shadow: 0 12px 24px var(--theme-shadow-medium),
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 16px var(--theme-shadow-medium),
               0 0 0 2px var(--theme-border-secondary);
   z-index: 10;
 }
@@ -367,20 +385,21 @@ body {
 .heatmap-year-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(4, 1fr);
   gap: 12px;
   padding: 8px;
   transition: opacity 0.3s ease, transform 0.3s ease;
   will-change: opacity, transform;
+  width: 100%;
+  min-height: 100%;
 }
 
 .heatmap-month-block {
   background: linear-gradient(145deg, var(--theme-bg-tertiary) 0%, var(--theme-bg-secondary) 100%);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: 10px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
   border: 1px solid var(--theme-border-primary);
@@ -393,34 +412,37 @@ body {
 }
 
 .heatmap-month-title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--theme-text-primary);
   text-align: center;
-  padding: 4px;
+  padding: 1px;
 }
 
 .heatmap-month-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
+  width: 100%;
 }
 
 .heatmap-cell-compact {
-  aspect-ratio: 1;
-  border-radius: 4px;
-  font-size: 10px;
+  aspect-ratio: 1.1;
+  border-radius: 3px;
+  font-size: 7px;
   font-weight: 500;
   color: var(--theme-text-primary);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   box-shadow: 0 1px 4px var(--theme-shadow-light);
+  width: 100%;
+  height: auto;
 }
 
 .heatmap-cell-compact:hover {
-  transform: scale(1.2);
-  box-shadow: 0 4px 12px var(--theme-shadow-medium);
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px var(--theme-shadow-medium);
   z-index: 10;
 }
 
@@ -429,16 +451,34 @@ body {
   padding: 6px 10px;
 }
 
+/* 热力图网格样式 */
+.heatmap-grid {
+  width: 100%;
+  height: 100%;
+  gap: 4px;
+}
+
 .line-chart {
   width: 100%;
-  height: 300px;
+  height: 100%;
+  display: block;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 折线图容器包装器 */
+.line-chart-wrapper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  position: relative;
 }
 
 /* 列表区域 */
 .lists-section {
   width: 100%;
   position: relative;
-  padding-top: 24px;
+  padding-top: 16px;
 }
 
 .lists-section::before {
@@ -461,7 +501,7 @@ body {
 .list-panel {
   background: linear-gradient(145deg, var(--theme-bg-secondary) 0%, var(--theme-bg-tertiary) 100%);
   border-radius: 18px;
-  padding: 24px;
+  padding: 18px;
   box-shadow: 0 4px 16px var(--theme-shadow-light),
               0 0 0 1px var(--theme-border-primary);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -487,16 +527,17 @@ body {
 }
 
 .panel-title {
-  margin: 0 0 20px 0;
-  font-size: 19px;
+  margin: 0 0 12px 0;
+  font-size: 17px;
   font-weight: 700;
   color: var(--theme-text-primary);
   border-bottom: 2px solid var(--theme-primary);
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .panel-title::before {
@@ -508,11 +549,11 @@ body {
 }
 
 .list-container {
-  max-height: 500px;
+  max-height: 380px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
 }
@@ -525,11 +566,11 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  font-size: 14px;
+  gap: 10px;
+  font-size: 13px;
   color: var(--theme-text-primary);
-  padding: 14px;
-  border-radius: 10px;
+  padding: 10px;
+  border-radius: 8px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   background: var(--theme-bg-primary);
@@ -551,8 +592,8 @@ body {
 }
 
 .list-item .avatar {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -578,7 +619,7 @@ body {
 }
 
 .list-item .detail {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--theme-text-tertiary);
 }
 

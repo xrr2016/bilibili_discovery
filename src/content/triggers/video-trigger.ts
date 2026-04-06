@@ -26,15 +26,17 @@ export interface VideoTrigger {
 export class VideoPlaybackTrigger implements VideoTrigger {
   private video: HTMLVideoElement | null = null;
   private bvid: string | null = null;
+  private creatorId: number | null = null;
   private callbacks: Array<(data: WatchEventCollectData) => void> = [];
   private lastTime = 0;
   private accumulated = 0;
   private watchStartTime: Timestamp | null = null;
   private isRunning = false;
 
-  constructor(private videoElement: HTMLVideoElement, bvid: string) {
+  constructor(private videoElement: HTMLVideoElement, bvid: string, creatorId?: number) {
     this.video = videoElement;
     this.bvid = bvid;
+    this.creatorId = creatorId || null;
   }
 
   start(): void {
@@ -126,7 +128,8 @@ export class VideoPlaybackTrigger implements VideoTrigger {
       videoDuration,
       progress,
       isComplete,
-      endTime: currentTimestamp
+      endTime: currentTimestamp,
+      creatorId: this.creatorId || undefined
     };
 
     this.callbacks.forEach(callback => callback(data));

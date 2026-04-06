@@ -165,8 +165,11 @@ class VideoTrackerManager {
       this.playbackTrigger.stop();
     }
 
+    // 获取UP主ID
+    const creatorId = this.initialVideoData?.creatorId;
+
     // 创建播放触发器
-    this.playbackTrigger = new VideoPlaybackTrigger(video, this.bvid);
+    this.playbackTrigger = new VideoPlaybackTrigger(video, this.bvid, creatorId);
     this.playbackTrigger.onCollect((data: WatchEventCollectData) => {
       // 使用转发器发送观看事件数据到后台
       this.forwarder.send('WATCH_EVENT', data);

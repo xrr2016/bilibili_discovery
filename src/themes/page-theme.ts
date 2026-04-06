@@ -4,6 +4,7 @@ export type ThemePageId =
   | "popup"
   | "options"
   | "favorites"
+  | "watch-history"
   | "stats"
   | "watch-stats"
   | "database-stats"

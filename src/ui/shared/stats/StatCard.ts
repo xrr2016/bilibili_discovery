@@ -34,11 +34,11 @@ export class StatCard {
     // 设置卡片样式
     card.style.background = 'linear-gradient(145deg, var(--theme-bg-secondary) 0%, var(--theme-bg-tertiary) 100%)';
     card.style.borderRadius = '16px';
-    card.style.padding = '20px';
+    card.style.padding = '14px';
     card.style.border = `1px solid var(--theme-border-primary)`;
     card.style.display = 'flex';
     card.style.flexDirection = 'column';
-    card.style.gap = '12px';
+    card.style.gap = '8px';
     card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
     card.style.position = 'relative';
     card.style.overflow = 'hidden';
@@ -79,14 +79,14 @@ export class StatCard {
       const iconWrapper = document.createElement('div');
       iconWrapper.className = 'stat-card-icon-wrapper';
       iconWrapper.style.cssText = `
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
         background: linear-gradient(135deg, var(--theme-${data.theme || 'primary'}) 0%, var(--theme-secondary) 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         box-shadow: 0 4px 12px var(--theme-shadow-light);
       `;
 
@@ -94,7 +94,7 @@ export class StatCard {
       icon.className = 'stat-card-icon';
       icon.textContent = data.icon;
       icon.style.cssText = `
-        font-size: 24px;
+        font-size: 18px;
         color: var(--theme-text-inverse);
       `;
       iconWrapper.appendChild(icon);
@@ -106,7 +106,7 @@ export class StatCard {
     label.className = 'stat-card-label';
     label.textContent = data.label;
     label.style.cssText = `
-      font-size: 14px;
+      font-size: 12px;
       color: var(--theme-text-secondary);
       font-weight: 500;
       letter-spacing: 0.3px;
@@ -126,7 +126,7 @@ export class StatCard {
     value.className = 'stat-card-value';
     value.textContent = String(data.value);
     value.style.cssText = `
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 700;
       background: linear-gradient(135deg, var(--theme-${data.theme || 'primary'}) 0%, var(--theme-secondary) 100%);
       -webkit-background-clip: text;

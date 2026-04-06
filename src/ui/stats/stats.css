@@ -86,6 +86,12 @@ h2 {
   gap: 24px;
   overflow-y: auto;
   max-height: 800px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.up-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .up-item {
@@ -589,6 +595,12 @@ input:checked + .slider:before {
 .tag-list-scrollable {
   max-height: 540px;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.tag-list-scrollable::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .category-list-scrollable {

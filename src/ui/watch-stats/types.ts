@@ -3,6 +3,7 @@
  */
 
 import type { WatchEvent } from '../../database/types/behavior.js';
+import type { Timestamp, ID } from '../../database/types/base.js';
 
 /**
  * 观看统计数据
@@ -42,6 +43,35 @@ export interface VideoInfo {
   title: string;
   /** 视频时长（秒） */
   duration: number;
+}
+
+/**
+ * UP主统计数据
+ * 用于UI展示的UP主统计信息
+ */
+export interface UPStatSummary {
+  /** UP主ID */
+  creatorId: ID;
+  /** 总观看时长（秒） */
+  totalWatchDuration: number;
+  /** 总观看视频次数 */
+  totalWatchCount: number;
+  /** 点赞次数 */
+  likeCount: number;
+  /** 投币次数 */
+  coinCount: number;
+  /** 收藏次数 */
+  favoriteCount: number;
+  /** 评论次数 */
+  commentCount: number;
+  /** 上次观看时间 */
+  lastWatchTime: Timestamp;
+  /** 首次观看时间 */
+  firstWatchTime: Timestamp;
+  /** 互动率（点赞+投币+收藏）/观看次数 */
+  interactionRate?: number;
+  /** 平均观看时长（秒） */
+  avgWatchDuration?: number;
 }
 
 /**

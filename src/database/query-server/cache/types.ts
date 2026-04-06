@@ -103,6 +103,25 @@ export interface FavoriteVideoIndex {
   addedAt: number;
 }
 
+export interface WatchHistoryIndex {
+  historyEntryId: ID;
+  videoId: ID;
+  platform: Platform;
+  bv: string;
+  title: string;
+  creatorId: ID;
+  tags: ID[];
+  duration: number;
+  publishTime: number;
+  watchTime: number;
+  endTime: number;
+  watchDuration: number;
+  videoDuration: number;
+  progress: number;
+  isComplete: number;
+  isInvalid?: boolean;
+}
+
 /**
  * 视频查询条件
  */
@@ -126,6 +145,36 @@ export interface VideoQueryCondition {
   };
   /** 是否只查询已关注的创作者的视频（可选） */
   onlyFollowingCreators?: boolean;
+}
+
+export interface WatchHistoryQueryCondition {
+  platform: Platform;
+  keyword?: string;
+  creatorKeyword?: string;
+  tagExpressions?: TagExpression[];
+  durationRange?: DurationRange;
+  publishTimeRange?: {
+    min?: number;
+    max?: number;
+  };
+  watchTimeRange?: {
+    min?: number;
+    max?: number;
+  };
+  endTimeRange?: {
+    min?: number;
+    max?: number;
+  };
+  watchDurationRange?: DurationRange;
+  progressRange?: {
+    min?: number;
+    max?: number;
+  };
+  isComplete?: 0 | 1;
+  onlyRewatched?: boolean;
+  includeInvalid?: boolean;
+  sortBy?: "endTime" | "watchTime" | "publishTime" | "watchDuration" | "progress" | "duration" | "title";
+  sortOrder?: "asc" | "desc";
 }
 
 /**

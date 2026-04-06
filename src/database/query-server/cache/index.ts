@@ -14,6 +14,8 @@ export type {
   TagExpression,
   VideoIndex,
   VideoQueryCondition,
+  WatchHistoryIndex,
+  WatchHistoryQueryCondition,
   CreatorIndex,
   IndexQuery
 } from './types.js';
