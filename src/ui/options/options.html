@@ -54,6 +54,30 @@
             </label>
             <p class="form-hint">插件会在每天零点检查图片最近访问时间，并自动清理长时间未访问的缓存</p>
           </div>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-text">标签获取间隔</span>
+              <input id="tag-fetch-interval" type="number" min="0" max="5000" class="form-input" />
+              <span class="input-suffix">毫秒</span>
+            </label>
+            <p class="form-hint">获取视频标签时的请求间隔，范围0-5000毫秒，建议200-500毫秒</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-text">API请求最小间隔</span>
+              <input id="api-min-interval" type="number" min="0" max="5000" class="form-input" />
+              <span class="input-suffix">毫秒</span>
+            </label>
+            <p class="form-hint">API请求的最小间隔时间，范围0-5000毫秒，建议500-1000毫秒</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              <span class="label-text">API请求最大间隔</span>
+              <input id="api-max-interval" type="number" min="0" max="10000" class="form-input" />
+              <span class="input-suffix">毫秒</span>
+            </label>
+            <p class="form-hint">API请求的最大间隔时间，范围0-10000毫秒，建议1000-2000毫秒</p>
+          </div>
         </div>
 
         <div class="section">

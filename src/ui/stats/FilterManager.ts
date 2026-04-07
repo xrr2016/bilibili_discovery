@@ -210,7 +210,8 @@ export class FilterManager {
         tagId: tagId,
         tagName: tagName,
         dropped: false,
-        isFilterTag: true
+        isFilterTag: true,
+        filterType: type
       }),
       onDragStart: (_, element) => {
         element.style.opacity = "0.5";
@@ -259,7 +260,8 @@ export class FilterManager {
         categoryTagIds: [...tagIds],
         dropped: false,
         isFilterTag: true,
-        isCategory: true
+        isCategory: true,
+        filterType: type
       }),
       onDragStart: (_, element) => {
         element.style.opacity = "0.5";
@@ -338,12 +340,64 @@ export class FilterManager {
       zone,
       dropEffect: "copy",
       onDrop: (context) => {
-        if (context.isFilterTag) {
-          context.dropped = true;
-          setDragContext(context);
+        // 如果是从过滤区域拖动的标签，需要处理过滤类型的转换
+        if (context.isFilterTag && context.filterType) {
+          // 如果拖动到不同类型的过滤区域，需要先从原区域移除，再添加到新区域
+          if (context.filterType !== type) {
+            if (context.tagId) {
+              // 从原过滤区域移除
+              if (context.filterType === 'include') {
+                this.removeIncludeTag(state, context.tagId);
+              } else {
+                this.removeExcludeTag(state, context.tagId);
+              }
+              // 添加到新过滤区域
+              if (type === 'include') {
+                this.addIncludeTag(state, context.tagId);
+              } else {
+                this.addExcludeTag(state, context.tagId);
+              }
+            } else if (context.isCategory && context.categoryId && context.categoryTagIds) {
+              // 处理分类标签的移动
+              if (context.filterType === 'include') {
+                this.removeIncludeCategory(state, context.categoryId);
+              } else {
+                this.removeExcludeCategory(state, context.categoryId);
+              }
+              if (type === 'include') {
+                this.addIncludeCategory(state, context.categoryId, context.categoryTagIds);
+              } else {
+                this.addExcludeCategory(state, context.categoryId, context.categoryTagIds);
+              }
+            }
+            context.dropped = true;
+            setDragContext(context);
+            refresh();
+          } else {
+            // 如果拖动到相同类型的过滤区域，不做处理
+            context.dropped = true;
+            setDragContext(context);
+          }
           return;
         }
 
+        // 处理从大分区拖动来的标签（isCategoryTag 为 true 的标签）
+        if (context.isCategoryTag && context.tagId) {
+          // 标记为已拖放，防止 onDragEnd 中删除标签
+          context.dropped = true;
+          setDragContext(context);
+
+          // 添加到过滤区域
+          if (type === 'include') {
+            this.addIncludeTag(state, context.tagId);
+          } else {
+            this.addExcludeTag(state, context.tagId);
+          }
+          refresh();
+          return;
+        }
+
+        // 处理从其他区域拖动来的标签
         if (context.isCategory && context.categoryId && context.categoryTagIds) {
           if (type === 'include') {
             this.addIncludeCategory(state, context.categoryId, context.categoryTagIds);

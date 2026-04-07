@@ -25,6 +25,8 @@ interface ApiRequestOptions {
 const DEFAULT_MIN_INTERVAL_MS = 500;
 const DEFAULT_MAX_INTERVAL_MS = 1000;
 let lastRequestAt = 0;
+let currentMinInterval = DEFAULT_MIN_INTERVAL_MS;
+let currentMaxInterval = DEFAULT_MAX_INTERVAL_MS;
 
 /**
  * Simple delay helper.
@@ -37,12 +39,14 @@ export function delay(ms: number): Promise<void> {
  * Rate limiter for API requests.
  */
 export async function rateLimiter(
-  minIntervalMs: number = DEFAULT_MIN_INTERVAL_MS,
-  maxIntervalMs: number = DEFAULT_MAX_INTERVAL_MS
+  minIntervalMs?: number,
+  maxIntervalMs?: number
 ): Promise<void> {
   const now = Date.now();
-  const baseWaitTime = Math.max(0, lastRequestAt + minIntervalMs - now);
-  const randomDelay = Math.random() * (maxIntervalMs - minIntervalMs);
+  const actualMinInterval = minIntervalMs ?? currentMinInterval;
+  const actualMaxInterval = maxIntervalMs ?? currentMaxInterval;
+  const baseWaitTime = Math.max(0, lastRequestAt + actualMinInterval - now);
+  const randomDelay = Math.random() * (actualMaxInterval - actualMinInterval);
   const waitTime = baseWaitTime + randomDelay;
   if (waitTime > 0) {
     console.log("[API] Rate limit wait", Math.round(waitTime));
@@ -56,6 +60,14 @@ export async function rateLimiter(
  */
 export function __resetRateLimiter(): void {
   lastRequestAt = 0;
+}
+
+/**
+ * Update rate limiter intervals from settings.
+ */
+export function updateRateLimiterIntervals(minInterval: number, maxInterval: number): void {
+  currentMinInterval = minInterval;
+  currentMaxInterval = maxInterval;
 }
 
 /**

@@ -34,6 +34,18 @@ export interface AppSettings {
    * 图片缓存保留天数
    */
   imageCacheRetentionDays: 7 | 30 | 180 | 365;
+  /**
+   * 获取视频标签的间隔时间（毫秒）
+   */
+  tagFetchInterval: number;
+  /**
+   * API请求最小间隔（毫秒）
+   */
+  apiMinInterval: number;
+  /**
+   * API请求最大间隔（毫秒）
+   */
+  apiMaxInterval: number;
 }
 
 interface SettingsRecord<T = unknown> {

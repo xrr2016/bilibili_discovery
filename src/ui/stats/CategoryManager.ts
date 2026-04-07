@@ -215,9 +215,16 @@ export class CategoryManager {
       createDragContext: () => ({
         tagId: tag.tagId,
         tagName: tag.name,
-        dropped: false
+        dropped: false,
+        isFilterTag: false,
+        isCategoryTag: true,
+        categoryId: category.categoryId
       }),
-      onDragEnd: () => {
+      onDragStart: (_, element) => {
+        element.style.opacity = "0.5";
+      },
+      onDragEnd: (_, element) => {
+        element.style.opacity = "1";
         setTimeout(async () => {
           const context = getDragContext();
           if (context && context.tagId === tag.tagId && !context.dropped) {
@@ -239,15 +246,17 @@ export class CategoryManager {
     bindDropZone({
       zone: tagsContainer,
       dropEffect: "copy",
-      accept: (context) => !context.isFilterTag && !context.isCategory && Boolean(context.tagId),
+      accept: (context) => !context.isCategory && Boolean(context.tagId),
       onDrop: async (context) => {
         if (!context.tagId) {
           return;
         }
 
-        await this.addTagsToCategory(category.categoryId, [context.tagId]);
+        // 标记为已拖放，防止 onDragEnd 中删除标签
         context.dropped = true;
         setDragContext(context);
+
+        await this.addTagsToCategory(category.categoryId, [context.tagId]);
         await this.renderCategories(onChanged, this.currentKeyword);
       }
     });

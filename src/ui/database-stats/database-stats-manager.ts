@@ -9,15 +9,16 @@ import { CollectionRepositoryImpl } from "../../database/implementations/collect
 import { TagRepositoryImpl } from "../../database/implementations/tag-repository.impl.js";
 import { DBUtils, STORE_NAMES } from "../../database/indexeddb/index.js";
 import { getFavoriteFolders, getCollectedFolders } from "../../api/favorite.js";
-import { getFollowedUPs } from "../../api/user.js";
+import { getFollowedUPs, getUPSeasonSeries, getFollowStat } from "../../api/user.js";
+import { getVideoTagsDetail } from "../../api/video.js";
 import type { SubscribedFavoriteFolderInfo, FavoriteFolderInfo, FollowingUp } from "../../api/types.js";
 import { getValue } from "../../database/implementations/settings-repository.impl.js";
 import { FolderProcessor } from "./folder-processor.js";
-import { showProgress, hideProgress, showStatus, updateStatValue, updateFetchButtonState, showUPProgress, hideUPProgress, updateUPFetchButtonState } from "./ui-helper.js";
+import { showProgress, hideProgress, showStatus, updateStatValue, updateFetchButtonState, showUPProgress, hideUPProgress, updateUPFetchButtonState, showUPDetailProgress, hideUPDetailProgress } from "./ui-helper.js";
 import type { ProgressCallback } from "./types.js";
 import { RateLimitError } from "../../api/request.js";
 import type { Creator } from "../../database/types/creator.js";
-import { Platform } from "../../database/types/base.js";
+import { Platform,TagSource } from "../../database/types/base.js";
 
 /**
  * 数据库统计管理器类
@@ -276,13 +277,17 @@ export class DatabaseStatsManager {
     updateUPFetchButtonState(true);
 
     try {
-      showUPProgress(0, 100, '正在获取已关注UP主列表...');
+      // 先获取总关注数
+      const statInfo = await getFollowStat(parseInt(uid));
+      const totalFollowing = statInfo?.following || 0;
+
+      showUPProgress(0, totalFollowing || 100, '正在获取已关注UP主列表...');
 
       const allUPs: FollowingUp[] = [];
       let page = 1;
       let hasMore = true;
 
-      // 分页获取所有已关注的UP主
+      // 分页获取所有已关注的UP主（使用第一个进度条）
       while (hasMore && !this.isPausedUP) {
         const { upList, hasMore: more } = await getFollowedUPs(
           parseInt(uid),
@@ -293,13 +298,12 @@ export class DatabaseStatsManager {
         allUPs.push(...upList);
         hasMore = more;
 
-        if (hasMore) {
-          showUPProgress(
-            page,
-            100,
-            `正在获取UP主列表: 已获取 ${allUPs.length} 个UP主...`
-          );
-        }
+        // 更新第一个进度条
+        showUPProgress(
+          allUPs.length,
+          totalFollowing || 100,
+          `正在获取UP主列表: 已获取 ${allUPs.length}${totalFollowing > 0 ? `/${totalFollowing}` : ''} 个UP主...`
+        );
 
         page++;
 
@@ -312,18 +316,22 @@ export class DatabaseStatsManager {
       if (this.isPausedUP) {
         showStatus(`已暂停，已获取 ${allUPs.length} 个UP主`, 'info');
         hideUPProgress();
+        hideUPDetailProgress();
         return;
       }
 
       if (allUPs.length === 0) {
         showStatus('未找到已关注的UP主', 'error');
         hideUPProgress();
+        hideUPDetailProgress();
         return;
       }
 
-      // 处理每个UP主的信息
+      // 处理每个UP主的信息（使用第二个进度条）
       let processedCount = 0;
-      const creatorsToUpsert: Creator[] = [];
+      let startTime = Date.now();
+
+      showUPDetailProgress(0, allUPs.length, '开始处理UP主详细信息...');
 
       for (const up of allUPs) {
         if (this.isPausedUP) {
@@ -331,13 +339,42 @@ export class DatabaseStatsManager {
           break;
         }
 
-        showUPProgress(
+        // 计算当前预估时间（如果已有处理过的UP主）
+        let timeStr = '';
+        if (processedCount > 0) {
+          const elapsedTime = Date.now() - startTime;
+          const avgTimePerUp = elapsedTime / processedCount;
+          const remainingCount = allUPs.length - processedCount;
+          const estimatedRemainingTime = Math.round(avgTimePerUp * remainingCount / 1000); // 转换为秒
+
+          // 格式化剩余时间
+          if (estimatedRemainingTime >= 60) {
+            const minutes = Math.floor(estimatedRemainingTime / 60);
+            const seconds = estimatedRemainingTime % 60;
+            timeStr = `${minutes}分${seconds}秒`;
+          } else {
+            timeStr = `${estimatedRemainingTime}秒`;
+          }
+        }
+
+        // 更新第二个进度条（显示当前正在处理的UP主和预估时间）
+        showUPDetailProgress(
           processedCount,
           allUPs.length,
-          `正在处理UP主: ${up.uname} (${processedCount + 1}/${allUPs.length})`
+          `正在处理UP主: ${up.uname} (${processedCount + 1}/${allUPs.length})${timeStr ? ` - 预计剩余: ${timeStr}` : ''}`
         );
 
         try {
+          // 检查UP主是否已存在
+          const existingCreator = await this.creatorRepo.getCreator(up.mid);
+          
+          // 如果UP主已存在且标签数量大于15个，则跳过
+          if (existingCreator && existingCreator.tagWeights.length > 15) {
+            console.log(`[DatabaseStatsManager] UP主 ${up.uname} 已存在且标签数量(${existingCreator.tagWeights.length})大于5，跳过`);
+            processedCount++;
+            continue;
+          }
+
           // 构建Creator对象（只使用关注列表API返回的基本信息）
           // 暂时只保存头像URL，不下载头像图片
           const creator: Creator = {
@@ -355,27 +392,67 @@ export class DatabaseStatsManager {
             updatedAt: Date.now()
           };
 
-          creatorsToUpsert.push(creator);
-
-          // 每处理20个UP主批量保存一次
-          if (creatorsToUpsert.length >= 20) {
-            await this.creatorRepo.upsertCreators(creatorsToUpsert);
-            creatorsToUpsert.length = 0;
+          // 如果UP主不存在,先保存到数据库
+          if (!existingCreator) {
+            await this.creatorRepo.upsertCreator(creator);
           }
+
+          // 获取UP主的视频系列列表
+          try {
+            const videos = await getUPSeasonSeries(up.mid, 1, 10);
+            
+            // 获取标签获取间隔设置
+            const tagFetchInterval = await getValue<number>('tagFetchInterval') ?? 20;
+            
+            // 为每个视频获取标签
+            for (const video of videos) {
+              try {
+                const tags = await getVideoTagsDetail(video.bvid);
+                
+                // 将标签添加到UP主
+                for (const tag of tags) {
+                  try {
+                    // 创建或获取标签
+                    const tagId = await this.tagRepo.createTagWithId(tag.tag_id, tag.tag_name,TagSource.SYSTEM);
+                    
+                    // 添加标签到UP主
+                    await this.creatorRepo.addTag(up.mid, {
+                      tagId,
+                      name: tag.tag_name,
+                      source: TagSource.SYSTEM,
+                    });
+                  } catch (tagError) {
+                    console.error(`[DatabaseStatsManager] 添加标签失败: ${tag.tag_name}`, tagError);
+                  }
+                }
+                
+                // 添加延迟避免触发风控
+                await new Promise(resolve => setTimeout(resolve, tagFetchInterval));
+              } catch (videoError) {
+                console.error(`[DatabaseStatsManager] 获取视频标签失败: ${video.bvid}`, videoError);
+                throw videoError; // 重新抛出错误以触发外层catch
+              }
+            }
+          } catch (videoListError) {
+            console.error(`[DatabaseStatsManager] 获取UP主视频列表失败: ${up.uname}`, videoListError);
+            throw videoListError; // 重新抛出错误以触发外层catch
+          }
+
+          // 注意: 每个UP主在添加标签时已经通过addTag方法保存到数据库,这里不需要再保存
 
           processedCount++;
         } catch (error) {
           console.error(`[DatabaseStatsManager] 处理UP主失败: ${up.uname}`, error);
+          // 如果是API错误，直接结束并返回警告
+          if (error instanceof Error && (error.message.includes('403') || error.message.includes('风控'))) {
+            showStatus(`API错误: ${error.message}，已停止获取UP主数据`, 'error');
+            break;
+          }
         }
       }
 
-      // 保存剩余的UP主
-      if (creatorsToUpsert.length > 0) {
-        await this.creatorRepo.upsertCreators(creatorsToUpsert);
-      }
-
       if (!this.isPausedUP) {
-        showUPProgress(100, 100, '完成！');
+        showUPDetailProgress(allUPs.length, allUPs.length, '完成！');
         showStatus(`成功处理 ${processedCount} 个UP主`, 'success');
         // 重新加载统计数据
         await this.loadStats();
@@ -395,7 +472,10 @@ export class DatabaseStatsManager {
       this.isPausedUP = false;
       this.abortControllerUP = null;
       updateUPFetchButtonState(false);
-      setTimeout(() => hideUPProgress(), 2000);
+      setTimeout(() => {
+        hideUPProgress();
+        hideUPDetailProgress();
+      }, 2000);
     }
   }
 }

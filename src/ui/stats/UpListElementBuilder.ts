@@ -298,7 +298,11 @@ export class UpListElementBuilder implements IUpListElementBuilder {
     creatorElement.addEventListener('dragover', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      creatorElement.classList.add('drag-over');
+      const context = getDragContext();
+      // 只有用户标签才显示蓝色框，系统标签不显示
+      if (context && !context.isSystemTag) {
+        creatorElement.classList.add('drag-over');
+      }
     });
 
     // 拖拽离开事件

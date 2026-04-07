@@ -89,6 +89,27 @@
       <span id="migrate-message"></span>
     </div>
 
+    <h2>标签 API 测试</h2>
+    <div>
+      <button id="start-tag-api-test-btn">开始测试</button>
+      <button id="stop-tag-api-test-btn" disabled>停止</button>
+    </div>
+    <div>
+      <span>进度：</span>
+      <span id="tag-api-test-status">等待开始...</span>
+      <span id="tag-api-test-percent">0%</span>
+    </div>
+    <div>
+      <span>已处理：</span>
+      <span id="tag-api-test-processed-count">0</span>
+      <span>总数：</span>
+      <span id="tag-api-test-total-count">0</span>
+    </div>
+    <div>
+      <span id="tag-api-test-message"></span>
+    </div>
+    <div id="tag-api-test-results"></div>
+
     <h2>测试数据生成</h2>
     <div>
       <label>
@@ -126,6 +147,7 @@
       <span id="test-data-message"></span>
     </div>
 
+    <script type="module" src="./tag-api-test.ts"></script>
     <script type="module" src="./test-tools.ts"></script>
   </body>
 </html>

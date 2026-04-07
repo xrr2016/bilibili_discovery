@@ -133,6 +133,44 @@ export function hideUPProgress(): void {
 }
 
 /**
+ * 显示UP主详细信息进度条
+ * @param current 当前进度值
+ * @param total 总进度值
+ * @param message 进度消息
+ */
+export function showUPDetailProgress(current: number, total: number, message: string): void {
+  const container = document.getElementById('up-detail-progress-container');
+  const textElement = document.getElementById('up-detail-progress-text');
+  const percentElement = document.getElementById('up-detail-progress-percent');
+  const fillElement = document.getElementById('up-detail-progress-fill');
+
+  if (container) {
+    container.style.display = 'block';
+  }
+  if (textElement) {
+    textElement.textContent = message;
+  }
+  if (percentElement) {
+    const percent = Math.round((current / total) * 100);
+    percentElement.textContent = `${percent}%`;
+  }
+  if (fillElement) {
+    const percent = Math.round((current / total) * 100);
+    fillElement.style.width = `${percent}%`;
+  }
+}
+
+/**
+ * 隐藏UP主详细信息进度条
+ */
+export function hideUPDetailProgress(): void {
+  const container = document.getElementById('up-detail-progress-container');
+  if (container) {
+    container.style.display = 'none';
+  }
+}
+
+/**
  * 更新获取UP主按钮状态
  * @param isFetching 是否正在获取
  */

@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS, loadSettings, normalizeSettings, saveSettings } from "./settings.js";
 import { initThemedPage } from "../../themes/index.js";
+import { updateRateLimiterIntervals } from "../../api/request.js";
 
 declare const chrome: { runtime: { getURL: (path: string) => string } };
 
@@ -25,6 +26,9 @@ function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>): void {
   const apiBaseUrlEl = document.getElementById("api-base-url") as HTMLInputElement | null;
   const apiModelEl = document.getElementById("api-model") as HTMLInputElement | null;
   const apiKeyEl = document.getElementById("api-key") as HTMLInputElement | null;
+  const tagFetchIntervalEl = document.getElementById("tag-fetch-interval") as HTMLInputElement | null;
+  const apiMinIntervalEl = document.getElementById("api-min-interval") as HTMLInputElement | null;
+  const apiMaxIntervalEl = document.getElementById("api-max-interval") as HTMLInputElement | null;
 
   if (cacheHoursEl) cacheHoursEl.value = String(settings.cacheHours);
   if (userIdEl && settings.userId) userIdEl.value = String(settings.userId);
@@ -32,6 +36,9 @@ function fillForm(settings: Awaited<ReturnType<typeof loadSettings>>): void {
   if (apiBaseUrlEl) apiBaseUrlEl.value = settings.apiBaseUrl;
   if (apiModelEl) apiModelEl.value = settings.apiModel;
   if (apiKeyEl) apiKeyEl.value = settings.apiKey;
+  if (tagFetchIntervalEl) tagFetchIntervalEl.value = String(settings.tagFetchInterval);
+  if (apiMinIntervalEl) apiMinIntervalEl.value = String(settings.apiMinInterval);
+  if (apiMaxIntervalEl) apiMaxIntervalEl.value = String(settings.apiMaxInterval);
 }
 
 function readForm() {
@@ -41,6 +48,9 @@ function readForm() {
   const apiBaseUrlEl = document.getElementById("api-base-url") as HTMLInputElement | null;
   const apiModelEl = document.getElementById("api-model") as HTMLInputElement | null;
   const apiKeyEl = document.getElementById("api-key") as HTMLInputElement | null;
+  const tagFetchIntervalEl = document.getElementById("tag-fetch-interval") as HTMLInputElement | null;
+  const apiMinIntervalEl = document.getElementById("api-min-interval") as HTMLInputElement | null;
+  const apiMaxIntervalEl = document.getElementById("api-max-interval") as HTMLInputElement | null;
 
   return normalizeSettings({
     cacheHours: Number(cacheHoursEl?.value ?? DEFAULT_SETTINGS.cacheHours),
@@ -50,14 +60,19 @@ function readForm() {
     ) as 7 | 30 | 180 | 365,
     apiBaseUrl: String(apiBaseUrlEl?.value ?? DEFAULT_SETTINGS.apiBaseUrl),
     apiModel: String(apiModelEl?.value ?? DEFAULT_SETTINGS.apiModel),
-    apiKey: String(apiKeyEl?.value ?? DEFAULT_SETTINGS.apiKey)
+    apiKey: String(apiKeyEl?.value ?? DEFAULT_SETTINGS.apiKey),
+    tagFetchInterval: Number(tagFetchIntervalEl?.value ?? DEFAULT_SETTINGS.tagFetchInterval),
+    apiMinInterval: Number(apiMinIntervalEl?.value ?? DEFAULT_SETTINGS.apiMinInterval),
+    apiMaxInterval: Number(apiMaxIntervalEl?.value ?? DEFAULT_SETTINGS.apiMaxInterval)
   });
 }
 
 function bindSave(): void {
   const saveBtn = document.getElementById("save-btn");
   saveBtn?.addEventListener("click", async () => {
-    await saveSettings(readForm());
+    const settings = readForm();
+    await saveSettings(settings);
+    updateRateLimiterIntervals(settings.apiMinInterval, settings.apiMaxInterval);
     setStatus("已保存");
   });
 }
@@ -71,6 +86,7 @@ export async function initOptions(): Promise<void> {
 
   const settings = await loadSettings();
   fillForm(settings);
+  updateRateLimiterIntervals(settings.apiMinInterval, settings.apiMaxInterval);
   setLinkTarget("open-stats", "ui/stats/stats.html");
   setLinkTarget("open-api-test", "ui/api-test/api-test.html");
   setLinkTarget("open-image-compress", "ui/image-compress/image-compress.html");

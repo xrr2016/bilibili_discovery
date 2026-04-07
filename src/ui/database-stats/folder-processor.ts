@@ -11,6 +11,7 @@ import { TagRepositoryImpl } from "../../database/implementations/tag-repository
 import { getFavoriteVideos, getCollectedVideos, getSeasonVideos } from "../../api/favorite.js";
 import { getVideoTagsDetail } from "../../api/video.js";
 import { RateLimitError } from "../../api/request.js";
+import { getValue } from "../../database/implementations/settings-repository.impl.js";
 
 import type {
   FavoriteFolderInfo,
@@ -212,6 +213,8 @@ export class FolderProcessor {
         }
       } else {
         // 新视频，创建并获取tags
+        // 获取标签获取间隔设置
+        const tagFetchInterval = await getValue<number>('tagFetchInterval') ?? 200;
         const created = await this.videoRepo.createVideo(videoData);
         videoId = created.videoId;
 

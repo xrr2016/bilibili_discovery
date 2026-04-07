@@ -26,8 +26,9 @@ export function createDraggableTagPill(options: DraggableTagPillOptions): HTMLEl
   });
 
   element.addEventListener("dragend", (event) => {
-    clearDragState();
     options.onDragEnd?.(event as DragEvent, element);
+    // 延迟清除状态，给 onDragEnd 回调足够的时间处理
+    setTimeout(() => clearDragState(), 0);
   });
 
   return element;

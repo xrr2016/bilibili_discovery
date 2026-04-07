@@ -15,6 +15,8 @@ export interface DragContext {
   isFilterTag?: boolean;
   isSystemTag?: boolean;
   isCategory?: boolean;
+  filterType?: 'include' | 'exclude';
+  isCategoryTag?: boolean;
 }
 
 let dragGhost: HTMLElement | null = null;

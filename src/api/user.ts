@@ -96,13 +96,68 @@ export async function getUPInfo(
 /**
  * 获取粉丝数量
  * @param vmid 用户ID
+ * @param webLocation 位置标识，默认为 333.1387
  * @param options API请求选项
  */
 export async function getFollowStat(
   vmid: number,
+  webLocation: string = '333.1387',
   options: ApiRequestOptions = {}
 ): Promise<UserStatInfo | null> {
-  const url = `https://api.bilibili.com/x/relation/stat?vmid=${vmid}`;
-  const data = await apiRequest<{ data?: UserStatInfo }>(url, options);
-  return data?.data ?? null;
+  const url = `https://api.bilibili.com/x/relation/stat?vmid=${vmid}&web_location=${webLocation}`;
+  const data = await apiRequest<UserStatInfo>(url, options);
+  return data ?? null;
+}
+
+/**
+ * 获取UP主的视频系列列表
+ * @param mid UP主ID
+ * @param pageNum 页码，从1开始
+ * @param pageSize 每页数量，默认10
+ * @param options API请求选项
+ */
+export async function getUPSeasonSeries(
+  mid: number,
+  pageNum: number = 1,
+  pageSize: number = 10,
+  options: ApiRequestOptions = {}
+): Promise<VideoInfo[]> {
+  const url = `https://api.bilibili.com/x/polymer/web-space/home/seasons_series?mid=${mid}&page_size=${pageSize}&page_num=${pageNum}&web_location=333.1387`;
+  const data = await apiRequest<{ items_lists?: { seasons_list?: any[]; series_list?: any[] } }>(url, options);
+  
+  const seasons = data?.items_lists?.seasons_list || [];
+  const series = data?.items_lists?.series_list || [];
+  
+  // 提取所有视频信息
+  const allVideos: VideoInfo[] = [];
+  
+  const processSeasonSeries = (items: any[]) => {
+    items.forEach(item => {
+      const videos = item.archives || [];
+      videos.forEach((v: any) => {
+        allVideos.push({
+          bvid: v.bvid,
+          title: v.title,
+          pic: v.pic,
+          pubdate: v.pubdate,
+          duration: v.duration,
+          owner: {
+            mid: mid,
+            name: '',
+            face: ''
+          }
+        });
+      });
+    });
+  };
+
+  processSeasonSeries(seasons);
+  processSeasonSeries(series);
+
+  // 限制返回的视频数量为10个
+  const limitedVideos = allVideos.slice(0, 10);
+
+  console.log(`[API] Fetched UP ${mid} season/series videos, got ${allVideos.length} videos, returning ${limitedVideos.length}`);
+
+  return limitedVideos;
 }

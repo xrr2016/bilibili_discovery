@@ -6,7 +6,10 @@ export const DEFAULT_SETTINGS: Settings = {
   apiBaseUrl: "https://api.deepseek.com",
   apiModel: "deepseek-chat",
   apiKey: "",
-  imageCacheRetentionDays: 30
+  imageCacheRetentionDays: 30,
+  tagFetchInterval: 200,
+  apiMinInterval: 500,
+  apiMaxInterval: 1000
 };
 
 export function normalizeSettings(input: Partial<Settings>): Settings {
@@ -27,6 +30,12 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
     imageCacheRetentionDaysRaw === 365
       ? imageCacheRetentionDaysRaw
       : DEFAULT_SETTINGS.imageCacheRetentionDays;
+  const tagFetchIntervalRaw = Number(input.tagFetchInterval ?? DEFAULT_SETTINGS.tagFetchInterval);
+  const tagFetchInterval = Math.min(5000, Math.max(0, tagFetchIntervalRaw));
+  const apiMinIntervalRaw = Number(input.apiMinInterval ?? DEFAULT_SETTINGS.apiMinInterval);
+  const apiMinInterval = Math.min(5000, Math.max(0, apiMinIntervalRaw));
+  const apiMaxIntervalRaw = Number(input.apiMaxInterval ?? DEFAULT_SETTINGS.apiMaxInterval);
+  const apiMaxInterval = Math.min(10000, Math.max(apiMinInterval, apiMaxIntervalRaw));
 
   return {
     cacheHours,
@@ -34,7 +43,10 @@ export function normalizeSettings(input: Partial<Settings>): Settings {
     apiBaseUrl,
     apiModel,
     apiKey,
-    imageCacheRetentionDays
+    imageCacheRetentionDays,
+    tagFetchInterval,
+    apiMinInterval,
+    apiMaxInterval
   };
 }
 

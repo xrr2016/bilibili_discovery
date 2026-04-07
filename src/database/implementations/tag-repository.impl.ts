@@ -61,18 +61,16 @@ export class TagRepositoryImpl {
     try {
       await DBUtils.put(STORE_NAMES.TAGS, newTag);
     } catch (error) {
-      // 如果是 name 冲突,尝试获取已存在的标签
-      if (error instanceof Error && error.name === 'ConstraintError') {
-        const existing = await DBUtils.getOneByIndex<Tag>(
-          STORE_NAMES.TAGS,
-          'name',
-          name
-        );
-        if (existing) {
-          return existing.tagId;
-        }
-        throw error;
+      // 默认认为是命名冲突,直接尝试获取已存在的标签
+      const existing = await DBUtils.getOneByIndex<Tag>(
+        STORE_NAMES.TAGS,
+        'name',
+        name
+      );
+      if (existing) {
+        return existing.tagId;
       }
+      // 如果获取不到,重新抛出原始错误
       throw error;
     }
 

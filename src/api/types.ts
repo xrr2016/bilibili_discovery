@@ -52,6 +52,8 @@ export interface UpDetailInfo extends UpInfo {
 export interface UserStatInfo {
   mid: number;
   following: number;
+  whisper: number;
+  black: number;
   follower: number;
 }
 

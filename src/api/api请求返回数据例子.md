@@ -605,3 +605,195 @@ https://api.bilibili.com/x/v2/reply/main?oid=${oid}&type=${type}`
 
 https://api.bilibili.com/x/v1/dm/list.so?oid
 失效了,或者参数不对
+
+https://api.bilibili.com/x/space/setting?mid=102348&web_location=333.1387
+可以获取up的投稿数据等
+{
+  "code": 0,
+  "message": "OK",
+  "ttl": 1,
+  "data": {
+    "privacy": {
+      "bangumi": 1,
+      "bbq": 1,
+      "channel": 1,
+      "charge_video": 1,
+      "close_space_medal": 0,
+      "coins_video": 1,
+      "comic": 1,
+      "disable_following": 1,
+      "disable_show_fans": 0,
+      "disable_show_school": 0,
+      "dress_up": 1,
+      "fav_video": 1,
+      "groups": 1,
+      "lesson_video": 1,
+      "likes_video": 1,
+      "live_playback": 0,
+      "only_show_wearing": 0,
+      "played_game": 0,
+      "tags": 1,
+      "user_info": 1
+    },
+    "show_nft_switch": false,
+    "index_order": [
+      {
+        "id": 1,
+        "name": "我的稿件"
+      },
+      {
+        "id": 7,
+        "name": "我的视频列表"
+      },
+      {
+        "id": 8,
+        "name": "我的专栏"
+      },
+      {
+        "id": 2,
+        "name": "我的收藏夹"
+      },
+      {
+        "id": 3,
+        "name": "订阅番剧"
+      },
+      {
+        "id": 4,
+        "name": "订阅标签"
+      },
+      {
+        "id": 5,
+        "name": "最近投币的视频"
+      },
+      {
+        "id": 10,
+        "name": "最近点赞的视频"
+      },
+      {
+        "id": 9,
+        "name": "我的相簿"
+      },
+      {
+        "id": 26,
+        "name": "预约"
+      },
+      {
+        "id": 21,
+        "name": "公告"
+      },
+      {
+        "id": 22,
+        "name": "直播间"
+      },
+      {
+        "id": 23,
+        "name": "个人资料"
+      },
+      {
+        "id": 25,
+        "name": "最近玩过的游戏"
+      },
+      {
+        "id": 6,
+        "name": "我的圈子"
+      }
+    ]
+  }
+}
+
+https://api.bilibili.com/x/polymer/web-space/home/seasons_series?mid=102348&page_size=10&page_num=1&web_location=333.1387
+这个可以获取up的视频信息列表,之后可以通过tag获取来将视频的tag添加到up身上
+{
+  "code": 0,
+  "message": "OK",
+  "ttl": 1,
+  "data": {
+    "items_lists": {
+      "page": {
+        "page_num": 1,
+        "page_size": 10,
+        "total": 1
+      },
+      "seasons_list": [
+        {
+          "archives": [
+            {
+              "aid": 805047432,
+              "bvid": "BV1Dy4y137e2",
+              "ctime": 1629691871,
+              "duration": 1084,
+              "enable_vt": false,
+              "interactive_video": false,
+              "pic": "http://i2.hdslb.com/bfs/archive/1da7c530cce4ca17967cd3ee268d16905df8eda4.jpg",
+              "playback_position": 0,
+              "pubdate": 1629691871,
+              "stat": {
+                "view": 421079,
+                "vt": 0,
+                "danmaku": 971
+              },
+              "state": 0,
+              "title": "【EVA】不止是渚薰！深度解析新剧场版世界轮回的隐藏秘密【E学研究】",
+              "ugc_pay": 0,
+              "vt_display": "",
+              "is_lesson_video": 0
+            },
+            {
+              "aid": 975204894,
+              "bvid": "BV1M44y187iU",
+              "ctime": 1630127230,
+              "duration": 672,
+              "enable_vt": false,
+              "interactive_video": false,
+              "pic": "http://i2.hdslb.com/bfs/archive/d41ecb4e1a848d63e32975d2efc82ca86e07114e.jpg",
+              "playback_position": 0,
+              "pubdate": 1630127229,
+              "stat": {
+                "view": 280779,
+                "vt": 0,
+                "danmaku": 705
+              },
+              "state": 0,
+              "title": "【EVA】Adams的真相- 新剧场版的轮回世界深度考察 (其二)【E学研究】",
+              "ugc_pay": 0,
+              "vt_display": "",
+              "is_lesson_video": 0
+            },
+            {
+              "aid": 932926120,
+              "bvid": "BV1rM4y1G7SX",
+              "ctime": 1631269507,
+              "duration": 912,
+              "enable_vt": false,
+              "interactive_video": false,
+              "pic": "http://i1.hdslb.com/bfs/archive/70356dc875917f413e1e779a15d5ba36612e12f1.jpg",
+              "playback_position": 0,
+              "pubdate": 1631269507,
+              "stat": {
+                "view": 369622,
+                "vt": 0,
+                "danmaku": 950
+              },
+              "state": 0,
+              "title": "【EVA】毁灭与新生的扳机- 新剧场版的『圣枪』完全解说【E学研究】",
+              "ugc_pay": 0,
+              "vt_display": "",
+              "is_lesson_video": 0
+            },
+
+https://api.bilibili.com/x/relation/stat?vmid=355536702&web_location=333.1387
+获取指定uid的关注和粉丝信息数据,
+{
+    "code": 0,
+    "message": "0",
+    "ttl": 1,
+    "data": {
+        "mid": 355536702,
+        "following": 835,
+        "whisper": 0,
+        "black": 2,
+        "follower": 2774,
+        "fans_medal_toast": null,
+        "fans_effect": null
+    }
+}
