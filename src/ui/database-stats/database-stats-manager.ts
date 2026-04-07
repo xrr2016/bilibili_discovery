@@ -329,7 +329,6 @@ export class DatabaseStatsManager {
 
       // 处理每个UP主的信息（使用第二个进度条）
       let processedCount = 0;
-      let startTime = Date.now();
 
       showUPDetailProgress(0, allUPs.length, '开始处理UP主详细信息...');
 
@@ -339,25 +338,11 @@ export class DatabaseStatsManager {
           break;
         }
 
-        // 计算已处理经过的时间
-        const elapsedTime = Date.now() - startTime;
-        const elapsedSeconds = Math.floor(elapsedTime / 1000);
-
-        // 格式化已用时间
-        let timeStr = '';
-        if (elapsedSeconds >= 60) {
-          const minutes = Math.floor(elapsedSeconds / 60);
-          const seconds = elapsedSeconds % 60;
-          timeStr = `${minutes}分${seconds}秒`;
-        } else {
-          timeStr = `${elapsedSeconds}秒`;
-        }
-
         // 更新第二个进度条（显示当前正在处理的UP主和已用时间）
         showUPDetailProgress(
           processedCount,
           allUPs.length,
-          `正在处理UP主: ${up.uname} (${processedCount + 1}/${allUPs.length}) - 已用: ${timeStr}`
+          `正在处理UP主: ${up.uname} (${processedCount + 1}/${allUPs.length})`
         );
 
         try {

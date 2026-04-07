@@ -37,7 +37,7 @@ export class UpListElementBuilder implements IUpListElementBuilder {
     creatorElement.dataset.mid = String(creator.creatorId);
 
     // 添加头像
-    const avatarContainer = await this.createAvatarElement(creator);
+    const avatarContainer = this.createAvatarElement(creator);
     creatorElement.appendChild(avatarContainer);
 
     // 添加UP主信息
@@ -75,7 +75,7 @@ export class UpListElementBuilder implements IUpListElementBuilder {
   /**
    * 创建头像元素
    */
-  private async createAvatarElement(creator: Creator): Promise<HTMLElement> {
+  private createAvatarElement(creator: Creator): HTMLElement {
     const avatarContainer = document.createElement("div");
     avatarContainer.className = "up-avatar-container";
 
@@ -83,26 +83,39 @@ export class UpListElementBuilder implements IUpListElementBuilder {
     avatarImg.className = "up-avatar";
     avatarImg.alt = creator.name;
     avatarImg.loading = "lazy";
-
-    // 尝试加载头像
-    try {
-      const avatarBlob = await this.services.creatorRepo.getAvatarBinary(creator.creatorId);
-      if (avatarBlob) {
-        const avatarUrl = URL.createObjectURL(avatarBlob);
-        avatarImg.src = avatarUrl;
-        avatarImg.onload = () => {
-          URL.revokeObjectURL(avatarUrl);
-        };
-      } else {
-        avatarImg.src = this.getDefaultAvatar();
-      }
-    } catch (error) {
-      console.error(`[UpListElementBuilder] 加载头像失败 (creatorId: ${creator.creatorId}):`, error);
-      avatarImg.src = this.getDefaultAvatar();
-    }
+    avatarImg.src = this.getDefaultAvatar();
 
     avatarContainer.appendChild(avatarImg);
+    void this.loadAvatarAsync(creator, avatarImg);
     return avatarContainer;
+  }
+
+  /**
+   * 异步加载头像，避免阻塞列表渲染和翻页响应
+   */
+  private async loadAvatarAsync(creator: Creator, avatarImg: HTMLImageElement): Promise<void> {
+    try {
+      const avatarBlob = await this.services.creatorRepo.getAvatarBinary(creator.creatorId);
+      if (!avatarBlob) {
+        return;
+      }
+
+      const avatarUrl = URL.createObjectURL(avatarBlob);
+      avatarImg.onload = () => {
+        URL.revokeObjectURL(avatarUrl);
+        avatarImg.onload = null;
+        avatarImg.onerror = null;
+      };
+      avatarImg.onerror = () => {
+        URL.revokeObjectURL(avatarUrl);
+        avatarImg.onload = null;
+        avatarImg.onerror = null;
+        avatarImg.src = this.getDefaultAvatar();
+      };
+      avatarImg.src = avatarUrl;
+    } catch (error) {
+      console.error(`[UpListElementBuilder] 加载头像失败 (creatorId: ${creator.creatorId}):`, error);
+    }
   }
 
   /**
