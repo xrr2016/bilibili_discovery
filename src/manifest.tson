@@ -11,9 +11,9 @@
     "https://*.hdslb.com/*"
   ],
   "icons": {
-    "16": "icons/icon16.svg",
-    "48": "icons/icon.svg",
-    "128": "icons/icon.svg"
+    "16": "icons/logo16.png",
+    "48": "icons/logo48.png",
+    "128": "icons/logo128.png"
   },
   "background": {
     "service_worker": "background/service-worker.js",
