@@ -113,7 +113,10 @@ export class DatabaseStatsManager {
       const allFolders = [...folders, ...collectedFolders];
 
       if (allFolders.length === 0) {
-        showStatus('未找到收藏夹', 'error');
+        showStatus(
+          '未找到收藏夹。可能原因：①您未创建收藏夹；②在B站"隐私设置"中关闭了"收藏夹对陌生人可见"。请检查B站账户设置。',
+          'warning'
+        );
         hideProgress();
         return;
       }
@@ -321,7 +324,10 @@ export class DatabaseStatsManager {
       }
 
       if (allUPs.length === 0) {
-        showStatus('未找到已关注的UP主', 'error');
+        showStatus(
+          '未找到已关注的UP主。可能原因：①您尚未关注任何UP主；②在B站"隐私设置"中关闭了"关注列表对陌生人可见"。请检查B站账户设置。',
+          'warning'
+        );
         hideUPProgress();
         hideUPDetailProgress();
         return;

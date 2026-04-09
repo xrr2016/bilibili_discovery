@@ -71,3 +71,11 @@ export type {
 export type {
   DailyWatchStats
 } from './daily-watch-stats.js';
+
+// Interest Analysis 类型
+export type {
+  InterestTopic,
+  TagInterestMapping,
+  InterestContributionEvent,
+  InterestSnapshot
+} from './interest.js';

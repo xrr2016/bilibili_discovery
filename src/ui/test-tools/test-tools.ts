@@ -10,6 +10,7 @@ import { TagRepositoryImpl } from '../../database/implementations/tag-repository
 import { CollectionItemRepositoryImpl } from '../../database/implementations/collection-item-repository.impl.js';
 import { ImageRepositoryImpl } from '../../database/implementations/image-repository.impl.js';
 import { WatchEventRepositoryImpl } from '../../database/implementations/watch-event-repository.impl.js';
+import { InterestAnalysisImpl } from '../../database/implementations/interest-analysis.impl.js';
 import { Platform, TagSource } from '../../database/types/base.js';
 import { ImagePurpose } from '../../database/types/image.js';
 import { generateId } from '../../database/implementations/id-generator.js';
@@ -223,6 +224,7 @@ class TestDataGenerator {
   private collectionItemRepository: CollectionItemRepositoryImpl;
   private imageRepository: ImageRepositoryImpl;
   private watchEventRepository: WatchEventRepositoryImpl;
+  private interestAnalysis: InterestAnalysisImpl;
 
   private existingCreators: any[] = [];
   private existingTags: any[] = [];
@@ -237,6 +239,7 @@ class TestDataGenerator {
     this.collectionItemRepository = new CollectionItemRepositoryImpl();
     this.imageRepository = new ImageRepositoryImpl();
     this.watchEventRepository = new WatchEventRepositoryImpl();
+    this.interestAnalysis = new InterestAnalysisImpl();
   }
 
   // 初始化现有数据
@@ -796,6 +799,78 @@ class TestDataGenerator {
 
     console.log('[TestDataGenerator] 收藏夹计数器更新完成');
   }
+
+  // ============ 兴趣分析调试方法 ============
+
+  // 初始化兴趣主题
+  async initializeInterestTopics(): Promise<void> {
+    console.log('[InterestAnalysis Debug] 开始初始化兴趣主题...');
+    await this.interestAnalysis.ensureDefaultTopics();
+    console.log('[InterestAnalysis Debug] 兴趣主题初始化完成');
+  }
+
+  // 回填标签映射
+  async backfillTagMappings(useLLM: boolean = false): Promise<number> {
+    console.log('[InterestAnalysis Debug] 开始回填标签映射...');
+    const processedCount = await this.interestAnalysis.backfillTagMappings(useLLM);
+    console.log(`[InterestAnalysis Debug] 标签映射回填完成，处理了 ${processedCount} 个标签`);
+    return processedCount;
+  }
+
+  // 回填贡献事件
+  async backfillContributionEvents(useLLM: boolean = false): Promise<{ watchEvents: number; favoriteEvents: number }> {
+    console.log('[InterestAnalysis Debug] 开始回填贡献事件...');
+    const result = await this.interestAnalysis.backfillContributionEvents(useLLM);
+    console.log(`[InterestAnalysis Debug] 贡献事件回填完成，观看事件: ${result.watchEvents}, 收藏事件: ${result.favoriteEvents}`);
+    return result;
+  }
+
+  // 重建快照
+  async rebuildSnapshots(platform: Platform = Platform.BILIBILI): Promise<{ sevenDaySnapshots: number; thirtyDaySnapshots: number }> {
+    console.log('[InterestAnalysis Debug] 开始重建快照...');
+    const result = await this.interestAnalysis.rebuildAllSnapshots(platform);
+    console.log(`[InterestAnalysis Debug] 快照重建完成，7天快照: ${result.sevenDaySnapshots}, 30天快照: ${result.thirtyDaySnapshots}`);
+    return result;
+  }
+
+  // 重建最近快照
+  async rebuildRecentSnapshots(days: number = 30, platform: Platform = Platform.BILIBILI): Promise<{ sevenDaySnapshots: number; thirtyDaySnapshots: number }> {
+    console.log(`[InterestAnalysis Debug] 开始重建最近 ${days} 天的快照...`);
+    const result = await this.interestAnalysis.rebuildRecentSnapshots(days, platform);
+    console.log(`[InterestAnalysis Debug] 最近快照重建完成，7天快照: ${result.sevenDaySnapshots}, 30天快照: ${result.thirtyDaySnapshots}`);
+    return result;
+  }
+
+  // 执行完整兴趣分析初始化流程
+  async initializeInterestAnalysis(useLLM: boolean = false, platform: Platform = Platform.BILIBILI): Promise<void> {
+    console.log('[InterestAnalysis Debug] 开始执行完整兴趣分析初始化流程...');
+
+    try {
+      // 1. 初始化兴趣主题
+      console.log('[InterestAnalysis Debug] 步骤1: 初始化兴趣主题');
+      await this.initializeInterestTopics();
+
+      // 2. 回填标签映射
+      console.log('[InterestAnalysis Debug] 步骤2: 回填标签映射');
+      const tagCount = await this.backfillTagMappings(useLLM);
+
+      // 3. 回填贡献事件
+      console.log('[InterestAnalysis Debug] 步骤3: 回填贡献事件');
+      const eventResult = await this.backfillContributionEvents(useLLM);
+
+      // 4. 重建快照
+      console.log('[InterestAnalysis Debug] 步骤4: 重建快照');
+      const snapshotResult = await this.rebuildSnapshots(platform);
+
+      console.log('[InterestAnalysis Debug] 完整兴趣分析初始化流程完成');
+      console.log(`[InterestAnalysis Debug] 统计: 标签映射 ${tagCount} 个, 观看事件 ${eventResult.watchEvents} 个, 收藏事件 ${eventResult.favoriteEvents} 个`);
+      console.log(`[InterestAnalysis Debug] 快照: 7天 ${snapshotResult.sevenDaySnapshots} 个, 30天 ${snapshotResult.thirtyDaySnapshots} 个`);
+
+    } catch (error) {
+      console.error('[InterestAnalysis Debug] 初始化流程失败:', error);
+      throw error;
+    }
+  }
 }
 
 // 初始化页面
@@ -924,6 +999,134 @@ document.addEventListener('DOMContentLoaded', async () => {
     } finally {
       // 启用按钮
       updateStatsBtn.disabled = false;
+    }
+  });
+
+  // ============ 兴趣分析调试事件监听器 ============
+
+  // 获取兴趣分析UI元素
+  const interestPlatformSelect = document.getElementById('interest-platform') as HTMLSelectElement;
+  const interestUseLLMCheckbox = document.getElementById('interest-use-llm') as HTMLInputElement;
+  const initInterestTopicsBtn = document.getElementById('init-interest-topics-btn') as HTMLButtonElement;
+  const backfillTagMappingsBtn = document.getElementById('backfill-tag-mappings-btn') as HTMLButtonElement;
+  const backfillContributionEventsBtn = document.getElementById('backfill-contribution-events-btn') as HTMLButtonElement;
+  const rebuildSnapshotsBtn = document.getElementById('rebuild-snapshots-btn') as HTMLButtonElement;
+  const rebuildRecentSnapshotsBtn = document.getElementById('rebuild-recent-snapshots-btn') as HTMLButtonElement;
+  const initFullInterestAnalysisBtn = document.getElementById('init-full-interest-analysis-btn') as HTMLButtonElement;
+  const interestStatus = document.getElementById('interest-status') as HTMLSpanElement;
+  const interestMessage = document.getElementById('interest-message') as HTMLSpanElement;
+
+  // 初始化兴趣主题按钮
+  initInterestTopicsBtn.addEventListener('click', async () => {
+    initInterestTopicsBtn.disabled = true;
+    interestStatus.textContent = '正在初始化兴趣主题...';
+    interestMessage.textContent = '';
+
+    try {
+      await testDataGenerator.initializeInterestTopics();
+      interestStatus.textContent = '完成';
+      interestMessage.textContent = '兴趣主题初始化成功';
+    } catch (error) {
+      interestStatus.textContent = '失败';
+      interestMessage.textContent = `错误: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      initInterestTopicsBtn.disabled = false;
+    }
+  });
+
+  // 回填标签映射按钮
+  backfillTagMappingsBtn.addEventListener('click', async () => {
+    backfillTagMappingsBtn.disabled = true;
+    const useLLM = interestUseLLMCheckbox.checked;
+    interestStatus.textContent = '正在回填标签映射...';
+    interestMessage.textContent = '';
+
+    try {
+      const count = await testDataGenerator.backfillTagMappings(useLLM);
+      interestStatus.textContent = '完成';
+      interestMessage.textContent = `成功回填 ${count} 个标签映射`;
+    } catch (error) {
+      interestStatus.textContent = '失败';
+      interestMessage.textContent = `错误: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      backfillTagMappingsBtn.disabled = false;
+    }
+  });
+
+  // 回填贡献事件按钮
+  backfillContributionEventsBtn.addEventListener('click', async () => {
+    backfillContributionEventsBtn.disabled = true;
+    const useLLM = interestUseLLMCheckbox.checked;
+    interestStatus.textContent = '正在回填贡献事件...';
+    interestMessage.textContent = '';
+
+    try {
+      const result = await testDataGenerator.backfillContributionEvents(useLLM);
+      interestStatus.textContent = '完成';
+      interestMessage.textContent = `成功回填 ${result.watchEvents} 个观看事件，${result.favoriteEvents} 个收藏事件`;
+    } catch (error) {
+      interestStatus.textContent = '失败';
+      interestMessage.textContent = `错误: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      backfillContributionEventsBtn.disabled = false;
+    }
+  });
+
+  // 重建快照按钮
+  rebuildSnapshotsBtn.addEventListener('click', async () => {
+    rebuildSnapshotsBtn.disabled = true;
+    const platform = interestPlatformSelect.value as Platform;
+    interestStatus.textContent = '正在重建快照...';
+    interestMessage.textContent = '';
+
+    try {
+      const result = await testDataGenerator.rebuildSnapshots(platform);
+      interestStatus.textContent = '完成';
+      interestMessage.textContent = `成功重建 ${result.sevenDaySnapshots} 个7天快照，${result.thirtyDaySnapshots} 个30天快照`;
+    } catch (error) {
+      interestStatus.textContent = '失败';
+      interestMessage.textContent = `错误: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      rebuildSnapshotsBtn.disabled = false;
+    }
+  });
+
+  // 重建最近快照按钮
+  rebuildRecentSnapshotsBtn.addEventListener('click', async () => {
+    rebuildRecentSnapshotsBtn.disabled = true;
+    const platform = interestPlatformSelect.value as Platform;
+    interestStatus.textContent = '正在重建最近快照...';
+    interestMessage.textContent = '';
+
+    try {
+      const result = await testDataGenerator.rebuildRecentSnapshots(30, platform);
+      interestStatus.textContent = '完成';
+      interestMessage.textContent = `成功重建 ${result.sevenDaySnapshots} 个7天快照，${result.thirtyDaySnapshots} 个30天快照`;
+    } catch (error) {
+      interestStatus.textContent = '失败';
+      interestMessage.textContent = `错误: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      rebuildRecentSnapshotsBtn.disabled = false;
+    }
+  });
+
+  // 完整初始化按钮
+  initFullInterestAnalysisBtn.addEventListener('click', async () => {
+    initFullInterestAnalysisBtn.disabled = true;
+    const platform = interestPlatformSelect.value as Platform;
+    const useLLM = interestUseLLMCheckbox.checked;
+    interestStatus.textContent = '正在执行完整初始化...';
+    interestMessage.textContent = '';
+
+    try {
+      await testDataGenerator.initializeInterestAnalysis(useLLM, platform);
+      interestStatus.textContent = '完成';
+      interestMessage.textContent = '兴趣分析完整初始化成功';
+    } catch (error) {
+      interestStatus.textContent = '失败';
+      interestMessage.textContent = `错误: ${error instanceof Error ? error.message : String(error)}`;
+    } finally {
+      initFullInterestAnalysisBtn.disabled = false;
     }
   });
 });

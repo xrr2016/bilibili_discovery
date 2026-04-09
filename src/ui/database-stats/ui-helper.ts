@@ -58,7 +58,7 @@ export function updateStatValue(elementId: string, value: number): void {
  * @param message 状态消息
  * @param type 状态类型
  */
-export function showStatus(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
+export function showStatus(message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info'): void {
   const statusElement = document.getElementById('status');
   if (statusElement) {
     statusElement.textContent = message;

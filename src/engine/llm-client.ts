@@ -136,3 +136,16 @@ export async function chatComplete(
     throw new LlmRequestError("Request error");
   }
 }
+
+/**
+ * 检查LLM是否已配置
+ */
+export async function isLlmConfigured(): Promise<boolean> {
+  try {
+    const settings = await loadSettings();
+    return !!settings.apiKey && !!settings.apiBaseUrl && !!settings.apiModel;
+  } catch (error) {
+    console.error("[LLM] Failed to check configuration:", error);
+    return false;
+  }
+}

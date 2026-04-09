@@ -36,6 +36,9 @@ import {
 import {
   DailyWatchStatsRepositoryImpl
 } from '../../database/implementations/daily-watch-stats-repository.impl.js';
+import {
+  InterestAnalysisImpl
+} from '../../database/implementations/interest-analysis.impl.js';
 import { 
   Platform,
   TagSource,
@@ -60,6 +63,7 @@ export class DataProcessor {
   private imageRepo: ImageRepositoryImpl;
   private upInteractionRepo: UPInteractionRepositoryImpl;
   private dailyWatchStatsRepo: DailyWatchStatsRepositoryImpl;
+  private interestAnalysis: InterestAnalysisImpl;
 
   private dbInitialized = false;
   private initPromise: Promise<void> | null = null;
@@ -73,6 +77,7 @@ export class DataProcessor {
     this.tagRepo = new TagRepositoryImpl();
     this.upInteractionRepo = new UPInteractionRepositoryImpl();
     this.dailyWatchStatsRepo = new DailyWatchStatsRepositoryImpl();
+    this.interestAnalysis = new InterestAnalysisImpl();
   }
 
   /**
@@ -275,6 +280,9 @@ export class DataProcessor {
           await this.processVideoTags(existingVideo.videoId, data.tags);
           // 将视频标签添加到UP主的系统标签
           await this.addTagsToCreator(data.creatorId, data.tags);
+          
+          // 兴趣分析：确保标签可被识别，轻量补齐映射
+          await this.ensureInterestTagMappings(data.tags, false); // 不使用LLM，保持轻量
         }
       } else {
         logger.debug('[DataProcessor] 视频数据未发生变化，跳过更新');
@@ -315,6 +323,9 @@ export class DataProcessor {
       // 将视频标签添加到UP主的系统标签
       if (data.tags && data.tags.length > 0) {
         await this.addTagsToCreator(data.creatorId, data.tags);
+        
+        // 兴趣分析：确保标签可被识别，轻量补齐映射
+        await this.ensureInterestTagMappings(data.tags, false); // 不使用LLM，保持轻量
       }
     }
   }
@@ -406,11 +417,19 @@ export class DataProcessor {
 
     // 更新每日观看统计
     await this.updateDailyWatchStats(data);
-  }
 
-  /**
-   * 处理收藏事件数据
-   */
+    // 兴趣分析：记录观看贡献事件
+    try {
+      // 获取完整的观看事件数据
+      const watchEvent = await this.watchEventRepo.getWatchEventByVideoId(videoId);
+      if (watchEvent) {
+        await this.interestAnalysis.recordWatchContribution(watchEvent, false); // 不使用LLM，保持轻量
+      }
+    } catch (error) {
+      logger.warn('[DataProcessor] 记录观看贡献事件失败:', error);
+      // 不抛出错误，避免影响主要数据处理流程
+    }
+  }
   async processFavoriteEventData(data: FavoriteStatusEvent): Promise<void> {
     logger.debug('[DataProcessor] 处理收藏事件数据:', data);
 
@@ -431,6 +450,15 @@ export class DataProcessor {
     if (data.action === 'add') {
       await this.ensureUPInteractionExists(creatorId, Platform.BILIBILI);
       await this.upInteractionRepo.recordFavorite(creatorId);
+      
+      // 兴趣分析：记录收藏贡献事件
+      try {
+        await this.interestAnalysis.recordFavoriteContribution(videoId, false); // 不使用LLM，保持轻量
+      } catch (error) {
+        logger.warn('[DataProcessor] 记录收藏贡献事件失败:', error);
+        // 不抛出错误，避免影响主要数据处理流程
+      }
+      
       await this.syncFavoriteCollections(videoId, folderNames, 'add');
       return;
     }
@@ -804,5 +832,34 @@ export class DataProcessor {
       videoIds,
       isComplete
     });
+  }
+
+  /**
+   * 确保兴趣标签映射存在
+   * 对新出现的标签进行轻量映射补齐，不使用LLM以保持性能
+   */
+  private async ensureInterestTagMappings(tagNames: string[], useLLM: boolean): Promise<void> {
+    if (!tagNames || tagNames.length === 0) {
+      return;
+    }
+
+    try {
+      logger.debug('[DataProcessor] 确保兴趣标签映射:', { tagNames, useLLM });
+
+      // 对未映射的标签进行轻量映射补齐
+      for (const tagName of tagNames) {
+        try {
+          await this.interestAnalysis.resolveTagMeaning(0, tagName, useLLM);
+        } catch (error) {
+          logger.warn(`[DataProcessor] 标签映射失败: ${tagName}`, error);
+          // 继续处理其他标签，不因单个标签失败而中断
+        }
+      }
+
+      logger.debug('[DataProcessor] 标签映射补齐完成');
+    } catch (error) {
+      logger.warn('[DataProcessor] 确保兴趣标签映射失败:', error);
+      // 不抛出错误，避免影响主要数据处理流程
+    }
   }
 }

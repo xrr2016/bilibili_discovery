@@ -12,7 +12,7 @@ export const DB_NAME = 'DiscoveryDB';
  * 数据库版本
  * 每次修改数据库结构时需要递增此版本号
  */
-export const DB_VERSION = 9;
+export const DB_VERSION = 10;
 
 /**
  * 对象存储名称定义
@@ -42,6 +42,13 @@ export const STORE_NAMES = {
   WATCH_TIME_DISTRIBUTIONS: 'watch_time_distributions',
   UP_INTERACTIONS: 'up_interactions',
   DAILY_WATCH_STATS: 'daily_watch_stats',
+  
+  // Interest Analysis Layer
+  INTEREST_TOPICS: 'interest_topics',
+  TAG_INTEREST_MAPPINGS: 'tag_interest_mappings',
+  INTEREST_CONTRIBUTION_EVENTS: 'interest_contribution_events',
+  INTEREST_SNAPSHOTS: 'interest_snapshots',
+  
   // App Layer
   APP_META: 'app_meta'
 } as const;
@@ -118,6 +125,35 @@ export const INDEX_DEFINITIONS = {
     { name: 'statsId', keyPath: 'statsId', options: { unique: true } },
     { name: 'dateKey', keyPath: 'dateKey', options: { unique: false } },
     { name: 'platform', keyPath: 'platform', options: { unique: false } }
+  ],
+
+  // Interest Analysis Layer
+  [STORE_NAMES.INTEREST_TOPICS]: [
+    { name: 'topicId', keyPath: 'topicId', options: { unique: true } },
+    { name: 'name', keyPath: 'name', options: { unique: true } },
+    { name: 'isActive', keyPath: 'isActive', options: { unique: false } },
+    { name: 'parentTopicId', keyPath: 'parentTopicId', options: { unique: false } }
+  ],
+  [STORE_NAMES.TAG_INTEREST_MAPPINGS]: [
+    { name: 'mappingId', keyPath: 'mappingId', options: { unique: true } },
+    { name: 'tagId', keyPath: 'tagId', options: { unique: false } },
+    { name: 'topicId', keyPath: 'topicId', options: { unique: false } },
+    { name: 'source', keyPath: 'source', options: { unique: false } }
+  ],
+  [STORE_NAMES.INTEREST_CONTRIBUTION_EVENTS]: [
+    { name: 'contributionEventId', keyPath: 'contributionEventId', options: { unique: true } },
+    { name: 'platform', keyPath: 'platform', options: { unique: false } },
+    { name: 'topicId', keyPath: 'topicId', options: { unique: false } },
+    { name: 'dateKey', keyPath: 'dateKey', options: { unique: false } },
+    { name: 'eventTime', keyPath: 'eventTime', options: { unique: false } },
+    { name: 'sourceType', keyPath: 'sourceType', options: { unique: false } }
+  ],
+  [STORE_NAMES.INTEREST_SNAPSHOTS]: [
+    { name: 'snapshotId', keyPath: 'snapshotId', options: { unique: true } },
+    { name: 'platform', keyPath: 'platform', options: { unique: false } },
+    { name: 'dateKey', keyPath: 'dateKey', options: { unique: false } },
+    { name: 'window', keyPath: 'window', options: { unique: false } },
+    { name: 'topicId', keyPath: 'topicId', options: { unique: false } }
   ]
 } as const;
 
@@ -141,5 +177,9 @@ export const KEY_PATHS = {
   [STORE_NAMES.WATCH_TIME_DISTRIBUTIONS]: 'date',
   [STORE_NAMES.UP_INTERACTIONS]: 'interactionId',
   [STORE_NAMES.DAILY_WATCH_STATS]: 'statsId',
+  [STORE_NAMES.INTEREST_TOPICS]: 'topicId',
+  [STORE_NAMES.TAG_INTEREST_MAPPINGS]: 'mappingId',
+  [STORE_NAMES.INTEREST_CONTRIBUTION_EVENTS]: 'contributionEventId',
+  [STORE_NAMES.INTEREST_SNAPSHOTS]: 'snapshotId',
   [STORE_NAMES.APP_META]: 'key'
 } as const;

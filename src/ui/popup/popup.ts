@@ -2,6 +2,7 @@ import { navigateToFavorites, navigateToStats, navigateToTestTools, navigateToOp
 import { openExtensionPage } from "./popup-runtime.js";
 import { initThemedPage } from "../../themes/index.js";
 import { getValue } from "../../database/implementations/index.js";
+import { isLlmConfigured } from "../../engine/llm-client.js";
 
 function formatTime(timestamp: number | null): string {
   if (!timestamp) {
@@ -92,7 +93,7 @@ function bindButtons(): void {
       console.log("[popup] btn-interest-stats clicked");
       event.preventDefault();
       event.stopPropagation();
-      navigateToTestTools();
+      navigateToWatchStats();
     });
   }
 
@@ -127,6 +128,47 @@ function bindButtons(): void {
   }
 }
 
+async function checkLlmConfiguration(): Promise<void> {
+  try {
+    const configured = await isLlmConfigured();
+    const btnInterestStats = document.getElementById("btn-interest-stats") as HTMLButtonElement | null;
+    
+    if (btnInterestStats && !configured) {
+      // 禁用按钮
+      btnInterestStats.disabled = true;
+      btnInterestStats.style.opacity = "0.5";
+      btnInterestStats.style.cursor = "not-allowed";
+      
+      // 添加警告提示
+      btnInterestStats.title = "兴趣分析功能需要LLM API配置。请前往设置页面配置。";
+      btnInterestStats.style.pointerEvents = "none";
+      
+      // 添加警告标记
+      const badge = document.createElement('span');
+      badge.style.position = "absolute";
+      badge.style.top = "-5px";
+      badge.style.right = "-5px";
+      badge.style.backgroundColor = "#ff6b6b";
+      badge.style.color = "white";
+      badge.style.borderRadius = "50%";
+      badge.style.width = "18px";
+      badge.style.height = "18px";
+      badge.style.display = "flex";
+      badge.style.alignItems = "center";
+      badge.style.justifyContent = "center";
+      badge.style.fontSize = "12px";
+      badge.style.fontWeight = "bold";
+      badge.title = "需要配置";
+      badge.textContent = "!";
+      
+      btnInterestStats.style.position = "relative";
+      btnInterestStats.appendChild(badge);
+    }
+  } catch (error) {
+    console.error("[popup] Failed to check LLM configuration:", error);
+  }
+}
+
 export function initPopup(): void {
   if (typeof document === "undefined") {
     return;
@@ -134,6 +176,7 @@ export function initPopup(): void {
   initThemedPage("popup");
   bindButtons();
   void loadStatus();
+  void checkLlmConfiguration();
 }
 
 if (typeof document !== "undefined") {

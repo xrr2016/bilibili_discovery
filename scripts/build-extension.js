@@ -41,6 +41,9 @@ function copyStaticAssets() {
   // 复制 _locales 目录
   cpSync(join(srcRoot, "_locales"), join(extensionRoot, "_locales"), { recursive: true });
 
+  // 复制 picture 目录（图片资源）
+  cpSync(join(root, "picture"), join(extensionRoot, "picture"), { recursive: true });
+
   // 只复制 ui 目录中的 HTML 和 CSS 文件，不复制 .ts 文件
   const uiSrcDir = join(srcRoot, "ui");
   const uiDestDir = join(extensionRoot, "ui");
@@ -58,8 +61,8 @@ function copyStaticAssets() {
 
       if (stat.isDirectory()) {
         copyHtmlAndCssFiles(srcPath, destPath);
-      } else if (entry.endsWith('.html') || entry.endsWith('.css')) {
-        // 只复制 HTML 和 CSS 文件
+      } else if (entry.endsWith('.html') || entry.endsWith('.css') || entry.endsWith('.md')) {
+        // 复制 HTML、CSS 和 Markdown 文件
         cpSync(srcPath, destPath);
       }
     }

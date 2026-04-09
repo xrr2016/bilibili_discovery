@@ -11,6 +11,8 @@ import { UPInteractionRepositoryImpl } from '../../database/implementations/up-i
 import { WatchEventRepositoryImpl } from '../../database/implementations/watch-event-repository.impl.js';
 import { VideoRepositoryImpl } from '../../database/implementations/video-repository.impl.js';
 import { CreatorRepositoryImpl } from '../../database/implementations/creator-repository.impl.js';
+import { InterestAnalysisImpl } from '../../database/implementations/interest-analysis.impl.js';
+import { isLlmConfigured } from '../../engine/llm-client.js';
 import { Platform } from '../../database/types/base.js';
 import { dbManager, DBUtils, STORE_NAMES } from '../../database/indexeddb/index.js';
 import { WatchEvent } from '../../database/types/behavior.js';
@@ -24,6 +26,7 @@ export class WatchStatsPage {
   private watchEventRepo: WatchEventRepositoryImpl;
   private videoRepo: VideoRepositoryImpl;
   private creatorRepo: CreatorRepositoryImpl;
+  private interestAnalysis: InterestAnalysisImpl;
   private currentView: 'month' | 'year' = 'month';
   private currentYear: number = new Date().getFullYear();
   private currentMonth: number = new Date().getMonth(); // 0-11
@@ -37,6 +40,7 @@ export class WatchStatsPage {
     this.watchEventRepo = new WatchEventRepositoryImpl();
     this.videoRepo = new VideoRepositoryImpl();
     this.creatorRepo = new CreatorRepositoryImpl();
+    this.interestAnalysis = new InterestAnalysisImpl();
     initThemedPage('watch-stats');
     this.init();
   }
@@ -64,6 +68,9 @@ export class WatchStatsPage {
 
     // 加载Top 10列表
     await this.loadTopLists();
+
+    // 初始化兴趣分析
+    this.initInterestAnalysis();
   }
 
   /**
@@ -823,6 +830,154 @@ export class WatchStatsPage {
     } catch (error) {
       console.error('[WatchStatsPage] 加载Top 10列表失败:', error);
     }
+  }
+
+  /**
+   * 初始化兴趣分析
+   */
+  private initInterestAnalysis(): void {
+    const windowSelector = document.getElementById('interest-window') as HTMLSelectElement;
+    if (windowSelector) {
+      windowSelector.addEventListener('change', () => {
+        this.loadInterestAnalysis(windowSelector.value as '7d' | '30d');
+      });
+    }
+
+    // 加载默认的7天兴趣分析
+    this.loadInterestAnalysis('7d');
+  }
+
+  /**
+   * 加载兴趣分析数据
+   */
+  private async loadInterestAnalysis(window: '7d' | '30d'): Promise<void> {
+    const container = document.getElementById('interest-analysis');
+    if (!container) return;
+
+    // 显示加载状态
+    container.innerHTML = `
+      <div class="interest-loading">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>正在分析兴趣...</span>
+      </div>
+    `;
+
+    try {
+      // 检查LLM是否已配置
+      const llmConfigured = await isLlmConfigured();
+      if (!llmConfigured) {
+        container.innerHTML = `
+          <div class="interest-error">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>兴趣分析功能不可用</span>
+            <small>请前往<a href="javascript:void(0)" onclick="location.hash='#settings'" style="color: var(--theme-primary);">设置页面</a>配置LLM API密钥</small>
+          </div>
+        `;
+        return;
+      }
+
+      // 确保数据库已初始化
+      await dbManager.init();
+
+      // 获取今天的日期作为dateKey
+      const today = new Date();
+      const dateKey = today.toISOString().split('T')[0];
+
+      // 获取兴趣汇总数据
+      const interestSummary = await this.interestAnalysis.getInterestSummary(dateKey, window, Platform.BILIBILI, 20);
+
+      if (!interestSummary || !interestSummary.topicScores || interestSummary.topicScores.length === 0) {
+        container.innerHTML = `
+          <div class="interest-empty">
+            <i class="fas fa-chart-line"></i>
+            <span>暂无兴趣数据</span>
+            <small>观看更多视频后将显示兴趣分析</small>
+          </div>
+        `;
+        return;
+      }
+
+      // 渲染兴趣卡片
+      this.renderInterestCards(interestSummary.topicScores, window);
+
+    } catch (error) {
+      console.error('[WatchStatsPage] 加载兴趣分析失败:', error);
+      container.innerHTML = `
+        <div class="interest-error">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span>加载兴趣分析失败</span>
+          <small>请稍后重试</small>
+        </div>
+      `;
+    }
+  }
+
+  /**
+   * 渲染兴趣卡片
+   */
+  private async renderInterestCards(topicScores: any[], window: '7d' | '30d'): Promise<void> {
+    const container = document.getElementById('interest-analysis');
+    if (!container) return;
+
+    const grid = document.createElement('div');
+    grid.className = 'interest-grid';
+
+    for (const summary of topicScores) {
+      const card = await this.createInterestCard(summary, window);
+      grid.appendChild(card);
+    }
+
+    container.innerHTML = '';
+    container.appendChild(grid);
+  }
+
+  /**
+   * 创建兴趣卡片
+   */
+  private async createInterestCard(summary: any, window: '7d' | '30d'): Promise<HTMLElement> {
+    const card = document.createElement('div');
+    card.className = 'interest-card';
+
+    // 获取趋势信息
+    let trendInfo = { status: 'stable', change: 0 };
+    try {
+      const today = new Date();
+      const dateKey = today.toISOString().split('T')[0];
+      const trend = await this.interestAnalysis.getInterestTrend(dateKey, window, Platform.BILIBILI);
+      const topicTrend = trend.find(t => t.topicId === summary.topicId);
+      if (topicTrend) {
+        trendInfo = {
+          status: topicTrend.trend,
+          change: Math.abs(topicTrend.changeAmount)
+        };
+      }
+    } catch (error) {
+      console.warn('[WatchStatsPage] 获取趋势信息失败:', error);
+    }
+
+    const trendIcon = trendInfo.status === 'up' ? 'fa-arrow-up' :
+                     trendInfo.status === 'down' ? 'fa-arrow-down' : 'fa-minus';
+    const trendText = trendInfo.status === 'up' ? '上升' :
+                     trendInfo.status === 'down' ? '下降' : '稳定';
+
+    card.innerHTML = `
+      <div class="interest-card-header">
+        <h3 class="interest-name">${summary.topicName}</h3>
+        <div class="interest-trend ${trendInfo.status}">
+          <i class="fas ${trendIcon}"></i>
+          <span>${trendText}</span>
+        </div>
+      </div>
+      <div class="interest-metrics">
+        <div class="interest-score">${summary.finalScore.toFixed(0)}</div>
+        <div class="interest-ratio">${(summary.ratio * 100).toFixed(1)}%</div>
+      </div>
+      <div class="interest-details">
+        贡献分: ${summary.finalScore.toFixed(0)} | 占比: ${(summary.ratio * 100).toFixed(1)}%
+      </div>
+    `;
+
+    return card;
   }
 
   /**

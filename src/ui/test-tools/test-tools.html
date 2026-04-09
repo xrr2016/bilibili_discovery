@@ -147,6 +147,35 @@
       <span id="test-data-message"></span>
     </div>
 
+    <h2>兴趣分析调试</h2>
+    <div>
+      <label>
+        平台：
+        <select id="interest-platform">
+          <option value="bilibili">Bilibili</option>
+          <option value="youtube">YouTube</option>
+        </select>
+      </label>
+      <label>
+        <input type="checkbox" id="interest-use-llm"> 使用LLM映射
+      </label>
+    </div>
+    <div>
+      <button id="init-interest-topics-btn">初始化兴趣主题</button>
+      <button id="backfill-tag-mappings-btn">回填标签映射</button>
+      <button id="backfill-contribution-events-btn">回填贡献事件</button>
+      <button id="rebuild-snapshots-btn">重建快照</button>
+      <button id="rebuild-recent-snapshots-btn">重建最近快照</button>
+      <button id="init-full-interest-analysis-btn">完整初始化</button>
+    </div>
+    <div>
+      <span>状态：</span>
+      <span id="interest-status">等待操作...</span>
+    </div>
+    <div>
+      <span id="interest-message"></span>
+    </div>
+
     <script type="module" src="./tag-api-test.ts"></script>
     <script type="module" src="./test-tools.ts"></script>
   </body>

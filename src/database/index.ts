@@ -36,6 +36,13 @@ export { CollectionItemRepositoryImpl } from './implementations/collection-item-
 export { getValue, setValue, deleteValue } from './implementations/settings-repository.impl.js';
 export type { AppSettings } from './implementations/settings-repository.impl.js';
 
+// Interest Analysis Implementations
+export { InterestTopicRepositoryImpl } from './implementations/interest-topic-repository.impl.js';
+export { TagInterestMappingRepositoryImpl } from './implementations/tag-interest-mapping-repository.impl.js';
+export { InterestContributionRepositoryImpl } from './implementations/interest-contribution-repository.impl.js';
+export { InterestSnapshotRepositoryImpl } from './implementations/interest-snapshot-repository.impl.js';
+export { InterestAnalysisImpl } from './implementations/interest-analysis.impl.js';
+
 // ============ Query-Server 层 ============
 // 缓存层
 export { CacheManager } from './query-server/cache/cache-manager.js';
@@ -83,3 +90,4 @@ export * from './types/semantic.js';
 export * from './types/video.js';
 export * from './types/favorite-video.js';
 export * from './types/watch-history.js';
+export * from './types/interest.js';
