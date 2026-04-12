@@ -113,8 +113,6 @@ export class FolderProcessor {
 
           totalVideos.push(...videos);
           onProgress(0, totalVideos.length, `已获取 ${totalVideos.length} 个视频`);
-
-          if (videos.length < pageSize) break;
           page++;
         }
       }
